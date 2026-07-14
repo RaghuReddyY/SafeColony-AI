@@ -21,10 +21,7 @@ class Unit(Base):
         nullable=False,
     )
 
-    unit_number: Mapped[str] = mapped_column(
-        String(30),
-        nullable=False,
-    )
+    unit_number: Mapped[str] = mapped_column(String(30), nullable=False)
 
     unit_type: Mapped[str] = mapped_column(
         String(30),
@@ -67,5 +64,12 @@ class Unit(Base):
         onupdate=datetime.utcnow,
     )
 
+    # Relationships
     property = relationship("Property")
     section = relationship("Section")
+
+    residents = relationship(
+        "Resident",
+        back_populates="unit",
+        cascade="all, delete-orphan",
+    )

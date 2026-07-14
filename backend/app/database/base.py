@@ -7,3 +7,6 @@ from app.models.organization import Organization
 from app.models.property import Property
 from app.models.section import Section
 from app.models.unit import Unit
+from app.models.resident import Resident
+from app.models.vehicle import Vehicle
+from app.models.visitor import Visitor
