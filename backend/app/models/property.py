@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String
 
-from app.database.base import Base
-
+from app.database.base_class import Base
+from sqlalchemy.orm import relationship
 
 class Property(Base):
     __tablename__ = "properties"
@@ -11,6 +11,12 @@ class Property(Base):
     name = Column(String, nullable=False)
 
     property_type = Column(String, nullable=False)
+
+    blocks = relationship(
+        "Block",
+        back_populates="property",
+        cascade="all, delete",
+    )
 
     address = Column(String)
 

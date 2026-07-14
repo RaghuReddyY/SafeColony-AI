@@ -5,6 +5,7 @@ from app.models.user import User
 from app.models.property import Property
 
 from app.database.session import engine
+from app.models.organization import Organization
 Base.metadata.create_all(bind=engine)
 
 print("Database Created Successfully")
