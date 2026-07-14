@@ -20,3 +20,8 @@ class Section(Base):
     description = Column(String(255), nullable=True)
 
     property = relationship("Property", back_populates="sections")
+
+    units = relationship(
+    "Unit",
+    cascade="all, delete",
+)

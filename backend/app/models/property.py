@@ -12,12 +12,17 @@ class Property(Base):
 
     property_type = Column(String, nullable=False)
 
-    blocks = relationship(
-        "Block",
+    sections = relationship(
+        "Section",
         back_populates="property",
         cascade="all, delete",
     )
 
+    units = relationship(
+        "Unit",
+        cascade="all, delete",
+    )
+    
     address = Column(String)
 
     city = Column(String)
