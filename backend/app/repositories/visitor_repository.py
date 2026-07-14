@@ -35,3 +35,10 @@ class VisitorRepository:
         self.db.commit()
         self.db.refresh(visitor)
         return visitor
+    
+    def get_by_qr_token(self, qr_token: str):
+        return (
+            self.db.query(Visitor)
+            .filter(Visitor.qr_token == qr_token)
+            .first()
+        )    

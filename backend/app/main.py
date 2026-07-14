@@ -9,6 +9,8 @@ from app.api.resident import router as resident_router
 from app.api.vehicle import router as vehicle_router
 from app.api.visitor import router as visitor_router
 from app.core.exceptions import global_exception_handler
+from app.api.guard import router as guard_router
+from app.api.notification import router as notification_router
 
 
 app = FastAPI(
@@ -24,6 +26,9 @@ app.include_router(unit_router)
 app.include_router(resident_router)
 app.include_router(vehicle_router)
 app.include_router(visitor_router)
+app.include_router(guard_router)
+app.include_router(notification_router)
+
 
 @app.get("/")
 def home():

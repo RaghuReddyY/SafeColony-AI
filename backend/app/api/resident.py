@@ -5,6 +5,7 @@ from app.database.dependency import get_db
 
 from app.repositories.resident_repository import ResidentRepository
 from app.services.resident_service import ResidentService
+from app.schemas.dashboard import ResidentDashboardResponse
 
 from app.schemas.resident import (
     ResidentCreate,
@@ -59,3 +60,17 @@ def get_residents_by_unit(
     service = ResidentService(repo)
 
     return service.get_by_unit(unit_id)
+
+@router.get(
+    "/dashboard/{resident_id}",
+    response_model=ResidentDashboardResponse,
+)
+def dashboard(
+    resident_id: int,
+    db: Session = Depends(get_db),
+):
+
+    repo = ResidentRepository(db)
+    service = ResidentService(repo)
+
+    return service.dashboard(resident_id)

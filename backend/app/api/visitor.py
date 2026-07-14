@@ -11,6 +11,11 @@ from app.schemas.visitor import (
     VisitorResponse,
 )
 
+from app.schemas.scan import (
+    QRScanRequest,
+    QRScanResponse,
+)
+
 router = APIRouter(
     prefix="/visitors",
     tags=["Visitors"],
@@ -102,3 +107,43 @@ def check_out_visitor(
     service = VisitorService(repo)
 
     return service.check_out(visitor_id)
+
+@router.post(
+    "/scan",
+    response_model=QRScanResponse,
+)
+def scan_qr(
+    request: QRScanRequest,
+    db: Session = Depends(get_db),
+):
+
+    repo = VisitorRepository(db)
+    service = VisitorService(repo)
+
+    visitor = service.scan_qr(request.qr_token)
+
+    return QRScanResponse(
+        visitor_name=visitor.visitor_name,
+        resident_id=visitor.resident_id,
+        status=visitor.status,
+    )
+
+@router.post(
+    "/scan-exit",
+    response_model=QRScanResponse,
+)
+def scan_exit(
+    request: QRScanRequest,
+    db: Session = Depends(get_db),
+):
+
+    repo = VisitorRepository(db)
+    service = VisitorService(repo)
+
+    visitor = service.scan_exit(request.qr_token)
+
+    return QRScanResponse(
+        visitor_name=visitor.visitor_name,
+        resident_id=visitor.resident_id,
+        status=visitor.status,
+    )

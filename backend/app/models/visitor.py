@@ -51,6 +51,28 @@ class Visitor(Base):
         default="PENDING",
     )
 
+    # -------------------------
+    # NEW QR FIELDS
+    # -------------------------
+
+    qr_token: Mapped[str | None] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=True,
+    )
+
+    qr_code: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    # -------------------------
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,

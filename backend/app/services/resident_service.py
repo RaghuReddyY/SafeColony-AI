@@ -38,3 +38,25 @@ class ResidentService:
 
     def get_by_unit(self, unit_id):
         return self.repo.get_by_unit(unit_id)
+    
+    def dashboard(self, resident_id: int):
+
+        data = self.repo.get_dashboard(resident_id)
+
+        if data is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Resident not found",
+            )
+
+        resident = data["resident"]
+
+        return {
+            "resident_name": resident.full_name,
+            "unit_number": resident.unit.unit_number,
+            "vehicles": data["vehicles"],
+            "pending_visitors": data["pending"],
+            "approved_visitors": data["approved"],
+            "inside_visitors": data["inside"],
+            "notifications": data["notifications"],
+        }

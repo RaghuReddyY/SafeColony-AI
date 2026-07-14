@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.utils.qr_generator import QRGenerator
 
 from fastapi import HTTPException
 
@@ -36,15 +37,30 @@ class VisitorService:
         visitor = self.repo.get_by_id(visitor_id)
 
         if visitor is None:
-            raise HTTPException(404, "Visitor not found")
+         raise HTTPException(
+            status_code=404,
+            detail="Visitor not found",
+        )
 
         if visitor.status != "PENDING":
             raise HTTPException(
-                400,
-                "Only pending visitors can be approved"
-            )
+            status_code=400,
+            detail="Only pending visitors can be approved",
+        )
+
+        token, qr_path = QRGenerator.generate(visitor.id)
 
         visitor.status = "APPROVED"
+
+        visitor.qr_token = token
+
+        visitor.qr_code = qr_path
+
+        visitor.approved_at = datetime.utcnow()
+
+        logger.info(
+            f"Visitor Approved: {visitor.visitor_name}"
+        )
 
         return self.repo.save(visitor)
 
@@ -88,6 +104,50 @@ class VisitorService:
             raise HTTPException(
                 400,
                 "Visitor is not checked in"
+            )
+
+        visitor.status = "CHECKED_OUT"
+        visitor.check_out_time = datetime.utcnow()
+
+        return self.repo.save(visitor)
+    
+    def scan_qr(self, qr_token: str):
+
+        visitor = self.repo.get_by_qr_token(qr_token)
+
+        if visitor is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Invalid QR Code"
+            )
+
+        if visitor.status != "APPROVED":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Visitor status is {visitor.status}"
+            )
+
+        visitor.status = "CHECKED_IN"
+        visitor.check_in_time = datetime.utcnow()
+
+        self.repo.save(visitor)
+
+        return visitor
+        
+    def scan_exit(self, qr_token: str):
+
+        visitor = self.repo.get_by_qr_token(qr_token)
+
+        if visitor is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Invalid QR Code"
+            )
+
+        if visitor.status != "CHECKED_IN":
+            raise HTTPException(
+                status_code=400,
+                detail="Visitor is not checked in"
             )
 
         visitor.status = "CHECKED_OUT"

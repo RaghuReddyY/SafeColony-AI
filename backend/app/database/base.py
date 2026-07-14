@@ -10,3 +10,4 @@ from app.models.unit import Unit
 from app.models.resident import Resident
 from app.models.vehicle import Vehicle
 from app.models.visitor import Visitor
+from app.models.notification import Notification

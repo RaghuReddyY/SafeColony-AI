@@ -98,3 +98,9 @@ class Resident(Base):
         back_populates="resident",
         cascade="all, delete-orphan",
     )
+
+    notifications = relationship(
+        "Notification",
+        back_populates="resident",
+        cascade="all, delete-orphan",
+    )
