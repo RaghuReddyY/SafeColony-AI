@@ -41,4 +41,12 @@ class VisitorRepository:
             self.db.query(Visitor)
             .filter(Visitor.qr_token == qr_token)
             .first()
-        )    
+        )   
+    
+    def get_by_resident(self, resident_id: int):
+        return (
+        self.db.query(Visitor)
+        .filter(Visitor.resident_id == resident_id)
+        .order_by(Visitor.created_at.desc())
+        .all()
+    )

@@ -60,3 +60,34 @@ class ResidentService:
             "inside_visitors": data["inside"],
             "notifications": data["notifications"],
         }
+    
+    def get_profile(self, resident_id: int):
+
+        resident = self.repo.get_profile(resident_id)
+
+        if resident is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Resident not found",
+            )
+
+        return resident
+    
+    def update_profile(self, resident_id: int, data):
+
+        resident = self.repo.get_profile(resident_id)
+
+        if resident is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Resident not found",
+            )
+
+        resident.full_name = data.full_name
+        resident.email = data.email
+        resident.gender = data.gender
+        resident.date_of_birth = data.date_of_birth
+        resident.emergency_contact = data.emergency_contact
+        resident.emergency_contact_name = data.emergency_contact_name
+
+        return self.repo.update(resident)

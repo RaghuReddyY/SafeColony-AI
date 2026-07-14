@@ -56,3 +56,17 @@ def get_vehicle_by_resident(
     service = VehicleService(repo)
 
     return service.get_by_resident(resident_id)
+
+@router.get(
+    "/resident/{resident_id}",
+    response_model=list[VehicleResponse],
+)
+def get_vehicles_by_resident(
+    resident_id: int,
+    db: Session = Depends(get_db),
+):
+
+    repo = VehicleRepository(db)
+    service = VehicleService(repo)
+
+    return service.get_by_resident(resident_id)

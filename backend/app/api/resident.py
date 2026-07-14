@@ -12,6 +12,11 @@ from app.schemas.resident import (
     ResidentResponse,
 )
 
+from app.schemas.resident import (
+    ResidentProfileResponse,
+    ResidentProfileUpdate,
+)
+
 router = APIRouter(
     prefix="/residents",
     tags=["Residents"],
@@ -74,3 +79,35 @@ def dashboard(
     service = ResidentService(repo)
 
     return service.dashboard(resident_id)
+
+@router.get(
+    "/profile/{resident_id}",
+    response_model=ResidentProfileResponse,
+)
+def get_profile(
+    resident_id: int,
+    db: Session = Depends(get_db),
+):
+
+    repo = ResidentRepository(db)
+    service = ResidentService(repo)
+
+    return service.get_profile(resident_id)
+
+@router.put(
+    "/profile/{resident_id}",
+    response_model=ResidentProfileResponse,
+)
+def update_profile(
+    resident_id: int,
+    resident: ResidentProfileUpdate,
+    db: Session = Depends(get_db),
+):
+
+    repo = ResidentRepository(db)
+    service = ResidentService(repo)
+
+    return service.update_profile(
+        resident_id,
+        resident,
+    )

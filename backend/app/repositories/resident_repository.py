@@ -99,3 +99,18 @@ class ResidentRepository:
             "inside": inside,
             "notifications": notifications,
         }
+    
+    def update(self, resident: Resident):
+
+        self.db.commit()
+        self.db.refresh(resident)
+
+        return resident
+    
+    def get_profile(self, resident_id: int):
+
+     return (
+        self.db.query(Resident)
+        .filter(Resident.id == resident_id)
+        .first()
+    )

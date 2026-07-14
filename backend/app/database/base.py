@@ -11,3 +11,6 @@ from app.models.resident import Resident
 from app.models.vehicle import Vehicle
 from app.models.visitor import Visitor
 from app.models.notification import Notification
+from app.models.vacation_mode import VacationMode
+from app.models.security_alert import SecurityAlert
+from app.models.delivery import Delivery
