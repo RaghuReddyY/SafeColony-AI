@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.organization import router as organization_router
@@ -21,6 +22,7 @@ from app.api.delivery import router as delivery_router
 
 from app.core.event_registry import register_event_handlers
 from app.core.exceptions import global_exception_handler
+from app.api.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -44,6 +46,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# -----------------------------
+# CORS
+# -----------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1",
+    ],
+    allow_origin_regex=r"http://localhost:\d+",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # -----------------------------
 # Register Routers
@@ -62,6 +81,7 @@ app.include_router(vacation_router)
 app.include_router(security_alert_router)
 app.include_router(security_dashboard_router)
 app.include_router(delivery_router)
+app.include_router(dashboard_router)
 
 
 # -----------------------------
