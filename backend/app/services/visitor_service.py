@@ -222,3 +222,15 @@ class VisitorService:
         visitor.check_out_time = datetime.utcnow()
 
         return self.repo.save(visitor)
+    
+    def validate_qr(self, qr_token: str):
+
+        visitor = self.repo.get_by_qr_token(qr_token)
+
+        if visitor is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Invalid QR Code",
+                )
+
+        return visitor

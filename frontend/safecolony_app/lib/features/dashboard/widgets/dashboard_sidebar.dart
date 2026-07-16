@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../routes/app_router.dart';
+import '../../visitors/screens/visitor_list_screen.dart';
+import '../dashboard_screen.dart';
+
 class DashboardSidebar extends StatelessWidget {
   const DashboardSidebar({super.key});
 
@@ -9,81 +13,130 @@ class DashboardSidebar extends StatelessWidget {
       elevation: 0,
       child: Container(
         color: const Color(0xff1E293B),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.only(
-                top: 50,
-                bottom: 30,
-              ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xff4F46E5),
-                    Color(0xff2563EB),
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 30,
+                ),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xff4F46E5),
+                      Color(0xff2563EB),
+                    ],
+                  ),
+                ),
+                child: const Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 36,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.person,
+                        size: 38,
+                        color: Colors.indigo,
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    Text(
+                      "Raghunatha Reddy",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      "Resident",
+                      style: TextStyle(
+                        color: Colors.white70,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              child: Column(
-                children: const [
-                  CircleAvatar(
-                    radius: 38,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  Text(
-                    "Raghunatha Reddy",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "Resident",
-                    style: TextStyle(
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
+
+              const SizedBox(height: 12),
+
+              _menu(
+                context,
+                icon: Icons.dashboard,
+                title: "Dashboard",
+                selected: true,
               ),
-            ),
 
-            const SizedBox(height: 20),
+              _menu(
+                context,
+                icon: Icons.people,
+                title: "Visitors",
+              ),
 
-            _menu(Icons.dashboard, "Dashboard", true),
-            _menu(Icons.people, "Visitors", false),
-            _menu(Icons.inventory_2, "Deliveries", false),
-            _menu(Icons.beach_access, "Vacation", false),
-            _menu(Icons.notifications, "Notifications", false),
-            _menu(Icons.auto_awesome, "AI Assistant", false),
+              _menu(
+                context,
+                icon: Icons.qr_code_scanner,
+                title: "Guard Scanner",
+              ),
 
-            const Spacer(),
+              _menu(
+                context,
+                icon: Icons.inventory_2,
+                title: "Deliveries",
+              ),
 
-            const Divider(color: Colors.white24),
+              _menu(
+                context,
+                icon: Icons.beach_access,
+                title: "Vacation",
+              ),
 
-            _menu(Icons.settings, "Settings", false),
-            _menu(Icons.logout, "Logout", false),
+              _menu(
+                context,
+                icon: Icons.notifications,
+                title: "Notifications",
+              ),
 
-            const SizedBox(height: 20),
-          ],
+              _menu(
+                context,
+                icon: Icons.auto_awesome,
+                title: "AI Assistant",
+              ),
+
+              const Divider(
+                color: Colors.white24,
+                height: 30,
+              ),
+
+              _menu(
+                context,
+                icon: Icons.settings,
+                title: "Settings",
+              ),
+
+              _menu(
+                context,
+                icon: Icons.logout,
+                title: "Logout",
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _menu(
-      IconData icon,
-      String title,
-      bool selected,
-      ) {
+  static Widget _menu(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    bool selected = false,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: 12,
@@ -106,7 +159,51 @@ class DashboardSidebar extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        onTap: () {},
+        onTap: () {
+          Navigator.pop(context);
+
+          switch (title) {
+            case "Dashboard":
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DashboardScreen(),
+                ),
+              );
+              break;
+
+            case "Visitors":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const VisitorListScreen(),
+                ),
+              );
+              break;
+
+            case "Guard Scanner":
+              Navigator.pushNamed(
+              context,
+              AppRoutes.guard,
+            );
+            break;
+
+            case "Logout":
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.login,
+                (route) => false,
+              );
+              break;
+
+            default:
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("$title module is coming soon."),
+                ),
+              );
+          }
+        },
       ),
     );
   }

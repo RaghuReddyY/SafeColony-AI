@@ -109,6 +109,31 @@ def check_out_visitor(
     return service.check_out(visitor_id)
 
 @router.post(
+    "/validate-qr",
+    response_model=QRScanResponse,
+)
+def validate_qr(
+    request: QRScanRequest,
+    db: Session = Depends(get_db),
+):
+
+    repo = VisitorRepository(db)
+    service = VisitorService(repo)
+
+    visitor = service.validate_qr(request.qr_token)
+
+    return QRScanResponse(
+        id=visitor.id,
+        visitor_name=visitor.visitor_name,
+        resident_id=visitor.resident_id,
+        phone=visitor.phone,
+        visitor_type=visitor.visitor_type,
+        purpose=visitor.purpose,
+        vehicle_number=visitor.vehicle_number,
+        status=visitor.status,
+    )
+    
+@router.post(
     "/scan",
     response_model=QRScanResponse,
 )
@@ -123,8 +148,13 @@ def scan_qr(
     visitor = service.scan_qr(request.qr_token)
 
     return QRScanResponse(
+        id=visitor.id,
         visitor_name=visitor.visitor_name,
         resident_id=visitor.resident_id,
+        phone=visitor.phone,
+        visitor_type=visitor.visitor_type,
+        purpose=visitor.purpose,
+        vehicle_number=visitor.vehicle_number,
         status=visitor.status,
     )
 
@@ -143,7 +173,13 @@ def scan_exit(
     visitor = service.scan_exit(request.qr_token)
 
     return QRScanResponse(
+        id=visitor.id,
         visitor_name=visitor.visitor_name,
         resident_id=visitor.resident_id,
+        phone=visitor.phone,
+        visitor_type=visitor.visitor_type,
+        purpose=visitor.purpose,
+        vehicle_number=visitor.vehicle_number,
         status=visitor.status,
     )
+

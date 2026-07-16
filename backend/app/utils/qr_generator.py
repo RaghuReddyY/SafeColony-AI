@@ -1,5 +1,6 @@
 import os
 import uuid
+from pathlib import Path
 
 import qrcode
 
@@ -20,16 +21,23 @@ class QRGenerator:
         qr.add_data(token)
         qr.make(fit=True)
 
-        image = qr.make_image(fill_color="black", back_color="white")
+        image = qr.make_image(
+            fill_color="black",
+            back_color="white",
+        )
 
-        folder = "uploads/qr"
+        folder = Path("uploads") / "qr"
 
-        os.makedirs(folder, exist_ok=True)
+        folder.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
         filename = f"visitor_{visitor_id}.png"
 
-        filepath = os.path.join(folder, filename)
+        filepath = folder / filename
 
         image.save(filepath)
 
-        return token, filepath
+        # Return URL-friendly path
+        return token, filepath.as_posix()

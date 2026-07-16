@@ -21,74 +21,52 @@ class AnimatedStatCard extends StatefulWidget {
 
 class _AnimatedStatCardState
     extends State<AnimatedStatCard> {
-
   bool hover = false;
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    final bool desktop = width > 900;
 
     return MouseRegion(
-
       onEnter: (_) => setState(() => hover = true),
-
       onExit: (_) => setState(() => hover = false),
 
       child: AnimatedContainer(
-
         duration: const Duration(milliseconds: 250),
 
-        curve: Curves.easeOut,
-
-        transform: Matrix4.identity()
-          ..translate(
-            0.0,
-            hover ? -8.0 : 0.0,
-          ),
+        transform: Matrix4.translationValues(
+          0,
+          hover ? -6 : 0,
+          0,
+        ),
 
         decoration: BoxDecoration(
-
-          borderRadius:
-              BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
 
           gradient: LinearGradient(
-
-            begin: Alignment.topLeft,
-
-            end: Alignment.bottomRight,
-
             colors: [
-
               widget.color,
-
-              widget.color.withValues(
-                alpha: .75,
-              ),
+              widget.color.withValues(alpha: .80),
             ],
           ),
 
           boxShadow: [
-
             BoxShadow(
-
-              color: widget.color.withValues(
-                alpha: .35,
-              ),
-
-              blurRadius: hover ? 30 : 18,
-
-              offset: const Offset(
-                0,
-                14,
-              ),
+              color: widget.color.withValues(alpha: .25),
+              blurRadius: hover ? 22 : 12,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
 
         child: Padding(
-
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(18),
 
           child: Column(
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
 
             crossAxisAlignment:
                 CrossAxisAlignment.start,
@@ -96,36 +74,30 @@ class _AnimatedStatCardState
             children: [
 
               Row(
-
                 children: [
 
                   Container(
-
                     padding:
                         const EdgeInsets.all(10),
 
                     decoration: BoxDecoration(
-
                       color: Colors.white.withValues(
-                        alpha: .20,
+                        alpha: .18,
                       ),
-
                       borderRadius:
-                          BorderRadius.circular(
-                        15,
-                      ),
+                          BorderRadius.circular(14),
                     ),
 
                     child: Icon(
                       widget.icon,
                       color: Colors.white,
+                      size: desktop ? 24 : 20,
                     ),
                   ),
 
                   const Spacer(),
 
                   Container(
-
                     padding:
                         const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -133,90 +105,64 @@ class _AnimatedStatCardState
                     ),
 
                     decoration: BoxDecoration(
-
                       color: Colors.white.withValues(
                         alpha: .18,
                       ),
-
                       borderRadius:
-                          BorderRadius.circular(
-                        25,
-                      ),
+                          BorderRadius.circular(30),
                     ),
 
                     child: const Text(
-
                       "+12%",
-
                       style: TextStyle(
-
                         color: Colors.white,
-
-                        fontWeight:
-                            FontWeight.bold,
-
-                        fontSize: 12,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
 
-              const Spacer(),
-
               Text(
-
                 widget.value,
-
-                style: const TextStyle(
-
+                style: TextStyle(
                   color: Colors.white,
-
-                  fontSize: 42,
-
+                  fontSize: desktop ? 40 : 30,
                   fontWeight: FontWeight.bold,
                 ),
               ),
 
-              const SizedBox(height: 6),
-
               Text(
-
                 widget.title,
-
-                style: const TextStyle(
-
+                style: TextStyle(
                   color: Colors.white70,
-
-                  fontSize: 17,
+                  fontSize: desktop ? 17 : 15,
                 ),
               ),
 
-              const SizedBox(height: 12),
-
               Row(
+                children: [
 
-                children: const [
-
-                  Icon(
+                  const Icon(
                     Icons.trending_up,
                     color: Colors.white,
-                    size: 18,
+                    size: 16,
                   ),
 
-                  SizedBox(width: 6),
+                  const SizedBox(width: 6),
 
-                  Text(
-
-                    "Compared to yesterday",
-
-                    style: TextStyle(
-
-                      color: Colors.white70,
-
-                      fontSize: 12,
+                  Expanded(
+                    child: Text(
+                      "Compared to yesterday",
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize:
+                            desktop ? 12 : 10,
+                      ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ],

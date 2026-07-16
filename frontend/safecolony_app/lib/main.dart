@@ -3,6 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/providers/auth_provider.dart';
+import 'features/dashboard/dashboard_screen.dart';
+import 'features/visitors/screens/add_visitor_screen.dart';
+import 'features/visitors/screens/visitor_list_screen.dart';
+import 'routes/app_router.dart';
+import 'features/guard/screens/guard_screen.dart';
+
 
 void main() {
   runApp(
@@ -18,10 +25,28 @@ class SafeColonyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'SafeColony AI',
-      theme: AppTheme.lightTheme,
-      home: const LoginScreen(),
-    );
+    debugShowCheckedModeBanner: false,
+    title: 'SafeColony AI',
+    theme: AppTheme.lightTheme,
+
+    initialRoute: AppRoutes.login,
+
+    routes: {
+
+      AppRoutes.login: (_) => const LoginScreen(),
+
+      AppRoutes.dashboard: (_) =>
+          const DashboardScreen(),
+
+      AppRoutes.visitors: (_) =>
+          const VisitorListScreen(),
+
+      AppRoutes.addVisitor: (_) =>
+          const AddVisitorScreen(),
+
+      AppRoutes.guard: (_) =>
+          const GuardScreen(),
+    },
+  );
   }
 }
