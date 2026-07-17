@@ -111,3 +111,16 @@ def update_profile(
         resident_id,
         resident,
     )
+
+@router.get(
+    "/dropdown",
+)
+def resident_dropdown(
+    db: Session = Depends(get_db),
+):
+
+    repo = ResidentRepository(db)
+
+    service = ResidentService(repo)
+
+    return service.dropdown()

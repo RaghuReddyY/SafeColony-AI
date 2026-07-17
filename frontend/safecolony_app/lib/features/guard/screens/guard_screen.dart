@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/guard_scan_result.dart';
 import '../services/guard_service.dart';
+import 'qr_scanner_screen.dart';
 
 class GuardScreen extends StatefulWidget {
   const GuardScreen({super.key});
@@ -169,18 +170,54 @@ Future<void> checkInVisitor() async {
 
             const SizedBox(height: 12),
 
-            TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                hintText:
-                    "Paste QR Token here",
-                border:
-                    OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(12),
-                ),
-              ),
-            ),
+ Row(
+  children: [
+
+    Expanded(
+      child: TextField(
+        controller: _controller,
+        decoration: InputDecoration(
+          hintText: "QR Token",
+          border: OutlineInputBorder(
+            borderRadius:
+                BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    IconButton.filled(
+
+      icon: const Icon(
+        Icons.qr_code_scanner,
+      ),
+
+      onPressed: () async {
+
+        final token =
+            await Navigator.push<String>(
+
+          context,
+
+          MaterialPageRoute(
+
+            builder: (_) =>
+                const QRScannerScreen(),
+          ),
+        );
+
+        if (token != null) {
+
+          _controller.text = token;
+
+          validateVisitor();
+        }
+      },
+    ),
+  ],
+),
 
             const SizedBox(height: 20),
 

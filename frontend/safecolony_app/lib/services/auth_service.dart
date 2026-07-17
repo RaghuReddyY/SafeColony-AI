@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../core/api/api_client.dart';
+import '../features/auth/models/user.dart';
 import '../models/login_request.dart';
 import '../models/login_response.dart';
 
@@ -20,6 +21,16 @@ class AuthService {
     );
 
     return LoginResponse.fromJson(
+      response.data,
+    );
+  }
+
+  Future<User> getCurrentUser() async {
+    final response = await ApiClient.dio.get(
+      "/auth/me",
+    );
+
+    return User.fromJson(
       response.data,
     );
   }

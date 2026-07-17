@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy.orm import Session
 
 from app.models.visitor import Visitor
@@ -27,7 +29,12 @@ class VisitorRepository:
     def get_by_resident(self, resident_id: int):
         return (
             self.db.query(Visitor)
-            .filter(Visitor.resident_id == resident_id)
+            .filter(
+                Visitor.resident_id == resident_id
+            )
+            .order_by(
+                Visitor.created_at.desc()
+            )
             .all()
         )
 
@@ -35,18 +42,37 @@ class VisitorRepository:
         self.db.commit()
         self.db.refresh(visitor)
         return visitor
-    
+
     def get_by_qr_token(self, qr_token: str):
         return (
             self.db.query(Visitor)
-            .filter(Visitor.qr_token == qr_token)
+            .filter(
+                Visitor.qr_token == qr_token
+            )
             .first()
-        )   
-    
-    def get_by_resident(self, resident_id: int):
+        )
+
+    # ----------------------------------------
+    # Guard Dashboard
+    # ----------------------------------------
+
+    def get_expected_visitors(self):
         return (
-        self.db.query(Visitor)
-        .filter(Visitor.resident_id == resident_id)
-        .order_by(Visitor.created_at.desc())
-        .all()
-    )
+            self.db.query(Visitor)
+            .filter(
+                Visitor.status == "APPROVED"
+            )
+            .order_by(
+                Visitor.expected_time.asc()
+            )
+            .all()
+        )
+
+    def get_checked_in_today(self):
+        return (
+            self.db.query(Visitor)
+            .filter(
+                Visitor.status == "CHECKED_IN"
+            )
+            .count()
+        )

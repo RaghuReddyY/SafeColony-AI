@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/primary_button.dart';
-import '../../services/storage_service.dart';
 import '../dashboard/dashboard_screen.dart';
 import 'providers/auth_provider.dart';
 
@@ -22,43 +21,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   final _passwordController = TextEditingController();
 
-  bool _loading = false;
 
   bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    _checkLogin();
   }
 
-  Future<void> _checkLogin() async {
-    final token = await StorageService().getToken();
 
-    if (token != null && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
-        ),
-      );
-    }
-  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _loading = true;
-    });
+       try {
+      final success = await ref.read(authProvider.notifier).login(
+  email: _emailController.text.trim(),
+  password: _passwordController.text,
+);
 
-    try {
-      await ref.read(authProvider).login(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+if (!success) {
+  if (!mounted) return;
+
+  final error = ref.read(authProvider).error ?? "Login failed";
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      backgroundColor: Colors.red,
+      content: Text(error),
+    ),
+  );
+
+  return;
+}
 
       if (!mounted) return;
 
@@ -81,16 +78,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     }
 
-    if (mounted) {
-      setState(() {
-        _loading = false;
-      });
-    }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+@override
+Widget build(BuildContext context) {
+  final authState = ref.watch(authProvider);
+
+  final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       body: Stack(
@@ -109,8 +103,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Colors.black.withOpacity(.70),
-                    Colors.black.withOpacity(.35),
+                    Colors.black.withValues(alpha: .70),
+                    Colors.black.withValues(alpha: .35),
                   ],
                 ),
               ),
@@ -219,15 +213,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                           SizedBox(
                             width: double.infinity,
-                            child: _loading
-                                ? const Center(
-                                    child:
-                                        CircularProgressIndicator(),
-                                  )
-                                : PrimaryButton(
-                                    title: "LOGIN",
-                                    onPressed: _login,
-                                  ),
+                            child: authState.isLoading
+    ? const Center(
+        child: CircularProgressIndicator(),
+      )
+    : PrimaryButton(
+        title: "LOGIN",
+        onPressed: _login,
+      ),
                           ),
                         ],
                       ),

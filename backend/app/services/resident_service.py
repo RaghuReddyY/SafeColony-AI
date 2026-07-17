@@ -91,3 +91,22 @@ class ResidentService:
         resident.emergency_contact_name = data.emergency_contact_name
 
         return self.repo.update(resident)
+    
+    def dropdown(self):
+
+        residents = self.repo.get_dropdown()
+
+        return [
+
+            {
+                "id": resident.id,
+
+                "name": resident.full_name,
+
+                "flat": resident.unit.unit_number
+                if resident.unit
+                else "",
+            }
+
+            for resident in residents
+        ]

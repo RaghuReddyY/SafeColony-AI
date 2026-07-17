@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.dependency import get_db
@@ -10,6 +10,7 @@ from app.repositories.delivery_repository import (
 from app.schemas.delivery import (
     DeliveryCreate,
     DeliveryResponse,
+    VerifyOtpRequest,
 )
 
 from app.services.delivery_service import (
@@ -22,6 +23,10 @@ router = APIRouter(
 )
 
 
+# --------------------------------------------------
+# Create Delivery
+# --------------------------------------------------
+
 @router.post(
     "",
     response_model=DeliveryResponse,
@@ -31,12 +36,16 @@ def create_delivery(
     db: Session = Depends(get_db),
 ):
 
-    repo = DeliveryRepository(db)
-
-    service = DeliveryService(repo)
+    service = DeliveryService(
+        DeliveryRepository(db),
+    )
 
     return service.create(delivery)
 
+
+# --------------------------------------------------
+# Get All Deliveries
+# --------------------------------------------------
 
 @router.get(
     "",
@@ -46,28 +55,69 @@ def get_deliveries(
     db: Session = Depends(get_db),
 ):
 
-    repo = DeliveryRepository(db)
-
-    service = DeliveryService(repo)
+    service = DeliveryService(
+        DeliveryRepository(db),
+    )
 
     return service.get_all()
 
+
+# --------------------------------------------------
+# Get Delivery By ID
+# --------------------------------------------------
+
+@router.get(
+    "/{delivery_id}",
+    response_model=DeliveryResponse,
+)
+def get_delivery(
+    delivery_id: int,
+    db: Session = Depends(get_db),
+):
+
+    service = DeliveryService(
+        DeliveryRepository(db),
+    )
+
+    delivery = service.get_by_id(
+        delivery_id,
+    )
+
+    if delivery is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Delivery not found",
+        )
+
+    return delivery
+
+
+# --------------------------------------------------
+# Resident Deliveries
+# --------------------------------------------------
 
 @router.get(
     "/resident/{resident_id}",
     response_model=list[DeliveryResponse],
 )
-def get_resident_deliveries(
+def resident_deliveries(
     resident_id: int,
     db: Session = Depends(get_db),
 ):
 
-    repo = DeliveryRepository(db)
+    service = DeliveryService(
+        DeliveryRepository(db),
+    )
 
-    service = DeliveryService(repo)
+    return service.get_by_resident(
+        resident_id,
+    )
 
-    return service.get_by_resident(resident_id)
 
+# --------------------------------------------------
+# Receive Delivery
+# --------------------------------------------------
 
 @router.put(
     "/{delivery_id}/receive",
@@ -79,11 +129,44 @@ def receive_delivery(
     db: Session = Depends(get_db),
 ):
 
-    repo = DeliveryRepository(db)
-
-    service = DeliveryService(repo)
+    service = DeliveryService(
+        DeliveryRepository(db),
+    )
 
     return service.receive(
         delivery_id,
         security_guard,
     )
+
+
+# --------------------------------------------------
+# Verify OTP & Collect Delivery
+# --------------------------------------------------
+
+@router.post(
+    "/{delivery_id}/verify-otp",
+    response_model=DeliveryResponse,
+)
+def verify_otp(
+    delivery_id: int,
+    request: VerifyOtpRequest,
+    db: Session = Depends(get_db),
+):
+
+    service = DeliveryService(
+        DeliveryRepository(db),
+    )
+
+    delivery = service.verify_otp(
+        delivery_id,
+        request.otp,
+    )
+
+    if delivery is None:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid OTP",
+        )
+
+    return delivery

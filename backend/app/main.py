@@ -24,7 +24,9 @@ from app.api.delivery import router as delivery_router
 from app.core.event_registry import register_event_handlers
 from app.core.exceptions import global_exception_handler
 from app.api.dashboard import router as dashboard_router
-
+from app.api.guard_dashboard import (
+    router as guard_dashboard_router,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,6 +85,7 @@ app.include_router(security_alert_router)
 app.include_router(security_dashboard_router)
 app.include_router(delivery_router)
 app.include_router(dashboard_router)
+app.include_router(guard_dashboard_router)
 
 # -----------------------------
 # Static Files

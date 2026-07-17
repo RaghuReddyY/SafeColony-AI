@@ -114,3 +114,13 @@ class ResidentRepository:
         .filter(Resident.id == resident_id)
         .first()
     )
+
+    def get_dropdown(self):
+
+     return (
+        self.db.query(Resident)
+        .order_by(
+            Resident.full_name.asc()
+        )
+        .all()
+    )

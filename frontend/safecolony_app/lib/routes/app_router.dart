@@ -4,4 +4,5 @@ class AppRoutes {
   static const visitors = "/visitors";
   static const addVisitor = "/visitors/add";
   static const guard = "/guard";
+  static const deliveries = "/deliveries";
 }

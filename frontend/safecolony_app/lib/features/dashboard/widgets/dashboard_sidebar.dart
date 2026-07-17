@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../routes/app_router.dart';
-import '../../visitors/screens/visitor_list_screen.dart';
-import '../dashboard_screen.dart';
 
-class DashboardSidebar extends StatelessWidget {
+import '../../auth/providers/auth_provider.dart';
+import '../../dashboard/dashboard_screen.dart';
+import '../../delivery/screens/delivery_dashboard_screen.dart';
+import '../../visitors/screens/visitor_list_screen.dart';
+import '../../auth/login_screen.dart';
+import '../../guard/screens/guard_dashboard_screen.dart';
+
+class DashboardSidebar extends ConsumerWidget {
   const DashboardSidebar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Drawer(
       elevation: 0,
       child: Container(
@@ -19,9 +25,7 @@ class DashboardSidebar extends StatelessWidget {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 30,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 30),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -53,9 +57,7 @@ class DashboardSidebar extends StatelessWidget {
                     SizedBox(height: 5),
                     Text(
                       "Resident",
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
@@ -65,6 +67,7 @@ class DashboardSidebar extends StatelessWidget {
 
               _menu(
                 context,
+                ref,
                 icon: Icons.dashboard,
                 title: "Dashboard",
                 selected: true,
@@ -72,36 +75,42 @@ class DashboardSidebar extends StatelessWidget {
 
               _menu(
                 context,
+                ref,
                 icon: Icons.people,
                 title: "Visitors",
               ),
 
               _menu(
                 context,
+                ref,
                 icon: Icons.qr_code_scanner,
                 title: "Guard Scanner",
               ),
 
               _menu(
                 context,
+                ref,
                 icon: Icons.inventory_2,
                 title: "Deliveries",
               ),
 
               _menu(
                 context,
+                ref,
                 icon: Icons.beach_access,
                 title: "Vacation",
               ),
 
               _menu(
                 context,
+                ref,
                 icon: Icons.notifications,
                 title: "Notifications",
               ),
 
               _menu(
                 context,
+                ref,
                 icon: Icons.auto_awesome,
                 title: "AI Assistant",
               ),
@@ -113,12 +122,14 @@ class DashboardSidebar extends StatelessWidget {
 
               _menu(
                 context,
+                ref,
                 icon: Icons.settings,
                 title: "Settings",
               ),
 
               _menu(
                 context,
+                ref,
                 icon: Icons.logout,
                 title: "Logout",
               ),
@@ -131,8 +142,9 @@ class DashboardSidebar extends StatelessWidget {
     );
   }
 
-  static Widget _menu(
-    BuildContext context, {
+  Widget _menu(
+    BuildContext context,
+    WidgetRef ref, {
     required IconData icon,
     required String title,
     bool selected = false,
@@ -144,7 +156,7 @@ class DashboardSidebar extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: selected
-            ? Colors.white.withValues(alpha: .12)
+            ? Colors.white.withOpacity(.12)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(15),
       ),
@@ -159,7 +171,7 @@ class DashboardSidebar extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        onTap: () {
+        onTap: () async {
           Navigator.pop(context);
 
           switch (title) {
@@ -182,18 +194,35 @@ class DashboardSidebar extends StatelessWidget {
               break;
 
             case "Guard Scanner":
-              Navigator.pushNamed(
-              context,
-              AppRoutes.guard,
-            );
-            break;
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const GuardDashboardScreen(),
+    ),
+  );
+  break;
+
+            case "Deliveries":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeliveryDashboardScreen(),
+                ),
+              );
+              break;
 
             case "Logout":
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.login,
-                (route) => false,
-              );
+              await ref.read(authProvider.notifier).logout();
+
+              if (!context.mounted) return;
+
+              Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(
+    builder: (_) => const LoginScreen(),
+  ),
+  (_) => false,
+);
               break;
 
             default:
