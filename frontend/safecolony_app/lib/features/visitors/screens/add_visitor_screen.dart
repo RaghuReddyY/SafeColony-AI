@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../models/visitor.dart';
+import '../models/visitor_create_request.dart';
 import '../providers/visitor_provider.dart';
 
 class AddVisitorScreen extends ConsumerStatefulWidget {
@@ -34,38 +33,36 @@ class _AddVisitorScreenState
       loading = true;
     });
 
-    try {
-      final visitor = Visitor(
-        id: 0,
-        residentId: 2,
-        visitorName: nameController.text,
-        phone: phoneController.text,
-        visitorType: visitorType,
-        purpose: purposeController.text,
-        vehicleNumber: vehicleController.text,
-        status: "PENDING",
-        qrToken: null,
-        qrCode: null,
-        approvedAt: null,
-      );
+try {
+  final request = VisitorCreateRequest(
+    residentId: 2,
+    visitorName: nameController.text,
+    phone: phoneController.text,
+    visitorType: visitorType,
+    purpose: purposeController.text,
+    vehicleNumber: vehicleController.text,
 
-      await ref
-          .read(visitorProvider)
-          .createVisitor(visitor);
+    // QR visitor
+    entryMode: "QR",
+    createdByGuard: false,
+  );
 
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-          ),
-        );
-      }
-    }
+  await ref
+      .read(visitorProvider)
+      .createVisitor(request);
+
+  if (mounted) {
+    Navigator.pop(context, true);
+  }
+} catch (e) {
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.toString()),
+      ),
+    );
+  }
+}
 
     setState(() {
       loading = false;
@@ -108,7 +105,7 @@ class _AddVisitorScreenState
               const SizedBox(height: 15),
 
               DropdownButtonFormField<String>(
-                value: visitorType,
+                initialValue: visitorType,
                 items: const [
                   DropdownMenuItem(
                     value: "Guest",

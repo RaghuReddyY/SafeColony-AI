@@ -7,15 +7,28 @@ class VisitorCreate(BaseModel):
     resident_id: int
     visitor_name: str
     phone: str
+
     visitor_type: str = "Guest"
+
     purpose: str | None = None
+
     vehicle_number: str | None = None
+
     expected_time: datetime | None = None
 
+    # -----------------------------
+    # Walk-in Support
+    # -----------------------------
+    entry_mode: str = "QR"
+
+    visitor_photo: str | None = None
+
+    created_by_guard: bool = False
 
 class VisitorResponse(BaseModel):
 
     id: int
+
     resident_id: int
 
     visitor_name: str
@@ -29,6 +42,14 @@ class VisitorResponse(BaseModel):
     vehicle_number: str | None
 
     status: str
+
+    entry_mode: str
+
+    approval_mode: str | None
+
+    visitor_photo: str | None
+
+    created_by_guard: bool
 
     qr_token: str | None
 

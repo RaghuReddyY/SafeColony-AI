@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/visitor.dart';
 import '../services/visitor_service.dart';
+import '../models/visitor_create_request.dart';
 
 final visitorProvider =
     Provider<VisitorProvider>((ref) {
@@ -27,11 +28,12 @@ class VisitorProvider {
 
   /// Create Visitor
   Future<Visitor> createVisitor(
-      Visitor visitor) {
-    return _service.createVisitor(
-      visitor,
-    );
-  }
+    VisitorCreateRequest request) {
+
+  return _service.createVisitor(
+    request,
+  );
+}
 
   /// Approve Visitor
   Future<Visitor> approveVisitor(

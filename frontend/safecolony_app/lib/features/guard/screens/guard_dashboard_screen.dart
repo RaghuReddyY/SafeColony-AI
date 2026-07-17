@@ -12,6 +12,7 @@ import 'visitor_detail_screen.dart';
 import '../widgets/cards/recent_activity_card.dart';
 import 'dart:async';
 import '../widgets/qr_scanner_dialog.dart';
+import '../../visitors/screens/walk_in_visitor_screen.dart';
 
 
 class GuardDashboardScreen extends ConsumerStatefulWidget {
@@ -129,9 +130,10 @@ void _onDelivery() {
 }
 
 void _onWalkIn() {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text("Walk-In module coming soon"),
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const WalkInVisitorScreen(),
     ),
   );
 }

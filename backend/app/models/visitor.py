@@ -51,6 +51,34 @@ class Visitor(Base):
         default="PENDING",
     )
 
+
+
+    # ----------------------------------------------------
+    # Walk-in Visitor Information
+    # ----------------------------------------------------
+
+    entry_mode: Mapped[str] = mapped_column(
+        String(20),
+        default="QR",
+    )
+
+    approval_mode: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
+    visitor_photo: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    created_by_guard: Mapped[bool] = mapped_column(
+        default=False,
+    )
+
+# ----------------------------------------------------
+# QR Information
+# ----------------------------------------------------
     # ----------------------------------------------------
     # QR Information
     # ----------------------------------------------------
@@ -96,3 +124,4 @@ class Visitor(Base):
         "Resident",
         back_populates="visitors",
     )
+

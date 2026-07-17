@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/api/api_client.dart';
 import '../models/visitor.dart';
-
+import '../models/visitor_create_request.dart';
 class VisitorService {
   /// Get all visitors
   Future<List<Visitor>> getVisitors() async {
@@ -29,11 +29,11 @@ class VisitorService {
 
   /// Create visitor
   Future<Visitor> createVisitor(
-      Visitor visitor) async {
+    VisitorCreateRequest request) async {
     final Response response =
         await ApiClient.dio.post(
       "/visitors",
-      data: visitor.toJson(),
+      data: request.toJson(),
     );
 
     return Visitor.fromJson(response.data);

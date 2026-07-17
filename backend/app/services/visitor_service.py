@@ -72,22 +72,30 @@ class VisitorService:
         expected_time = data.expected_time or datetime.utcnow()
 
         visitor = Visitor(
-        resident_id=data.resident_id,
-        visitor_name=data.visitor_name,
-        phone=data.phone,
-        visitor_type=data.visitor_type,
-        purpose=data.purpose,
-        vehicle_number=data.vehicle_number,
-        expected_time=expected_time,
-    )
+            resident_id=data.resident_id,
+            visitor_name=data.visitor_name,
+            phone=data.phone,
+            visitor_type=data.visitor_type,
+            purpose=data.purpose,
+            vehicle_number=data.vehicle_number,
+            expected_time=expected_time,
+
+            # Walk-in Support
+            entry_mode=data.entry_mode,
+            visitor_photo=data.visitor_photo,
+            created_by_guard=data.created_by_guard,
+
+            # Initial Status
+            status="PENDING",
+        )
 
         saved_visitor = self.repo.create(visitor)
 
         logger.info(
-            f"Visitor created: {saved_visitor.visitor_name} "
+            f"{saved_visitor.entry_mode} Visitor created: "
+            f"{saved_visitor.visitor_name} "
             f"(ID={saved_visitor.id})"
         )
-
         return saved_visitor
 
     def get_all(self):
@@ -115,9 +123,14 @@ class VisitorService:
         token, qr_path = QRGenerator.generate(visitor.id)
 
         visitor.status = "APPROVED"
-        visitor.qr_token = token
-        visitor.qr_code = qr_path
         visitor.approved_at = datetime.utcnow()
+        visitor.approval_mode = "RESIDENT"
+
+        if visitor.entry_mode == "QR":
+            token, qr_path = QRGenerator.generate(visitor.id)
+
+            visitor.qr_token = token
+            visitor.qr_code = qr_path
 
         logger.info(
             f"Visitor Approved: {visitor.visitor_name}"
