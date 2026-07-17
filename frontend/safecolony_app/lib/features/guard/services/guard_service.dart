@@ -4,15 +4,15 @@ import '../../../core/api/api_client.dart';
 import '../models/guard_scan_result.dart';
 
 class GuardService {
-
-  /// Validate QR (does NOT check in)
+  /// --------------------------------------------------
+  /// Validate QR
+  /// --------------------------------------------------
   Future<GuardScanResult> validate(
     String qrToken,
   ) async {
-
     final Response response =
         await ApiClient.dio.post(
-      "/visitors/validate-qr",
+      "/guard/validate-qr",
       data: {
         "qr_token": qrToken,
       },
@@ -23,16 +23,17 @@ class GuardService {
     );
   }
 
+  /// --------------------------------------------------
   /// Check In
+  /// --------------------------------------------------
   Future<GuardScanResult> checkIn(
-    String qrToken,
+    int visitorId,
   ) async {
-
     final Response response =
         await ApiClient.dio.post(
-      "/visitors/scan",
+      "/guard/check-in",
       data: {
-        "qr_token": qrToken,
+        "visitor_id": visitorId,
       },
     );
 
@@ -41,16 +42,17 @@ class GuardService {
     );
   }
 
+  /// --------------------------------------------------
   /// Check Out
+  /// --------------------------------------------------
   Future<GuardScanResult> checkOut(
-    String qrToken,
+    int visitorId,
   ) async {
-
     final Response response =
         await ApiClient.dio.post(
-      "/visitors/scan-exit",
+      "/guard/check-out",
       data: {
-        "qr_token": qrToken,
+        "visitor_id": visitorId,
       },
     );
 

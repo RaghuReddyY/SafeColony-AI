@@ -51,9 +51,9 @@ class Visitor(Base):
         default="PENDING",
     )
 
-    # -------------------------
-    # NEW QR FIELDS
-    # -------------------------
+    # ----------------------------------------------------
+    # QR Information
+    # ----------------------------------------------------
 
     qr_token: Mapped[str | None] = mapped_column(
         String(100),
@@ -71,12 +71,9 @@ class Visitor(Base):
         nullable=True,
     )
 
-    # -------------------------
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-    )
+    # ----------------------------------------------------
+    # Guard Entry Information
+    # ----------------------------------------------------
 
     check_in_time: Mapped[datetime | None] = mapped_column(
         DateTime,
@@ -86,6 +83,13 @@ class Visitor(Base):
     check_out_time: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
+    )
+
+      # ----------------------------------------------------
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
     )
 
     resident = relationship(

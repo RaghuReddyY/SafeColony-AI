@@ -11,6 +11,7 @@ import '../widgets/sections/quick_actions_section.dart';
 import 'visitor_detail_screen.dart';
 import '../widgets/cards/recent_activity_card.dart';
 import 'dart:async';
+import '../widgets/qr_scanner_dialog.dart';
 
 
 class GuardDashboardScreen extends ConsumerStatefulWidget {
@@ -98,6 +99,50 @@ class _GuardDashboardScreenState
     return "🟢 Normal";
   }
 
+Future<void> _onScanQR() async {
+  final token = await showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const QRScannerDialog(),
+  );
+
+  if (!mounted || token == null) {
+    return;
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("QR Scanned: $token"),
+    ),
+  );
+
+  // Next commit:
+  // call GuardProvider.validateQR(token);
+}
+
+void _onDelivery() {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Delivery module coming soon"),
+    ),
+  );
+}
+
+void _onWalkIn() {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Walk-In module coming soon"),
+    ),
+  );
+}
+
+void _onEmergency() {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Emergency module coming soon"),
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,7 +218,12 @@ class _GuardDashboardScreenState
 
                 const SizedBox(height: 24),
 
-                const QuickActionsSection(),
+                QuickActionsSection(
+  onScanQR: _onScanQR,
+  onDelivery: _onDelivery,
+  onWalkIn: _onWalkIn,
+  onEmergency: _onEmergency,
+),
 
                 const SizedBox(height: 30),
 

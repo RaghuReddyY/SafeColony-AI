@@ -69,15 +69,17 @@ class VisitorService:
                 detail="Resident is on Vacation Mode. Visitors are not allowed.",
             )
 
+        expected_time = data.expected_time or datetime.utcnow()
+
         visitor = Visitor(
-            resident_id=data.resident_id,
-            visitor_name=data.visitor_name,
-            phone=data.phone,
-            visitor_type=data.visitor_type,
-            purpose=data.purpose,
-            vehicle_number=data.vehicle_number,
-            expected_time=data.expected_time,
-        )
+        resident_id=data.resident_id,
+        visitor_name=data.visitor_name,
+        phone=data.phone,
+        visitor_type=data.visitor_type,
+        purpose=data.purpose,
+        vehicle_number=data.vehicle_number,
+        expected_time=expected_time,
+    )
 
         saved_visitor = self.repo.create(visitor)
 
