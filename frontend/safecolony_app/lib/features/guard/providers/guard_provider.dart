@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/guard_scan_result.dart';
@@ -32,6 +33,12 @@ class GuardNotifier extends StateNotifier<GuardState> {
 
   final GuardRepository _repository = GuardRepository();
 
+String _parseError(Object e) {
+  if (e is DioException) {
+    return e.response?.data["detail"] ?? "Request failed";
+  }
+  return e.toString();
+}
   /// Validate QR
   Future<void> validateQR(String qrToken) async {
     state = state.copyWith(
@@ -50,7 +57,7 @@ class GuardNotifier extends StateNotifier<GuardState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
+        error: _parseError(e),
       );
     }
   }
@@ -77,7 +84,7 @@ class GuardNotifier extends StateNotifier<GuardState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
+        error: _parseError(e),
       );
     }
   }
@@ -104,7 +111,7 @@ class GuardNotifier extends StateNotifier<GuardState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
+        error: _parseError(e),
       );
     }
   }
@@ -120,3 +127,4 @@ final guardProvider =
         GuardState>(
   (ref) => GuardNotifier(),
 );
+

@@ -20,6 +20,7 @@ class Property(Base):
 
     units = relationship(
         "Unit",
+        back_populates="property",
         cascade="all, delete",
     )
     

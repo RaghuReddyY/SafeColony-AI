@@ -23,5 +23,6 @@ class Section(Base):
 
     units = relationship(
     "Unit",
+    back_populates="section",
     cascade="all, delete",
 )

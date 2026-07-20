@@ -17,16 +17,13 @@ class RecentActivityCard extends StatelessWidget {
   IconData _getIcon() {
     switch (icon) {
       case "login":
-        return Icons.login;
-
+        return Icons.login_rounded;
       case "logout":
-        return Icons.logout;
-
+        return Icons.logout_rounded;
       case "verified":
-        return Icons.verified;
-
+        return Icons.verified_rounded;
       default:
-        return Icons.history;
+        return Icons.history_rounded;
     }
   }
 
@@ -34,13 +31,10 @@ class RecentActivityCard extends StatelessWidget {
     switch (icon) {
       case "login":
         return Colors.green;
-
       case "logout":
         return Colors.red;
-
       case "verified":
         return Colors.blue;
-
       default:
         return Colors.grey;
     }
@@ -48,45 +42,71 @@ class RecentActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = _getColor();
+
     return AppCard(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          CircleAvatar(
-            backgroundColor:
-                _getColor().withValues(alpha: .12),
+          // Activity Icon
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Icon(
               _getIcon(),
-              color: _getColor(),
+              color: color,
+              size: 28,
             ),
           ),
 
           const SizedBox(width: 16),
 
+          // Activity Details
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
 
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
 
-                Text(
-                  time,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Text(
+                      time,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
+
+          const SizedBox(width: 8),
+
+          Icon(
+            Icons.chevron_right_rounded,
+            color: Colors.grey.shade400,
           ),
         ],
       ),

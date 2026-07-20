@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/visitor_create_request.dart';
 import '../providers/visitor_provider.dart';
+import '../../resident/providers/resident_provider.dart';
+import '../../../shared/widgets/selectors/resident_selector.dart';
+import '../../resident/models/resident_dropdown.dart';
 
 class WalkInVisitorScreen extends ConsumerStatefulWidget {
   const WalkInVisitorScreen({super.key});
@@ -16,8 +19,7 @@ class _WalkInVisitorScreenState
     extends ConsumerState<WalkInVisitorScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final residentIdController =
-      TextEditingController(text: "2");
+ResidentDropdown? selectedResident;
 
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
@@ -28,19 +30,26 @@ class _WalkInVisitorScreenState
 
   bool loading = false;
 
+
   Future<void> createWalkInVisitor() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-
+if (selectedResident == null) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Please select a resident"),
+    ),
+  );
+  return;
+}
     setState(() {
       loading = true;
     });
 
     try {
       final request = VisitorCreateRequest(
-        residentId:
-            int.parse(residentIdController.text),
+        residentId: selectedResident!.id,
         visitorName: nameController.text.trim(),
         phone: phoneController.text.trim(),
         visitorType: visitorType,
@@ -107,20 +116,14 @@ class _WalkInVisitorScreenState
             children: [
 
               /// Resident ID
-              TextFormField(
-                controller: residentIdController,
-                keyboardType: TextInputType.number,
-                decoration:
-                    decoration("Resident ID"),
-                validator: (value) {
-                  if (value == null ||
-                      value.isEmpty) {
-                    return "Resident ID is required";
-                  }
-
-                  return null;
-                },
-              ),
+ResidentSelector(
+  initialValue: selectedResident,
+  onChanged: (resident) {
+    setState(() {
+      selectedResident = resident;
+    });
+  },
+),
 
               const SizedBox(height: 16),
 

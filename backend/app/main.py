@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -28,6 +29,11 @@ from app.api.guard_dashboard import (
     router as guard_dashboard_router,
 )
 
+def custom_generate_unique_id(route: APIRoute) -> str:
+    tag = route.tags[0] if route.tags else "default"
+    method = sorted(route.methods)[0].lower()
+    return f"{tag}_{route.name}_{method}"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -47,6 +53,7 @@ app = FastAPI(
     title="SafeColony AI",
     version="1.0.0",
     lifespan=lifespan,
+    generate_unique_id_function=custom_generate_unique_id,
 )
 
 # -----------------------------

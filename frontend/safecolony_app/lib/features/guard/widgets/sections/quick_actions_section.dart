@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../shared/widgets/action_tile.dart';
+import '../../../../shared/widgets/app_section_title.dart';
+
 class QuickActionsSection extends StatelessWidget {
   final VoidCallback onScanQR;
   final VoidCallback onDelivery;
@@ -19,87 +22,52 @@ class QuickActionsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Quick Actions",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        const AppSectionTitle(
+          title: "Quick Actions",
         ),
-        const SizedBox(height: 16),
+
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 14,
-          mainAxisSpacing: 14,
-          childAspectRatio: 2.5,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.8,
           children: [
-            _actionButton(
+            ActionTile(
               icon: Icons.qr_code_scanner,
               title: "Scan QR",
+              subtitle: "Validate visitor",
               color: Colors.indigo,
               onTap: onScanQR,
             ),
-            _actionButton(
-              icon: Icons.inventory_2,
-              title: "Delivery",
-              color: Colors.orange,
-              onTap: onDelivery,
-            ),
-            _actionButton(
-              icon: Icons.person_add,
+
+            ActionTile(
+              icon: Icons.person_add_alt_1,
               title: "Walk-In",
+              subtitle: "Register visitor",
               color: Colors.green,
               onTap: onWalkIn,
             ),
-            _actionButton(
-              icon: Icons.warning_amber,
+
+            ActionTile(
+              icon: Icons.inventory_2_outlined,
+              title: "Delivery",
+              subtitle: "Manage deliveries",
+              color: Colors.orange,
+              onTap: onDelivery,
+            ),
+
+            ActionTile(
+              icon: Icons.warning_amber_rounded,
               title: "Emergency",
+              subtitle: "Raise SOS",
               color: Colors.red,
               onTap: onEmergency,
             ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _actionButton({
-    required IconData icon,
-    required String title,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withValues(alpha: .18),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: color,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -11,9 +11,12 @@ import '../widgets/sections/quick_actions_section.dart';
 import 'visitor_detail_screen.dart';
 import '../widgets/cards/recent_activity_card.dart';
 import 'dart:async';
-import '../widgets/qr_scanner_dialog.dart';
 import '../../visitors/screens/walk_in_visitor_screen.dart';
-
+import 'qr_scanner_screen.dart';
+import '../widgets/hero_banner.dart';
+import '../../../../shared/widgets/dashboard_stat_chip.dart';
+import '../../../../shared/widgets/empty_state_widget.dart';
+import '../../../../shared/widgets/error_state_widget.dart';
 
 class GuardDashboardScreen extends ConsumerStatefulWidget {
   const GuardDashboardScreen({super.key});
@@ -101,24 +104,16 @@ class _GuardDashboardScreenState
   }
 
 Future<void> _onScanQR() async {
-  final token = await showDialog<String>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => const QRScannerDialog(),
-  );
-
-  if (!mounted || token == null) {
-    return;
-  }
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text("QR Scanned: $token"),
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const QRScannerScreen(),
     ),
   );
 
-  // Next commit:
-  // call GuardProvider.validateQR(token);
+  if (!mounted) return;
+
+  _refresh();
 }
 
 void _onDelivery() {
@@ -167,9 +162,15 @@ void _onEmergency() {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text(snapshot.error.toString()),
-            );
+            return ErrorStateWidget(
+  title: "Unable to load dashboard",
+  message: "Please check your internet connection and try again.",
+  onRetry: () {
+    setState(() {
+      _loadDashboard();
+    });
+  },
+);
           }
 
           final dashboard = snapshot.data!;
@@ -182,37 +183,16 @@ void _onEmergency() {
 
               children: [
 
-                Text(
-                  greeting(),
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall,
-                ),
+              GuardHeroBanner(
+  greeting: greeting(),
+  guardName: "Security Guard",
+  colonyStatus: colonyStatus(dashboard),
+  expectedVisitors: dashboard.summary.expectedVisitors,
+  checkedInVisitors: dashboard.summary.checkedInToday,
+  deliveries: dashboard.summary.deliveries,
+),
 
-                const SizedBox(height: 6),
-
-                Row(
-                  children: [
-
-                    const Icon(
-                      Icons.circle,
-                      color: Colors.green,
-                      size: 12,
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    Text(
-                      "Colony Status : ${colonyStatus(dashboard)}",
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
+const SizedBox(height: 20),
 
                 AIInsightCard(
                   message: dashboard.aiMessage,
@@ -241,43 +221,12 @@ void _onEmergency() {
 
                 if (dashboard.expectedVisitors.isEmpty)
 
-                  Card(
-                    child: Padding(
-                      padding:
-                          const EdgeInsets.all(30),
-
-                      child: Column(
-                        children: const [
-
-                          Icon(
-                            Icons.celebration,
-                            size: 60,
-                            color: Colors.green,
-                          ),
-
-                          SizedBox(height: 20),
-
-                          Text(
-                            "No Visitors Today",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight:
-                                  FontWeight.bold,
-                            ),
-                          ),
-
-                          SizedBox(height: 10),
-
-                          Text(
-                            "Enjoy your peaceful shift 🎉",
-                            textAlign:
-                                TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-
+                const EmptyStateWidget(
+  icon: Icons.celebration,
+  color: Colors.green,
+  title: "No Visitors Today",
+  message: "Enjoy your peaceful shift 🎉",
+)
                 else
 
                   ...dashboard.expectedVisitors.map(
@@ -312,9 +261,11 @@ void _onEmergency() {
 
                           onScan: () {
 
-                            Navigator.pushNamed(
+                            Navigator.push(
                               context,
-                              "/guard",
+                                  MaterialPageRoute(
+      builder: (_) => const QRScannerScreen(),
+    ),
                             );
                           },
                         ),
@@ -334,41 +285,43 @@ void _onEmergency() {
 
                 const SizedBox(height: 15),
 
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+GridView.count(
+  shrinkWrap: true,
+  physics: const NeverScrollableScrollPhysics(),
+  crossAxisCount: 2,
+  crossAxisSpacing: 12,
+  mainAxisSpacing: 12,
+  childAspectRatio: 1.3,
+  children: [
+    DashboardStatChip(
+      icon: Icons.people,
+      value: "${dashboard.summary.expectedVisitors}",
+      label: "Expected Visitors",
+      color: Colors.blue,
+    ),
 
-                  children: [
+    DashboardStatChip(
+      icon: Icons.login,
+      value: "${dashboard.summary.checkedInToday}",
+      label: "Checked In",
+      color: Colors.green,
+    ),
 
-                    Chip(
-                      avatar: const Icon(Icons.people),
-                      label: Text(
-                        "${dashboard.summary.expectedVisitors} Visitors",
-                      ),
-                    ),
+    DashboardStatChip(
+      icon: Icons.inventory_2,
+      value: "${dashboard.summary.deliveries}",
+      label: "Deliveries",
+      color: Colors.orange,
+    ),
 
-                    Chip(
-                      avatar: const Icon(Icons.login),
-                      label: Text(
-                        "${dashboard.summary.checkedInToday} Inside",
-                      ),
-                    ),
-
-                    Chip(
-                      avatar: const Icon(Icons.inventory),
-                      label: Text(
-                        "${dashboard.summary.deliveries} Deliveries",
-                      ),
-                    ),
-
-                    Chip(
-                      avatar: const Icon(Icons.home),
-                      label: Text(
-                        "${dashboard.summary.vacantHouses} Vacation",
-                      ),
-                    ),
-                  ],
-                ),
+    DashboardStatChip(
+      icon: Icons.home_work,
+      value: "${dashboard.summary.vacantHouses}",
+      label: "Vacation Homes",
+      color: Colors.deepPurple,
+    ),
+  ],
+),
 
                 const SizedBox(height: 30),
 
@@ -385,17 +338,12 @@ void _onEmergency() {
                 if (dashboard
                     .recentActivities.isEmpty)
 
-                  const Card(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.all(20),
-                      child: Center(
-                        child: Text(
-                          "No recent activity",
-                        ),
-                      ),
-                    ),
-                  )
+const EmptyStateWidget(
+  icon: Icons.history_toggle_off,
+  color: Colors.grey,
+  title: "No Recent Activity",
+  message: "Everything is quiet right now.",
+)
 
                 else
 

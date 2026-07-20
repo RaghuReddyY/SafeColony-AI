@@ -18,37 +18,59 @@ class DashboardSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: color.withValues(alpha: .15),
+          // Icon
+          Container(
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Icon(
               icon,
               color: color,
+              size: 28,
             ),
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
+          // Value
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 28,
+            style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
+              height: 1,
             ),
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
+          // Title
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 15,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          const Spacer(),
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Colors.grey.shade400,
             ),
           ),
         ],

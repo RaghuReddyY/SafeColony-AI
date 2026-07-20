@@ -65,9 +65,15 @@ class Unit(Base):
     )
 
     # Relationships
-    property = relationship("Property")
-    section = relationship("Section")
+    property = relationship(
+        "Property",
+        back_populates="units",
+    )
 
+    section = relationship(
+        "Section",
+        back_populates="units",
+    )
     residents = relationship(
         "Resident",
         back_populates="unit",
