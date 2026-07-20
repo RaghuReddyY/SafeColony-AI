@@ -1,10 +1,15 @@
 from sqlalchemy import Column, Integer, String
 
 from app.database.base_class import Base
-
+from sqlalchemy.orm import relationship
 
 class Organization(Base):
     __tablename__ = "organizations"
+
+    properties = relationship(
+    "Property",
+    back_populates="organization",
+    cascade="all, delete-orphan",)
 
     id = Column(Integer, primary_key=True, index=True)
 

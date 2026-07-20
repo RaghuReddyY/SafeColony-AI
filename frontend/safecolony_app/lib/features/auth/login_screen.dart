@@ -6,6 +6,7 @@ import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/primary_button.dart';
 import '../dashboard/dashboard_screen.dart';
 import 'providers/auth_provider.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -212,16 +213,46 @@ Widget build(BuildContext context) {
                           const SizedBox(height: 30),
 
                           SizedBox(
-                            width: double.infinity,
-                            child: authState.isLoading
-    ? const Center(
-        child: CircularProgressIndicator(),
-      )
-    : PrimaryButton(
-        title: "LOGIN",
-        onPressed: _login,
+  width: double.infinity,
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      authState.isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : PrimaryButton(
+              title: "LOGIN",
+              onPressed: _login,
+            ),
+
+      const SizedBox(height: 20),
+
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            "Don't have an account?",
+            style: TextStyle(color: Colors.white70),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const RegisterScreen(),
+                ),
+              );
+            },
+            child: const Text("Create Account"),
+          ),
+        ],
       ),
-                          ),
+    ],
+  ),
+),
+
+                        
                         ],
                       ),
                     ),

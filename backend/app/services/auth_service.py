@@ -1,40 +1,67 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from app.auth.hashing import hash_password, verify_password
 from app.auth.jwt_handler import create_access_token
 from app.models.user import User
-from app.repositories.user_repository import UserRepository
-
+from app.enums import UserRole
 
 class AuthService:
 
-    def __init__(self, repo: UserRepository):
+    def __init__(self, repo):
         self.repo = repo
+
+    def register(self, data):
+
+        email = data.email.strip().lower()
+
+        if self.repo.get_by_email(email):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already exists.",
+            )
+
+        if self.repo.get_by_phone(data.phone):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Phone number already exists.",
+            )
+
+        user = User(
+            full_name=data.full_name.strip(),
+            email=email,
+            phone=data.phone.strip(),
+            password_hash=hash_password(data.password),
+            role=UserRole.RESIDENT,
+            is_active=True,
+        )
+
+        return self.repo.create(user)
 
     def login(self, email: str, password: str):
 
-        # Find user by email
+        email = email.strip().lower()
+
         user = self.repo.get_by_email(email)
 
-        if not user:
+        if (
+            user is None
+            or not user.is_active
+            or not verify_password(
+                password,
+                user.password_hash,
+            )
+        ):
             raise HTTPException(
-                status_code=401,
-                detail="Invalid email or password",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password.",
             )
 
-        # Verify password
-        if not verify_password(password, user.password):
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid email or password",
-            )
-
-        # Create JWT token
         token = create_access_token(
             {
                 "sub": user.email,
                 "user_id": user.id,
-                "role": user.role,
+                "role": user.role.value,
+                "full_name": user.full_name,
             }
         )
 
@@ -43,30 +70,22 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    def register(self, data):
+    def change_password(
+        self,
+        user,
+        current_password: str,
+        new_password: str,
+    ):
 
-        existing = self.repo.get_by_email(data.email)
-
-        if existing:
+        if not verify_password(
+            current_password,
+            user.password_hash,
+        ):
             raise HTTPException(
-                status_code=400,
-                detail="Email already exists",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect.",
             )
 
-        existing_phone = self.repo.get_by_phone(data.phone)
+        user.password_hash = hash_password(new_password)
 
-        if existing_phone:
-            raise HTTPException(
-                status_code=400,
-                detail="Phone number already exists",
-            )
-
-        user = User(
-            full_name=data.full_name,
-            email=data.email,
-            phone=data.phone,
-            password=hash_password(data.password),
-            role="resident",
-        )
-
-        return self.repo.create(user)
+        return self.repo.update(user)

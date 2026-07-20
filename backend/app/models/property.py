@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String
 
 from app.database.base_class import Base
 from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey
 
 class Property(Base):
     __tablename__ = "properties"
@@ -24,6 +25,17 @@ class Property(Base):
         cascade="all, delete",
     )
     
+    organization_id = Column(
+    Integer,
+    ForeignKey("organizations.id", ondelete="CASCADE"),
+    nullable=False,
+    )
+
+    organization = relationship(
+    "Organization",
+    back_populates="properties",
+    
+    )
     address = Column(String)
 
     city = Column(String)

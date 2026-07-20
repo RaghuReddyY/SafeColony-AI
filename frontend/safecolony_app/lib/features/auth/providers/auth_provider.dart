@@ -4,7 +4,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/storage_service.dart';
 import '../../../models/login_request.dart';
 import '../models/auth_state.dart';
-import '../models/user.dart';
+import '../../../models/register_request.dart';
 
 
 final authProvider =
@@ -30,7 +30,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final loginResponse = await _authService.login(
         LoginRequest(
-          email: email,
+          email: email.trim().toLowerCase(),
           password: password,
         ),
       );
@@ -59,6 +59,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return false;
     }
   }
+
+Future<bool> register({
+  required String fullName,
+  required String email,
+  required String phone,
+  required String password,
+}) async {
+  try {
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+    );
+
+    await _authService.register(
+        RegisterRequest(
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          password: password,
+      ),
+    );
+
+    state = state.copyWith(
+      isLoading: false,
+    );
+
+    return true;
+  } catch (e) {
+    state = state.copyWith(
+      isLoading: false,
+      error: e.toString(),
+    );
+
+    return false;
+  }
+}
 
   Future<void> checkLogin() async {
   final token = await _storage.getToken();

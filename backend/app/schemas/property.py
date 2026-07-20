@@ -3,6 +3,8 @@ from pydantic import BaseModel
 
 class PropertyCreate(BaseModel):
 
+    organization_id: int
+    
     name: str
 
     property_type: str

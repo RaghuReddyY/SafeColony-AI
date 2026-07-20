@@ -1,18 +1,76 @@
 from datetime import date
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    StringConstraints,
+)
+
+
+FullName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=2,
+        max_length=100,
+    ),
+]
+
+Phone = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=10,
+        max_length=20,
+    ),
+]
+
+ResidentType = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=3,
+        max_length=20,
+    ),
+]
+
+Gender = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        max_length=20,
+    ),
+]
+
+EmergencyContact = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        max_length=20,
+    ),
+]
+
+EmergencyContactName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        max_length=100,
+    ),
+]
 
 
 class ResidentCreate(BaseModel):
     unit_id: int
-    full_name: str
+    full_name: FullName
     email: EmailStr | None = None
-    phone: str
-    resident_type: str = "OWNER"
-    gender: str | None = None
+    phone: Phone
+    resident_type: ResidentType = "OWNER"
+    gender: Gender | None = None
     date_of_birth: date | None = None
-    emergency_contact: str | None = None
-    emergency_contact_name: str | None = None
+    emergency_contact: EmergencyContact | None = None
+    emergency_contact_name: EmergencyContactName | None = None
     is_primary: bool = False
 
 
@@ -27,14 +85,15 @@ class ResidentResponse(BaseModel):
     is_primary: bool
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
 
 class ResidentProfileResponse(BaseModel):
-
     id: int
     full_name: str
-    email: str | None
+    email: EmailStr | None
     phone: str
     resident_type: str
     gender: str | None
@@ -43,14 +102,15 @@ class ResidentProfileResponse(BaseModel):
     emergency_contact_name: str | None
     unit_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
 
 
 class ResidentProfileUpdate(BaseModel):
-
-    full_name: str
-    email: str | None = None
-    gender: str | None = None
+    full_name: FullName
+    email: EmailStr | None = None
+    gender: Gender | None = None
     date_of_birth: date | None = None
-    emergency_contact: str | None = None
-    emergency_contact_name: str | None = None
+    emergency_contact: EmergencyContact | None = None
+    emergency_contact_name: EmergencyContactName | None = None

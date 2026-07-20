@@ -4,6 +4,7 @@ import '../core/api/api_client.dart';
 import '../features/auth/models/user.dart';
 import '../models/login_request.dart';
 import '../models/login_response.dart';
+import '../models/register_request.dart';
 
 class AuthService {
   Future<LoginResponse> login(
@@ -25,6 +26,18 @@ class AuthService {
     );
   }
 
+Future<User> register(
+  RegisterRequest request,
+) async {
+  final response = await ApiClient.dio.post(
+    "/auth/register",
+    data: request.toJson(),
+  );
+
+  return User.fromJson(
+    response.data,
+  );
+}
   Future<User> getCurrentUser() async {
     final response = await ApiClient.dio.get(
       "/auth/me",

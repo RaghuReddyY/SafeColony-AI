@@ -10,6 +10,7 @@ class PropertyService:
     def create(self, data):
 
         property = Property(
+            organization_id=data.organization_id,
             name=data.name,
             property_type=data.property_type,
             address=data.address,

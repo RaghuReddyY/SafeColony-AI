@@ -1,7 +1,19 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+)
+
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from app.database.base_class import Base
 
@@ -9,11 +21,20 @@ from app.database.base_class import Base
 class Resident(Base):
     __tablename__ = "residents"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    __table_args__ = (
+        Index("ix_resident_unit_id", "unit_id"),
+        Index("ix_resident_phone", "phone"),
+        Index("ix_resident_email", "email"),
+    )
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+    )
 
     unit_id: Mapped[int] = mapped_column(
         ForeignKey("units.id"),
         nullable=False,
+        index=True,
     )
 
     full_name: Mapped[str] = mapped_column(
@@ -23,6 +44,7 @@ class Resident(Base):
 
     email: Mapped[str | None] = mapped_column(
         String(120),
+        unique=True,
         nullable=True,
     )
 
@@ -35,6 +57,7 @@ class Resident(Base):
     resident_type: Mapped[str] = mapped_column(
         String(20),
         default="OWNER",
+        nullable=False,
     )
 
     gender: Mapped[str | None] = mapped_column(
@@ -78,9 +101,9 @@ class Resident(Base):
         onupdate=datetime.utcnow,
     )
 
-    # -------------------------
+    # --------------------------------------------------
     # Relationships
-    # -------------------------
+    # --------------------------------------------------
 
     unit = relationship(
         "Unit",
@@ -103,6 +126,7 @@ class Resident(Base):
         "Delivery",
         back_populates="resident",
     )
+
     notifications = relationship(
         "Notification",
         back_populates="resident",
@@ -110,8 +134,7 @@ class Resident(Base):
     )
 
     vacation_modes = relationship(
-    "VacationMode",
-    back_populates="resident",
-    cascade="all, delete-orphan",
-    )   
-
+        "VacationMode",
+        back_populates="resident",
+        cascade="all, delete-orphan",
+    )
