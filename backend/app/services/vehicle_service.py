@@ -1,11 +1,20 @@
-from fastapi import HTTPException
+from app.models.vehicle import Vehicle
+from app.core.exceptions import (
+    ConflictException,
+)
+from app.repositories.vehicle_repository import VehicleRepository
+from app.core.logger import logger
+from app.core.exceptions import (
+    ConflictException,
+    NotFoundException,
+)
 
 from app.models.vehicle import Vehicle
-
+from app.repositories.vehicle_repository import VehicleRepository
 
 class VehicleService:
 
-    def __init__(self, repo):
+    def __init__(self, repo: VehicleRepository):
         self.repo = repo
 
     def create(self, data):
@@ -15,9 +24,8 @@ class VehicleService:
         )
 
         if existing:
-            raise HTTPException(
-                status_code=400,
-                detail="Vehicle already registered"
+            raise ConflictException(
+                "Vehicle already registered."
             )
 
         vehicle = Vehicle(
@@ -30,6 +38,11 @@ class VehicleService:
             parking_slot=data.parking_slot,
         )
 
+        logger.info(
+            "Vehicle Registered: %s (Resident=%s)",
+            vehicle.vehicle_number,
+            vehicle.resident_id,
+        )
         return self.repo.create(vehicle)
 
     def get_all(self):
@@ -38,5 +51,13 @@ class VehicleService:
     def get_by_resident(self, resident_id):
         return self.repo.get_by_resident(resident_id)
     
-    def get_by_resident(self, resident_id: int):
-        return self.repo.get_by_resident(resident_id)
+    def get_by_vehicle_number(
+            self,
+            vehicle_number: str,
+        ):
+            vehicle = self.repo.get_by_vehicle_number(vehicle_number)
+
+            if not vehicle:
+                raise NotFoundException("Vehicle")
+
+            return vehicle

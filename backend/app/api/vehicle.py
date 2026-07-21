@@ -45,17 +45,18 @@ def get_all_vehicles(
 
 
 @router.get(
-    "/resident/{resident_id}",
-    response_model=list[VehicleResponse],
+    "/search/{vehicle_number}",
+    response_model=VehicleResponse,
 )
-def get_vehicle_by_resident(
-    resident_id: int,
+def get_vehicle_by_number(
+    vehicle_number: str,
     db: Session = Depends(get_db),
 ):
     repo = VehicleRepository(db)
     service = VehicleService(repo)
 
-    return service.get_by_resident(resident_id)
+    return service.get_by_vehicle_number(vehicle_number)
+
 
 @router.get(
     "/resident/{resident_id}",
@@ -65,7 +66,6 @@ def get_vehicles_by_resident(
     resident_id: int,
     db: Session = Depends(get_db),
 ):
-
     repo = VehicleRepository(db)
     service = VehicleService(repo)
 

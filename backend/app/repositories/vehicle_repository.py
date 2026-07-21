@@ -31,10 +31,9 @@ class VehicleRepository:
             .first()
         )
     
-    def get_by_resident(self, resident_id: int):
-
+    def get_by_id(self, vehicle_id: int):
         return (
             self.db.query(Vehicle)
-            .filter(Vehicle.resident_id == resident_id)
-            .all()
+            .filter(Vehicle.id == vehicle_id)
+            .first()
         )
