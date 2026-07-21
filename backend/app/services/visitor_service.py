@@ -1,7 +1,4 @@
 from datetime import datetime
-
-from fastapi import HTTPException
-
 from app.core.logger import logger
 from app.models.notification import Notification
 from app.models.security_alert import SecurityAlert
@@ -12,14 +9,22 @@ from app.repositories.security_alert_repository import SecurityAlertRepository
 from app.repositories.vacation_repository import VacationRepository
 
 from app.utils.qr_generator import QRGenerator
-
-
+from app.enums.visitor_status import VisitorStatus
+from app.enums.approval_mode import ApprovalMode
+from app.enums.entry_mode import EntryMode
+from app.core.exceptions import (
+    BadRequestException,
+    ForbiddenException,
+    NotFoundException,
+)
+from app.repositories.visitor_repository import VisitorRepository
+from app.schemas.visitor import VisitorCreate
 class VisitorService:
 
-    def __init__(self, repo):
+    def __init__(self, repo: VisitorRepository):
         self.repo = repo
 
-    def create(self, data):
+    def create(self, data: VisitorCreate):
 
         vacation_repo = VacationRepository(self.repo.db)
 
@@ -64,9 +69,13 @@ class VisitorService:
 
             alert_repo.create(alert)
 
-            raise HTTPException(
-                status_code=403,
-                detail="Resident is on Vacation Mode. Visitors are not allowed.",
+            logger.warning(
+            "Visitor blocked due to Vacation Mode: %s (Resident ID=%s)",
+            data.visitor_name,
+            data.resident_id,
+        )
+            raise ForbiddenException(
+                   "Resident is on Vacation Mode. Visitors are not allowed."
             )
 
         expected_time = data.expected_time or datetime.utcnow()
@@ -86,7 +95,7 @@ class VisitorService:
             created_by_guard=data.created_by_guard,
 
             # Initial Status
-            status="PENDING",
+            status=VisitorStatus.PENDING.value,
         )
 
         saved_visitor = self.repo.create(visitor)
@@ -104,37 +113,33 @@ class VisitorService:
     def get_by_resident(self, resident_id: int):
         return self.repo.get_by_resident(resident_id)
 
-    def approve(self, visitor_id):
+    def approve(self, visitor_id: int):
 
         visitor = self.repo.get_by_id(visitor_id)
 
         if visitor is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Visitor not found",
-            )
+            raise NotFoundException("Visitor")
 
-        if visitor.status != "PENDING":
-            raise HTTPException(
-                status_code=400,
-                detail="Only pending visitors can be approved",
-            )
+        if visitor.status != VisitorStatus.PENDING.value:
+            raise BadRequestException(
+                   "Only pending visitors can be approved."
+                    )
 
-        token, qr_path = QRGenerator.generate(visitor.id)
-
-        visitor.status = "APPROVED"
+        visitor.status = VisitorStatus.APPROVED.value
         visitor.approved_at = datetime.utcnow()
-        visitor.approval_mode = "RESIDENT"
+        visitor.approval_mode = ApprovalMode.RESIDENT.value
 
-        if visitor.entry_mode == "QR":
+        if visitor.entry_mode == EntryMode.QR.value:
             token, qr_path = QRGenerator.generate(visitor.id)
 
             visitor.qr_token = token
             visitor.qr_code = qr_path
 
-        logger.info(
-            f"Visitor Approved: {visitor.visitor_name}"
-        )
+            logger.info(
+            "Visitor Approved: %s (ID=%s)",
+            visitor.visitor_name,
+            visitor.id,
+            )
 
         return self.repo.save(visitor)
 
@@ -143,13 +148,16 @@ class VisitorService:
         visitor = self.repo.get_by_id(visitor_id)
 
         if visitor is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Visitor not found",
+            raise NotFoundException("Visitor")
+
+        visitor.status = VisitorStatus.REJECTED.value
+
+        logger.info(
+            "Visitor Rejected: %s (ID=%s)",
+            visitor.visitor_name,
+            visitor.id,
             )
-
-        visitor.status = "REJECTED"
-
+            
         return self.repo.save(visitor)
 
     def check_in(self, visitor_id):
@@ -157,19 +165,21 @@ class VisitorService:
         visitor = self.repo.get_by_id(visitor_id)
 
         if visitor is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Visitor not found",
+            raise NotFoundException("Visitor")
+
+        if visitor.status != VisitorStatus.APPROVED.value:
+            raise BadRequestException(
+               "Visitor must be approved before check-in."
             )
 
-        if visitor.status != "APPROVED":
-            raise HTTPException(
-                status_code=400,
-                detail="Visitor must be approved before check-in",
-            )
-
-        visitor.status = "CHECKED_IN"
+        visitor.status = VisitorStatus.CHECKED_IN.value
         visitor.check_in_time = datetime.utcnow()
+
+        logger.info(
+        "Visitor Checked-In: %s (ID=%s)",
+        visitor.visitor_name,
+        visitor.id,
+        )
 
         return self.repo.save(visitor)
 
@@ -178,19 +188,21 @@ class VisitorService:
         visitor = self.repo.get_by_id(visitor_id)
 
         if visitor is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Visitor not found",
+            raise NotFoundException("Visitor")
+        
+        if visitor.status != VisitorStatus.CHECKED_IN.value:
+            raise BadRequestException(
+                   "Visitor is not checked in."
             )
 
-        if visitor.status != "CHECKED_IN":
-            raise HTTPException(
-                status_code=400,
-                detail="Visitor is not checked in",
-            )
-
-        visitor.status = "CHECKED_OUT"
+        visitor.status = VisitorStatus.CHECKED_OUT.value
         visitor.check_out_time = datetime.utcnow()
+
+        logger.info(
+        "Visitor Checked-Out: %s (ID=%s)",
+        visitor.visitor_name,
+        visitor.id,
+        )
 
         return self.repo.save(visitor)
 
@@ -199,21 +211,27 @@ class VisitorService:
         visitor = self.repo.get_by_qr_token(qr_token)
 
         if visitor is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Invalid QR Code",
+            logger.warning(
+            "Invalid QR code scanned: %s",
+            qr_token,
+            )
+            raise NotFoundException("Invalid QR Code")
+
+        if visitor.status != VisitorStatus.APPROVED.value:
+            raise BadRequestException(
+               f"Visitor status is {visitor.status}"
             )
 
-        if visitor.status != "APPROVED":
-            raise HTTPException(
-                status_code=400,
-                detail=f"Visitor status is {visitor.status}",
-            )
-
-        visitor.status = "CHECKED_IN"
+        visitor.status = VisitorStatus.CHECKED_IN.value
         visitor.check_in_time = datetime.utcnow()
 
         self.repo.save(visitor)
+
+        logger.info(
+        "QR Check-In: %s (ID=%s)",
+        visitor.visitor_name,
+        visitor.id,
+        )
 
         return visitor
 
@@ -222,20 +240,25 @@ class VisitorService:
         visitor = self.repo.get_by_qr_token(qr_token)
 
         if visitor is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Invalid QR Code",
+            logger.warning(
+                "Invalid QR code scanned: %s",
+                qr_token,
+            )
+            raise NotFoundException("Invalid QR Code")
+
+        if visitor.status != VisitorStatus.CHECKED_IN.value:
+            raise BadRequestException(
+               "Visitor is not checked in."
             )
 
-        if visitor.status != "CHECKED_IN":
-            raise HTTPException(
-                status_code=400,
-                detail="Visitor is not checked in",
-            )
-
-        visitor.status = "CHECKED_OUT"
+        visitor.status = VisitorStatus.CHECKED_OUT.value
         visitor.check_out_time = datetime.utcnow()
 
+        logger.info(
+        "QR Check-Out: %s (ID=%s)",
+        visitor.visitor_name,
+        visitor.id,
+    )
         return self.repo.save(visitor)
     
     def validate_qr(self, qr_token: str):
@@ -243,9 +266,10 @@ class VisitorService:
         visitor = self.repo.get_by_qr_token(qr_token)
 
         if visitor is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Invalid QR Code",
-                )
-
+            logger.warning(
+            "Invalid QR code scanned: %s",
+            qr_token,
+            )
+            raise NotFoundException("Invalid QR Code")
+            
         return visitor

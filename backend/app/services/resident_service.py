@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 
 from app.models.resident import Resident
 from app.models.unit import Unit
-
+from app.core.exceptions import NotFoundException
 
 class ResidentService:
 
@@ -121,10 +121,7 @@ class ResidentService:
         resident = self.repo.get_profile(resident_id)
 
         if resident is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Resident not found",
-            )
+            raise NotFoundException("Resident")
 
         return resident
 
@@ -133,10 +130,7 @@ class ResidentService:
         resident = self.repo.get_profile(resident_id)
 
         if resident is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Resident not found",
-            )
+            raise NotFoundException("Resident")
 
         if (
             data.email

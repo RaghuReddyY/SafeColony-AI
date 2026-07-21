@@ -16,6 +16,8 @@ from app.schemas.delivery import (
 from app.services.delivery_service import (
     DeliveryService,
 )
+from app.core.exceptions import NotFoundException
+from app.core.exceptions import BadRequestException
 
 router = APIRouter(
     prefix="/deliveries",
@@ -85,10 +87,7 @@ def get_delivery(
 
     if delivery is None:
 
-        raise HTTPException(
-            status_code=404,
-            detail="Delivery not found",
-        )
+        raise NotFoundException("Delivery")
 
     return delivery
 
@@ -164,9 +163,6 @@ def verify_otp(
 
     if delivery is None:
 
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid OTP",
-        )
+        raise BadRequestException("Invalid OTP")
 
     return delivery

@@ -5,6 +5,7 @@ from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+# Routers
 from app.api.auth import router as auth_router
 from app.api.organization import router as organization_router
 from app.api.property import router as property_router
@@ -21,32 +22,45 @@ from app.api.security_dashboard import (
     router as security_dashboard_router,
 )
 from app.api.delivery import router as delivery_router
-
-from app.core.event_registry import register_event_handlers
-from app.core.exceptions import global_exception_handler
 from app.api.dashboard import router as dashboard_router
 from app.api.guard_dashboard import (
     router as guard_dashboard_router,
 )
+
+# Core
+from app.core.event_registry import register_event_handlers
+from app.core.exceptions import register_exception_handlers
+from app.core.logger import logger
+
 
 def custom_generate_unique_id(route: APIRoute) -> str:
     tag = route.tags[0] if route.tags else "default"
     method = sorted(route.methods)[0].lower()
     return f"{tag}_{route.name}_{method}"
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Runs once when the application starts.
-    Registers all event handlers.
+    Application startup and shutdown lifecycle.
     """
+
+    logger.info("==========================================")
+    logger.info("Starting SafeColony AI...")
+    logger.info("Registering event handlers...")
 
     register_event_handlers()
 
+    logger.info("Event handlers registered successfully.")
+    logger.info("SafeColony AI started successfully.")
+    logger.info("==========================================")
+
     yield
 
-    # Future:
-    # Cleanup resources here if needed
+    logger.info("==========================================")
+    logger.info("Stopping SafeColony AI...")
+    logger.info("SafeColony AI stopped.")
+    logger.info("==========================================")
 
 
 app = FastAPI(
@@ -56,9 +70,14 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
-# -----------------------------
+# ------------------------------------------
+# Register Global Exception Handlers
+# ------------------------------------------
+register_exception_handlers(app)
+
+# ------------------------------------------
 # CORS
-# -----------------------------
+# ------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -74,9 +93,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------
+# ------------------------------------------
 # Register Routers
-# -----------------------------
+# ------------------------------------------
 app.include_router(auth_router)
 app.include_router(organization_router)
 app.include_router(property_router)
@@ -94,30 +113,24 @@ app.include_router(delivery_router)
 app.include_router(dashboard_router)
 app.include_router(guard_dashboard_router)
 
-# -----------------------------
+# ------------------------------------------
 # Static Files
-# -----------------------------
+# ------------------------------------------
 app.mount(
     "/uploads/qr",
     StaticFiles(directory="uploads/qr"),
     name="visitor_qr",
 )
 
-# -----------------------------
+# ------------------------------------------
 # Home
-# -----------------------------
-@app.get("/")
+# ------------------------------------------
+@app.get("/", tags=["System"])
 def home():
+    logger.info("Health endpoint accessed.")
+
     return {
+        "success": True,
         "message": "SafeColony AI Running",
         "version": "1.0.0",
     }
-
-
-# -----------------------------
-# Global Exception Handler
-# -----------------------------
-app.add_exception_handler(
-    Exception,
-    global_exception_handler,
-)

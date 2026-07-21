@@ -1,14 +1,17 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-
+from app.enums.visitor_status import VisitorStatus
+from app.enums.visitor_type import VisitorType
+from app.enums.entry_mode import EntryMode
+from app.enums.approval_mode import ApprovalMode
 
 class VisitorCreate(BaseModel):
     resident_id: int
     visitor_name: str
     phone: str
 
-    visitor_type: str = "Guest"
+    visitor_type: VisitorType = VisitorType.GUEST
 
     purpose: str | None = None
 
@@ -19,7 +22,7 @@ class VisitorCreate(BaseModel):
     # -----------------------------
     # Walk-in Support
     # -----------------------------
-    entry_mode: str = "QR"
+    entry_mode: EntryMode = EntryMode.QR
 
     visitor_photo: str | None = None
 
@@ -35,17 +38,17 @@ class VisitorResponse(BaseModel):
 
     phone: str
 
-    visitor_type: str
+    visitor_type: VisitorType
 
     purpose: str | None
 
     vehicle_number: str | None
 
-    status: str
+    status: VisitorStatus
 
-    entry_mode: str
+    entry_mode: EntryMode
 
-    approval_mode: str | None
+    approval_mode: ApprovalMode | None
 
     visitor_photo: str | None
 

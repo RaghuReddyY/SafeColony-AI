@@ -4,7 +4,10 @@ from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base_class import Base
-
+from app.enums.visitor_status import VisitorStatus
+from app.enums.visitor_type import VisitorType
+from app.enums.entry_mode import EntryMode
+from app.enums.approval_mode import ApprovalMode
 
 class Visitor(Base):
     __tablename__ = "visitors"
@@ -28,7 +31,7 @@ class Visitor(Base):
 
     visitor_type: Mapped[str] = mapped_column(
         String(30),
-        default="Guest",
+        default=VisitorType.GUEST.value,
     )
 
     purpose: Mapped[str | None] = mapped_column(
@@ -48,7 +51,7 @@ class Visitor(Base):
 
     status: Mapped[str] = mapped_column(
         String(30),
-        default="PENDING",
+        default=VisitorStatus.PENDING.value,
     )
 
 
@@ -59,7 +62,7 @@ class Visitor(Base):
 
     entry_mode: Mapped[str] = mapped_column(
         String(20),
-        default="QR",
+        default=EntryMode.QR.value,
     )
 
     approval_mode: Mapped[str | None] = mapped_column(
