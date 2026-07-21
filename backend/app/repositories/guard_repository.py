@@ -4,7 +4,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.visitor import Visitor
-
+from app.repositories.delivery_repository import DeliveryRepository
+from app.repositories.vehicle_repository import VehicleRepository
 
 class GuardRepository:
 
@@ -131,3 +132,12 @@ class GuardRepository:
             )
             .all()
         )
+    
+    @property
+    def delivery_repository(self) -> DeliveryRepository:
+        return DeliveryRepository(self.db)
+
+
+    @property
+    def vehicle_repository(self) -> VehicleRepository:
+        return VehicleRepository(self.db)

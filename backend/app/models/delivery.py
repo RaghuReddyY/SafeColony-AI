@@ -25,6 +25,7 @@ class Delivery(Base):
     resident_id: Mapped[int] = mapped_column(
         ForeignKey("residents.id"),
         nullable=False,
+        index=True,
     )
 
     # -------------------------------------------------
@@ -39,12 +40,14 @@ class Delivery(Base):
     tracking_number: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
+        index=True,
     )
 
     # Package / Food / Grocery / Medicine
     delivery_category: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
+        index=True,
     )
 
     # -------------------------------------------------
@@ -69,6 +72,7 @@ class Delivery(Base):
     priority: Mapped[str] = mapped_column(
         String(20),
         default="NORMAL",
+        index=True,
     )
 
     # NORMAL
@@ -83,6 +87,7 @@ class Delivery(Base):
     status: Mapped[str] = mapped_column(
         String(30),
         default="ARRIVED",
+        index=True,
     )
 
     # ARRIVED
@@ -106,11 +111,13 @@ class Delivery(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        index=True,
     )
 
     collected_at: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
+        index=True,
     )
 
     # -------------------------------------------------
@@ -120,4 +127,10 @@ class Delivery(Base):
     resident = relationship(
         "Resident",
         back_populates="deliveries",
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )

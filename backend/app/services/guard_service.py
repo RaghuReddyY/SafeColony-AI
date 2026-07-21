@@ -1,15 +1,31 @@
+from app.repositories.guard_repository import GuardRepository
+
+from app.services.delivery_service import DeliveryService
+from app.services.vehicle_service import VehicleService
+
+
 class GuardService:
 
-    def __init__(self, repo):
+    def __init__(
+        self,
+        repo: GuardRepository,
+    ):
         self.repo = repo
 
+        self.delivery_service = DeliveryService(
+            repo.delivery_repository
+        )
+
+        self.vehicle_service = VehicleService(
+            repo.vehicle_repository
+        )
+
     # ==================================================
-    # Public API
+    # Dashboard
     # ==================================================
 
     def dashboard(self):
 
-        # Fetch once and reuse
         visitors = self.repo.today_expected_visitors()
 
         summary = self._summary(visitors)
@@ -33,11 +49,69 @@ class GuardService:
             "ai_message": ai_message,
         }
 
+    # ==================================================
+    # Visitor Operations
+    # ==================================================
+
     def pending_visitors(self):
         return self.repo.pending_visitors()
 
     def visitors_inside(self):
         return self.repo.visitors_inside()
+
+    # ==================================================
+    # Delivery Operations
+    # ==================================================
+
+    def pending_deliveries(self):
+        return self.delivery_service.pending_deliveries()
+
+    def receive_delivery(
+        self,
+        delivery_id: int,
+        guard_name: str,
+    ):
+        return self.delivery_service.receive(
+            delivery_id,
+            guard_name,
+        )
+
+    def verify_delivery(
+        self,
+        delivery_id: int,
+        otp: str,
+    ):
+        return self.delivery_service.verify_otp(
+            delivery_id,
+            otp,
+        )
+
+    # ==================================================
+    # Vehicle Operations
+    # ==================================================
+
+    def pending_vehicles(self):
+        return self.vehicle_service.pending_vehicles()
+
+    def vehicle_entry(
+        self,
+        vehicle_id: int,
+        guard_name: str,
+    ):
+        return self.vehicle_service.vehicle_entry(
+            vehicle_id,
+            guard_name,
+        )
+
+    def vehicle_exit(
+        self,
+        vehicle_id: int,
+        guard_name: str,
+    ):
+        return self.vehicle_service.vehicle_exit(
+            vehicle_id,
+            guard_name,
+        )
 
     # ==================================================
     # Dashboard Helpers
@@ -55,7 +129,9 @@ class GuardService:
 
             "walk_in_requests": 0,
 
-            "deliveries": 0,
+            "deliveries": len(
+                self.delivery_service.pending_deliveries()
+            ),
 
             "vacant_houses": 0,
 

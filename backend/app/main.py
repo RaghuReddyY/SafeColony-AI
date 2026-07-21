@@ -1,36 +1,35 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 
 # Routers
 from app.api.auth import router as auth_router
+from app.api.dashboard import router as dashboard_router
+from app.api.delivery import router as delivery_router
+from app.api.guard import router as guard_router
+from app.api.guard_dashboard import router as guard_dashboard_router
+from app.api.notification import router as notification_router
 from app.api.organization import router as organization_router
 from app.api.property import router as property_router
-from app.api.section import router as section_router
-from app.api.unit import router as unit_router
 from app.api.resident import router as resident_router
+from app.api.section import router as section_router
+from app.api.security_alert import router as security_alert_router
+from app.api.security_dashboard import router as security_dashboard_router
+from app.api.unit import router as unit_router
+from app.api.vacation_mode import router as vacation_router
 from app.api.vehicle import router as vehicle_router
 from app.api.visitor import router as visitor_router
-from app.api.guard import router as guard_router
-from app.api.notification import router as notification_router
-from app.api.vacation_mode import router as vacation_router
-from app.api.security_alert import router as security_alert_router
-from app.api.security_dashboard import (
-    router as security_dashboard_router,
-)
-from app.api.delivery import router as delivery_router
-from app.api.dashboard import router as dashboard_router
-from app.api.guard_dashboard import (
-    router as guard_dashboard_router,
-)
 
 # Core
 from app.core.event_registry import register_event_handlers
 from app.core.exceptions import register_exception_handlers
 from app.core.logger import logger
+
+# Scheduler
+from app.scheduler.bootstrap import create_scheduler
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -41,9 +40,6 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application startup and shutdown lifecycle.
-    """
 
     logger.info("==========================================")
     logger.info("Starting SafeColony AI...")
@@ -52,12 +48,21 @@ async def lifespan(app: FastAPI):
     register_event_handlers()
 
     logger.info("Event handlers registered successfully.")
+
+    scheduler = create_scheduler()
+    scheduler.start()
+
+    logger.info("Scheduler started successfully.")
     logger.info("SafeColony AI started successfully.")
     logger.info("==========================================")
 
     yield
 
     logger.info("==========================================")
+    logger.info("Stopping Scheduler...")
+
+    scheduler.shutdown()
+
     logger.info("Stopping SafeColony AI...")
     logger.info("SafeColony AI stopped.")
     logger.info("==========================================")
@@ -70,14 +75,10 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
-# ------------------------------------------
-# Register Global Exception Handlers
-# ------------------------------------------
+# Global Exception Handlers
 register_exception_handlers(app)
 
-# ------------------------------------------
 # CORS
-# ------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -93,9 +94,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ------------------------------------------
-# Register Routers
-# ------------------------------------------
+# Routers
 app.include_router(auth_router)
 app.include_router(organization_router)
 app.include_router(property_router)
@@ -113,18 +112,14 @@ app.include_router(delivery_router)
 app.include_router(dashboard_router)
 app.include_router(guard_dashboard_router)
 
-# ------------------------------------------
 # Static Files
-# ------------------------------------------
 app.mount(
     "/uploads/qr",
     StaticFiles(directory="uploads/qr"),
     name="visitor_qr",
 )
 
-# ------------------------------------------
-# Home
-# ------------------------------------------
+
 @app.get("/", tags=["System"])
 def home():
     logger.info("Health endpoint accessed.")
