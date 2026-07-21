@@ -17,6 +17,7 @@ class Visitor(Base):
     resident_id: Mapped[int] = mapped_column(
         ForeignKey("residents.id"),
         nullable=False,
+        index=True,
     )
 
     visitor_name: Mapped[str] = mapped_column(
@@ -27,6 +28,7 @@ class Visitor(Base):
     phone: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
+        index=True,
     )
 
     visitor_type: Mapped[str] = mapped_column(
@@ -42,6 +44,7 @@ class Visitor(Base):
     vehicle_number: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True,
+        index=True,
     )
 
     expected_time: Mapped[datetime | None] = mapped_column(
@@ -52,6 +55,7 @@ class Visitor(Base):
     status: Mapped[str] = mapped_column(
         String(30),
         default=VisitorStatus.PENDING.value,
+        index=True,
     )
 
 
@@ -109,6 +113,7 @@ class Visitor(Base):
     check_in_time: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
+        index=True,
     )
 
     check_out_time: Mapped[datetime | None] = mapped_column(
@@ -121,8 +126,15 @@ class Visitor(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
+        index=True,
     )
 
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+    
     resident = relationship(
         "Resident",
         back_populates="visitors",
