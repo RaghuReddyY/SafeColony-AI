@@ -22,6 +22,9 @@ from app.api.unit import router as unit_router
 from app.api.vacation_mode import router as vacation_router
 from app.api.vehicle import router as vehicle_router
 from app.api.visitor import router as visitor_router
+from app.api.join import router as join_router
+from app.api.setup import router as setup_router
+
 
 # Core
 from app.core.event_registry import register_event_handlers
@@ -95,6 +98,7 @@ app.add_middleware(
 )
 
 # Routers
+app.include_router(setup_router)
 app.include_router(auth_router)
 app.include_router(organization_router)
 app.include_router(property_router)
@@ -111,6 +115,8 @@ app.include_router(security_dashboard_router)
 app.include_router(delivery_router)
 app.include_router(dashboard_router)
 app.include_router(guard_dashboard_router)
+app.include_router(join_router)
+
 
 # Static Files
 app.mount(

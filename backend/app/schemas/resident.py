@@ -62,10 +62,13 @@ EmergencyContactName = Annotated[
 
 
 class ResidentCreate(BaseModel):
+    """
+    Used only by Admin when assigning an already
+    registered user to a unit.
+    """
+
+    user_id: int
     unit_id: int
-    full_name: FullName
-    email: EmailStr | None = None
-    phone: Phone
     resident_type: ResidentType = "OWNER"
     gender: Gender | None = None
     date_of_birth: date | None = None
@@ -76,11 +79,17 @@ class ResidentCreate(BaseModel):
 
 class ResidentResponse(BaseModel):
     id: int
-    unit_id: int
+    user_id: int
+
+    unit_id: int | None
+
     full_name: str
     email: EmailStr | None
-    phone: str
+    phone: str | None
+
     resident_type: str
+    status: str
+
     gender: str | None
     is_primary: bool
     is_active: bool
@@ -92,15 +101,22 @@ class ResidentResponse(BaseModel):
 
 class ResidentProfileResponse(BaseModel):
     id: int
+    user_id: int
+
     full_name: str
     email: EmailStr | None
-    phone: str
+    phone: str | None
+
     resident_type: str
+    status: str
+
     gender: str | None
     date_of_birth: date | None
+
     emergency_contact: str | None
     emergency_contact_name: str | None
-    unit_id: int
+
+    unit_id: int | None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -110,7 +126,10 @@ class ResidentProfileResponse(BaseModel):
 class ResidentProfileUpdate(BaseModel):
     full_name: FullName
     email: EmailStr | None = None
+    phone: Phone
+
     gender: Gender | None = None
     date_of_birth: date | None = None
+
     emergency_contact: EmergencyContact | None = None
     emergency_contact_name: EmergencyContactName | None = None

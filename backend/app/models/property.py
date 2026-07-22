@@ -1,17 +1,59 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    Enum,
+    UniqueConstraint,
+)
+
+from sqlalchemy.orm import relationship
 
 from app.database.base_class import Base
-from sqlalchemy.orm import relationship
-from sqlalchemy import ForeignKey
+from app.enums import PropertyType
+
 
 class Property(Base):
+
     __tablename__ = "properties"
 
-    id = Column(Integer, primary_key=True, index=True)
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id",
+            "name",
+            name="uq_property_organization_name",
+        ),
+    )
 
-    name = Column(String, nullable=False)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
 
-    property_type = Column(String, nullable=False)
+    name = Column(
+        String(100),
+        nullable=False,
+    )
+
+    property_type = Column(
+        Enum(PropertyType),
+        nullable=False,
+    )
+
+    organization_id = Column(
+        Integer,
+        ForeignKey(
+            "organizations.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    organization = relationship(
+        "Organization",
+        back_populates="properties",
+    )
 
     sections = relationship(
         "Section",
@@ -24,24 +66,28 @@ class Property(Base):
         back_populates="property",
         cascade="all, delete",
     )
-    
-    organization_id = Column(
-    Integer,
-    ForeignKey("organizations.id", ondelete="CASCADE"),
-    nullable=False,
+
+    address = Column(
+        String,
+        nullable=True,
     )
 
-    organization = relationship(
-    "Organization",
-    back_populates="properties",
-    
+    city = Column(
+        String,
+        nullable=True,
     )
-    address = Column(String)
 
-    city = Column(String)
+    state = Column(
+        String,
+        nullable=True,
+    )
 
-    state = Column(String)
+    country = Column(
+        String,
+        nullable=True,
+    )
 
-    country = Column(String)
-
-    pincode = Column(String)
+    pincode = Column(
+        String,
+        nullable=True,
+    )

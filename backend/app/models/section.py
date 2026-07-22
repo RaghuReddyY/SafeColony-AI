@@ -12,6 +12,7 @@ from app.database.base_class import Base
 
 
 class Section(Base):
+
     __tablename__ = "sections"
 
     __table_args__ = (
@@ -30,7 +31,10 @@ class Section(Base):
 
     property_id = Column(
         Integer,
-        ForeignKey("properties.id"),
+        ForeignKey(
+            "properties.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )

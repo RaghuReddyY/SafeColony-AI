@@ -8,13 +8,15 @@ class OrganizationRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, organization):
+    def create(self, organization: Organization, commit: bool = True):
 
         self.db.add(organization)
 
-        self.db.commit()
-
-        self.db.refresh(organization)
+        if commit:
+            self.db.commit()
+            self.db.refresh(organization)
+        else:
+            self.db.flush()
 
         return organization
 
@@ -22,10 +24,18 @@ class OrganizationRepository:
 
         return self.db.query(Organization).all()
 
-    def get_by_name(self, name):
+    def get_by_name(self, name: str):
 
         return (
             self.db.query(Organization)
             .filter(Organization.name == name)
+            .first()
+        )
+
+    def get_by_email(self, email: str):
+
+        return (
+            self.db.query(Organization)
+            .filter(Organization.email == email)
             .first()
         )

@@ -4,22 +4,19 @@ from fastapi import Depends, HTTPException, status
 
 from app.auth.dependencies import get_current_user
 from app.models.user import User
+from app.services.authorization_service import AuthorizationService
 
 
-def require_roles(*allowed_roles: str) -> Callable:
+def require_permission(permission: str) -> Callable:
 
-    def role_checker(
+    def permission_checker(
         current_user: User = Depends(get_current_user),
     ) -> User:
 
-        user_role = current_user.role.value.lower()
-
-        allowed = {
-            role.lower()
-            for role in allowed_roles
-        }
-
-        if user_role not in allowed:
+        if not AuthorizationService.has_permission(
+            current_user,
+            permission,
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action.",
@@ -27,4 +24,4 @@ def require_roles(*allowed_roles: str) -> Callable:
 
         return current_user
 
-    return role_checker
+    return permission_checker

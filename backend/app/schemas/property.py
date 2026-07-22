@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from app.enums import PropertyType
 
 class PropertyCreate(BaseModel):
 
@@ -7,7 +7,7 @@ class PropertyCreate(BaseModel):
     
     name: str
 
-    property_type: str
+    property_type: PropertyType
 
     address: str
 

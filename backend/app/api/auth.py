@@ -9,6 +9,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.token import Token
 from app.schemas.user import (
     ChangePasswordRequest,
+    RegisterResponse,
     UserRegister,
     UserResponse,
 )
@@ -29,7 +30,7 @@ def get_auth_service(
 
 @router.post(
     "/register",
-    response_model=UserResponse,
+    response_model=RegisterResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register User",
 )

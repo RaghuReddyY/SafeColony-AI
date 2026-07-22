@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     String,
     UniqueConstraint,
+    Enum,
 )
 
 from sqlalchemy.orm import (
@@ -15,9 +16,11 @@ from sqlalchemy.orm import (
 )
 
 from app.database.base_class import Base
+from app.enums import UnitType, OccupancyStatus
 
 
 class Unit(Base):
+
     __tablename__ = "units"
 
     __table_args__ = (
@@ -33,13 +36,19 @@ class Unit(Base):
     )
 
     property_id: Mapped[int] = mapped_column(
-        ForeignKey("properties.id"),
+        ForeignKey(
+            "properties.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
 
     section_id: Mapped[int] = mapped_column(
-        ForeignKey("sections.id"),
+        ForeignKey(
+            "sections.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
@@ -49,9 +58,10 @@ class Unit(Base):
         nullable=False,
     )
 
-    unit_type: Mapped[str] = mapped_column(
-        String(30),
-        default="Apartment",
+    unit_type: Mapped[UnitType] = mapped_column(
+        Enum(UnitType),
+        default=UnitType.APARTMENT,
+        nullable=False,
     )
 
     floor: Mapped[str | None] = mapped_column(
@@ -64,9 +74,10 @@ class Unit(Base):
         nullable=True,
     )
 
-    occupancy_status: Mapped[str] = mapped_column(
-        String(30),
-        default="VACANT",
+    occupancy_status: Mapped[OccupancyStatus] = mapped_column(
+        Enum(OccupancyStatus),
+        default=OccupancyStatus.VACANT,
+        nullable=False,
     )
 
     intercom_number: Mapped[str | None] = mapped_column(

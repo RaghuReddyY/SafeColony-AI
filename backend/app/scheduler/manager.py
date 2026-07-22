@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.scheduler.registry import JobRegistry
-
+from app.core.logger import logger
 
 class SchedulerManager:
     """
@@ -25,21 +25,35 @@ class SchedulerManager:
                 minutes=job.interval_minutes(),
                 id=job.name(),
                 replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+                misfire_grace_time=60,
             )
 
-            print(
-                f"[Scheduler] Registered Job : "
-                f"{job.name()} "
-                f"(Every {job.interval_minutes()} minutes)"
-            )
+            logger.info(
+                    "Registered scheduler job '%s' (every %d minutes).",
+                    job.name(),
+                    job.interval_minutes(),
+                )
 
-        self.scheduler.start()
-        print("[Scheduler] Started Successfully.")
+        try:
+            self.scheduler.start()
+            logger.info("Scheduler started successfully.")
+        except Exception:
+            logger.exception("Unable to start scheduler.")
+            raise
+        
 
     def shutdown(self):
         """
         Shutdown APScheduler.
         """
-        if self.scheduler.running:
-            self.scheduler.shutdown()
-            print("[Scheduler] Shutdown Completed.")
+        if not self.scheduler.running:
+            return
+
+        try:
+            self.scheduler.shutdown(wait=False)
+            logger.info("Scheduler shutdown completed.")
+        except Exception:
+            logger.exception("Scheduler shutdown failed.")
+           

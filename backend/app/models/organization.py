@@ -30,3 +30,8 @@ class Organization(Base):
     country = Column(String(100))
 
     pincode = Column(String(20))
+
+    users = relationship(
+        "User",
+        back_populates="organization",
+    )

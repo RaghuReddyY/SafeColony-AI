@@ -2,8 +2,9 @@ from enum import Enum
 
 
 class UserRole(str, Enum):
-    SUPER_ADMIN = "super_admin"
-    PROPERTY_ADMIN = "property_admin"
-    SECURITY = "security"
-    RESIDENT = "resident"
-    MAINTENANCE = "maintenance"
+    SYSTEM_ADMIN = "SYSTEM_ADMIN"
+    ORGANIZATION_ADMIN = "ORGANIZATION_ADMIN"
+    PROPERTY_MANAGER = "PROPERTY_MANAGER"
+    SECURITY_MANAGER = "SECURITY_MANAGER"
+    SECURITY_GUARD = "SECURITY_GUARD"
+    RESIDENT = "RESIDENT"

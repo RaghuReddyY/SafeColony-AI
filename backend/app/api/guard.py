@@ -2,20 +2,22 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import require_permission
 from app.database.dependency import get_db
 
 from app.repositories.guard_repository import GuardRepository
 from app.repositories.visitor_repository import VisitorRepository
 
-from app.services.guard_service import GuardService
-from app.services.visitor_service import VisitorService
-
 from app.schemas.delivery import (
     DeliveryResponse,
     VerifyOtpRequest,
 )
-
 from app.schemas.vehicle import VehicleResponse
+
+from app.security.permissions import Permissions
+
+from app.services.guard_service import GuardService
+from app.services.visitor_service import VisitorService
 
 router = APIRouter(
     prefix="/guard",
@@ -44,18 +46,42 @@ class VehicleGuardRequest(BaseModel):
 
 
 # ==========================================================
-# Dashboard
+# Dependencies
 # ==========================================================
 
-@router.get("/dashboard")
-def dashboard(
+def get_guard_service(
     db: Session = Depends(get_db),
-):
-
-    service = GuardService(
+) -> GuardService:
+    return GuardService(
         GuardRepository(db)
     )
 
+
+def get_visitor_service(
+    db: Session = Depends(get_db),
+) -> VisitorService:
+    return VisitorService(
+        VisitorRepository(db)
+    )
+
+
+# ==========================================================
+# Dashboard
+# ==========================================================
+
+@router.get(
+    "/dashboard",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_DASHBOARD,
+            )
+        )
+    ],
+)
+def dashboard(
+    service: GuardService = Depends(get_guard_service),
+):
     return service.dashboard()
 
 
@@ -63,27 +89,35 @@ def dashboard(
 # Visitors
 # ==========================================================
 
-@router.get("/pending-visitors")
+@router.get(
+    "/pending-visitors",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VISITOR_VIEW,
+            )
+        )
+    ],
+)
 def pending_visitors(
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.pending_visitors()
 
 
-@router.get("/inside")
+@router.get(
+    "/inside",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VISITOR_VIEW,
+            )
+        )
+    ],
+)
 def visitors_inside(
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.visitors_inside()
 
 
@@ -94,32 +128,36 @@ def visitors_inside(
 @router.get(
     "/pending-deliveries",
     response_model=list[DeliveryResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_DELIVERY_VIEW,
+            )
+        )
+    ],
 )
 def pending_deliveries(
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.pending_deliveries()
 
 
 @router.post(
     "/receive-delivery/{delivery_id}",
     response_model=DeliveryResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_DELIVERY_RECEIVE,
+            )
+        )
+    ],
 )
 def receive_delivery(
     delivery_id: int,
     request: DeliveryReceiveRequest,
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.receive_delivery(
         delivery_id,
         request.guard_name,
@@ -129,17 +167,19 @@ def receive_delivery(
 @router.post(
     "/verify-delivery/{delivery_id}",
     response_model=DeliveryResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_DELIVERY_VERIFY,
+            )
+        )
+    ],
 )
 def verify_delivery(
     delivery_id: int,
     request: VerifyOtpRequest,
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.verify_delivery(
         delivery_id,
         request.otp,
@@ -147,38 +187,42 @@ def verify_delivery(
 
 
 # ==========================================================
-# Vehicle Operations
+# Vehicles
 # ==========================================================
 
 @router.get(
     "/pending-vehicles",
     response_model=list[VehicleResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VEHICLE_VIEW,
+            )
+        )
+    ],
 )
 def pending_vehicles(
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.pending_vehicles()
 
 
 @router.post(
     "/vehicle-entry/{vehicle_id}",
     response_model=VehicleResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VEHICLE_ENTRY,
+            )
+        )
+    ],
 )
 def vehicle_entry(
     vehicle_id: int,
     request: VehicleGuardRequest,
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.vehicle_entry(
         vehicle_id,
         request.guard_name,
@@ -188,17 +232,19 @@ def vehicle_entry(
 @router.post(
     "/vehicle-exit/{vehicle_id}",
     response_model=VehicleResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VEHICLE_EXIT,
+            )
+        )
+    ],
 )
 def vehicle_exit(
     vehicle_id: int,
     request: VehicleGuardRequest,
-    db: Session = Depends(get_db),
+    service: GuardService = Depends(get_guard_service),
 ):
-
-    service = GuardService(
-        GuardRepository(db)
-    )
-
     return service.vehicle_exit(
         vehicle_id,
         request.guard_name,
@@ -209,46 +255,58 @@ def vehicle_exit(
 # Visitor QR
 # ==========================================================
 
-@router.post("/validate-qr")
+@router.post(
+    "/validate-qr",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_QR_SCAN,
+            )
+        )
+    ],
+)
 def validate_qr(
     request: QRScanRequest,
-    db: Session = Depends(get_db),
+    service: VisitorService = Depends(get_visitor_service),
 ):
-
-    repo = VisitorRepository(db)
-
-    service = VisitorService(repo)
-
     return service.validate_qr(
-        request.qr_token
+        request.qr_token,
     )
 
 
-@router.post("/check-in")
+@router.post(
+    "/check-in",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VISITOR_CHECKIN,
+            )
+        )
+    ],
+)
 def check_in(
     request: VisitorRequest,
-    db: Session = Depends(get_db),
+    service: VisitorService = Depends(get_visitor_service),
 ):
-
-    repo = VisitorRepository(db)
-
-    service = VisitorService(repo)
-
     return service.check_in(
-        request.visitor_id
+        request.visitor_id,
     )
 
 
-@router.post("/check-out")
+@router.post(
+    "/check-out",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VISITOR_CHECKOUT,
+            )
+        )
+    ],
+)
 def check_out(
     request: VisitorRequest,
-    db: Session = Depends(get_db),
+    service: VisitorService = Depends(get_visitor_service),
 ):
-
-    repo = VisitorRepository(db)
-
-    service = VisitorService(repo)
-
     return service.check_out(
-        request.visitor_id
+        request.visitor_id,
     )

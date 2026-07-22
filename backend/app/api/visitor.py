@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import require_permission
 from app.database.dependency import get_db
 
 from app.repositories.visitor_repository import VisitorRepository
+from app.security.permissions import Permissions
 from app.services.visitor_service import VisitorService
 
 from app.schemas.visitor import (
@@ -25,12 +27,18 @@ router = APIRouter(
 @router.post(
     "",
     response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_CREATE,
+            )
+        )
+    ],
 )
 def create_visitor(
     visitor: VisitorCreate,
     db: Session = Depends(get_db),
 ):
-
     repo = VisitorRepository(db)
     service = VisitorService(repo)
 
@@ -40,11 +48,17 @@ def create_visitor(
 @router.get(
     "",
     response_model=list[VisitorResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_VIEW,
+            )
+        )
+    ],
 )
 def get_visitors(
     db: Session = Depends(get_db),
 ):
-
     repo = VisitorRepository(db)
     service = VisitorService(repo)
 
@@ -54,18 +68,35 @@ def get_visitors(
 @router.get(
     "/resident/{resident_id}",
     response_model=list[VisitorResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_VIEW,
+            )
+        )
+    ],
 )
 def get_visitors_by_resident(
     resident_id: int,
     db: Session = Depends(get_db),
 ):
-
     repo = VisitorRepository(db)
     service = VisitorService(repo)
 
     return service.get_by_resident(resident_id)
 
-@router.post("/{visitor_id}/approve", response_model=VisitorResponse)
+
+@router.post(
+    "/{visitor_id}/approve",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_APPROVE,
+            )
+        )
+    ],
+)
 def approve_visitor(
     visitor_id: int,
     db: Session = Depends(get_db),
@@ -76,7 +107,17 @@ def approve_visitor(
     return service.approve(visitor_id)
 
 
-@router.post("/{visitor_id}/reject", response_model=VisitorResponse)
+@router.post(
+    "/{visitor_id}/reject",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_REJECT,
+            )
+        )
+    ],
+)
 def reject_visitor(
     visitor_id: int,
     db: Session = Depends(get_db),
@@ -87,7 +128,17 @@ def reject_visitor(
     return service.reject(visitor_id)
 
 
-@router.post("/{visitor_id}/check-in", response_model=VisitorResponse)
+@router.post(
+    "/{visitor_id}/check-in",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_CHECKIN,
+            )
+        )
+    ],
+)
 def check_in_visitor(
     visitor_id: int,
     db: Session = Depends(get_db),
@@ -98,7 +149,17 @@ def check_in_visitor(
     return service.check_in(visitor_id)
 
 
-@router.post("/{visitor_id}/check-out", response_model=VisitorResponse)
+@router.post(
+    "/{visitor_id}/check-out",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_CHECKOUT,
+            )
+        )
+    ],
+)
 def check_out_visitor(
     visitor_id: int,
     db: Session = Depends(get_db),
@@ -108,15 +169,22 @@ def check_out_visitor(
 
     return service.check_out(visitor_id)
 
+
 @router.post(
     "/validate-qr",
     response_model=QRScanResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_QR_VALIDATE,
+            )
+        )
+    ],
 )
 def validate_qr(
     request: QRScanRequest,
     db: Session = Depends(get_db),
 ):
-
     repo = VisitorRepository(db)
     service = VisitorService(repo)
 
@@ -132,16 +200,23 @@ def validate_qr(
         vehicle_number=visitor.vehicle_number,
         status=visitor.status,
     )
-    
+
+
 @router.post(
     "/scan",
     response_model=QRScanResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_QR_SCAN,
+            )
+        )
+    ],
 )
 def scan_qr(
     request: QRScanRequest,
     db: Session = Depends(get_db),
 ):
-
     repo = VisitorRepository(db)
     service = VisitorService(repo)
 
@@ -158,15 +233,22 @@ def scan_qr(
         status=visitor.status,
     )
 
+
 @router.post(
     "/scan-exit",
     response_model=QRScanResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_QR_EXIT,
+            )
+        )
+    ],
 )
 def scan_exit(
     request: QRScanRequest,
     db: Session = Depends(get_db),
 ):
-
     repo = VisitorRepository(db)
     service = VisitorService(repo)
 
@@ -182,4 +264,3 @@ def scan_exit(
         vehicle_number=visitor.vehicle_number,
         status=visitor.status,
     )
-

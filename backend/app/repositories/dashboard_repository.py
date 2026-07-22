@@ -95,7 +95,11 @@ class DashboardRepository:
 
         return {
             "resident_name": resident.full_name,
-            "unit_number": resident.unit.unit_number,
+            "unit_number": (
+                    resident.unit.unit_number
+                            if resident.unit
+                            else "Not Assigned"
+                        ),
             "visitor_count": visitor_count,
             "pending_visitors": pending_visitors,
             "delivery_count": delivery_count,

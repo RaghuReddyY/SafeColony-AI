@@ -28,10 +28,7 @@ class VacationJob(BaseJob):
                     f"Vacation Job completed. Activated={activated}, Completed={completed}"
             )
             
-            print(
-                f"[VacationJob] Activated={activated}, Completed={completed}"
-            )
-
+        
         except Exception:
             logger.exception("Vacation Job failed.")
 

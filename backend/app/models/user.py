@@ -1,11 +1,16 @@
-from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base_class import Base
+from app.enums import UserRole, UserStatus
 
-from sqlalchemy import Enum
+if TYPE_CHECKING:
+    from app.models.organization import Organization
+    from app.models.resident import Resident
 
-from app.enums import UserRole
+
 class User(Base):
     __tablename__ = "users"
 
@@ -35,14 +40,37 @@ class User(Base):
         nullable=False,
     )
 
-    role: Mapped[UserRole] = mapped_column(
+    # Store role as STRING in database
+    role: Mapped[str] = mapped_column(
         String(30),
         default=UserRole.RESIDENT.value,
         nullable=False,
+    )
+
+    # Account approval status
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default=UserStatus.PENDING.value,
+        nullable=False,
+        index=True,
     )
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
         nullable=False,
+    )
+
+    organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organizations.id"),
+        nullable=True,
+    )
+
+    organization: Mapped["Organization"] = relationship(
+        back_populates="users",
+    )
+
+    resident: Mapped["Resident"] = relationship(
+        back_populates="user",
+        uselist=False,
     )
