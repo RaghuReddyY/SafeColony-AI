@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../features/dashboard/dashboard_screen.dart';
+import '../../features/admin/screens/admin_dashboard_screen.dart';
 
 
 class RoleRouter {
@@ -17,7 +18,7 @@ class RoleRouter {
 
 
       case "ORGANIZATION_ADMIN":
-        return const DashboardScreen();
+         return const AdminDashboardScreen();
 
 
       case "RESIDENT":
