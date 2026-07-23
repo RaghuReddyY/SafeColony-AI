@@ -5,6 +5,8 @@ import '../features/auth/models/user.dart';
 import '../models/login_request.dart';
 import '../models/login_response.dart';
 import '../models/register_request.dart';
+import '../models/organization_register_request.dart';
+import '../models/organization_register_response.dart';
 
 class AuthService {
   Future<LoginResponse> login(
@@ -26,17 +28,38 @@ class AuthService {
     );
   }
 
-Future<User> register(
-  RegisterRequest request,
+Future<OrganizationRegisterResponse> registerOrganization(
+  OrganizationRegisterRequest request,
 ) async {
   final response = await ApiClient.dio.post(
-    "/auth/register",
+    "/organizations/register",
     data: request.toJson(),
   );
 
-  return User.fromJson(
+  return OrganizationRegisterResponse.fromJson(
     response.data,
   );
+}
+
+Future<void> register(
+  RegisterRequest request,
+) async {
+  try {
+    print("REGISTER REQUEST:");
+    print(request.toJson());
+
+    final response = await ApiClient.dio.post(
+      "/auth/register",
+      data: request.toJson(),
+    );
+
+    print("REGISTER RESPONSE:");
+    print(response.data);
+  } on DioException catch (e) {
+    print("STATUS CODE: ${e.response?.statusCode}");
+    print("ERROR BODY: ${e.response?.data}");
+    rethrow;
+  }
 }
   Future<User> getCurrentUser() async {
     final response = await ApiClient.dio.get(

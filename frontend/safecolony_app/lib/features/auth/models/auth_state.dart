@@ -7,13 +7,18 @@ class AuthState {
   final User? user;
   final String? error;
 
+  // Added
+  final String? residentStatus;
+
   const AuthState({
     this.isLoading = false,
     this.isLoggedIn = false,
     this.token,
     this.user,
     this.error,
+    this.residentStatus,
   });
+
 
   AuthState copyWith({
     bool? isLoading,
@@ -21,6 +26,7 @@ class AuthState {
     String? token,
     User? user,
     String? error,
+    String? residentStatus,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -28,6 +34,8 @@ class AuthState {
       token: token ?? this.token,
       user: user ?? this.user,
       error: error,
+      residentStatus:
+          residentStatus ?? this.residentStatus,
     );
   }
 }

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.user import User
 from app.models.resident import Resident
@@ -14,34 +14,11 @@ class UserRepository:
     def create(
         self,
         user: User,
-        create_resident: bool = True,
         commit: bool = True,
     ) -> User:
-        """
-        Create a User.
-
-        Parameters:
-        - create_resident:
-            True  -> Automatically create a Resident profile.
-            False -> Only create the User.
-
-        - commit:
-            True  -> Commit immediately.
-            False -> Leave transaction open for the service layer.
-        """
 
         self.db.add(user)
         self.db.flush()
-
-        if create_resident:
-            resident = Resident(
-                user_id=user.id,
-                status=ResidentStatus.PENDING,
-                resident_type=ResidentType.OWNER,
-                is_active=True,
-            )
-
-            self.db.add(resident)
 
         if commit:
             self.db.commit()
@@ -57,6 +34,7 @@ class UserRepository:
     def get_by_id(self, user_id: int) -> User | None:
         return (
             self.db.query(User)
+            .options(joinedload(User.resident))
             .filter(User.id == user_id)
             .first()
         )
@@ -64,6 +42,7 @@ class UserRepository:
     def get_by_email(self, email: str) -> User | None:
         return (
             self.db.query(User)
+            .options(joinedload(User.resident))
             .filter(User.email == email)
             .first()
         )
@@ -71,6 +50,7 @@ class UserRepository:
     def get_by_phone(self, phone: str) -> User | None:
         return (
             self.db.query(User)
+            .options(joinedload(User.resident))
             .filter(User.phone == phone)
             .first()
         )

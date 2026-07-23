@@ -1,14 +1,13 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.enums import ResidentStatus
+from app.enums import ResidentStatus, UserStatus
 from app.models.notification import Notification
 from app.models.resident import Resident
 from app.models.unit import Unit
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.visitor import Visitor
-from app.enums import UserStatus
 
 
 class ResidentRepository:
@@ -17,77 +16,166 @@ class ResidentRepository:
         self.db = db
 
     # --------------------------------------------------
+    # Common Load Options
+    # --------------------------------------------------
+
+    def _load_options(self):
+        return (
+            joinedload(Resident.user),
+            joinedload(Resident.unit).joinedload(Unit.section),
+            joinedload(Resident.unit).joinedload(Unit.property),
+        )
+
+    # --------------------------------------------------
     # CRUD
     # --------------------------------------------------
 
-    def create(self, resident: Resident) -> Resident:
+    def create(
+        self,
+        resident: Resident,
+    ) -> Resident:
+
         self.db.add(resident)
         self.db.commit()
         self.db.refresh(resident)
+
         return resident
 
-    def update(self, resident: Resident) -> Resident:
+    def update(
+        self,
+        resident: Resident,
+    ) -> Resident:
+
         self.db.commit()
         self.db.refresh(resident)
+
         return resident
 
     # --------------------------------------------------
-    # Basic Queries
+    # Organization Scoped Queries
     # --------------------------------------------------
 
-    def get_all(self) -> list[Resident]:
-        return (
-            self.db.query(Resident)
-            .options(
-                joinedload(Resident.user),
-                joinedload(Resident.unit),
-            )
-            .all()
-        )
+    def get_all_by_organization(
+        self,
+        organization_id: int,
+    ) -> list[Resident]:
 
-    def get_by_id(self, resident_id: int) -> Resident | None:
-        return (
-            self.db.query(Resident)
-            .options(
-                joinedload(Resident.user),
-                joinedload(Resident.unit),
-            )
-            .filter(Resident.id == resident_id)
-            .first()
-        )
-
-    def get_by_user_id(self, user_id: int) -> Resident | None:
-        return (
-            self.db.query(Resident)
-            .options(
-                joinedload(Resident.user),
-                joinedload(Resident.unit),
-            )
-            .filter(Resident.user_id == user_id)
-            .first()
-        )
-
-    def get_by_unit(self, unit_id: int) -> list[Resident]:
-        return (
-            self.db.query(Resident)
-            .options(joinedload(Resident.user))
-            .filter(Resident.unit_id == unit_id)
-            .all()
-        )
-
-    def get_by_phone(self, phone: str) -> Resident | None:
         return (
             self.db.query(Resident)
             .join(User)
-            .filter(User.phone == phone)
-            .first()
+            .options(*self._load_options())
+            .filter(
+                User.organization_id == organization_id,
+            )
+            .order_by(User.full_name.asc())
+            .all()
         )
 
-    def get_by_email(self, email: str) -> Resident | None:
+    def get_by_id_and_organization(
+        self,
+        resident_id: int,
+        organization_id: int,
+    ) -> Resident | None:
+
         return (
             self.db.query(Resident)
             .join(User)
-            .filter(User.email == email)
+            .options(*self._load_options())
+            .filter(
+                Resident.id == resident_id,
+                User.organization_id == organization_id,
+            )
+            .first()
+        )
+
+    def get_by_unit_and_organization(
+        self,
+        unit_id: int,
+        organization_id: int,
+    ) -> list[Resident]:
+
+        return (
+            self.db.query(Resident)
+            .join(User)
+            .options(*self._load_options())
+            .filter(
+                Resident.unit_id == unit_id,
+                User.organization_id == organization_id,
+            )
+            .order_by(User.full_name.asc())
+            .all()
+        )
+
+    def get_pending_by_organization(
+        self,
+        organization_id: int,
+    ) -> list[Resident]:
+
+        return (
+            self.db.query(Resident)
+            .join(User)
+            .options(*self._load_options())
+            .filter(
+                User.organization_id == organization_id,
+                Resident.status == ResidentStatus.PENDING,
+            )
+            .order_by(User.full_name.asc())
+            .all()
+        )
+
+    def get_dropdown_by_organization(
+        self,
+        organization_id: int,
+    ) -> list[Resident]:
+
+        return (
+            self.db.query(Resident)
+            .join(User)
+            .options(*self._load_options())
+            .filter(
+                User.organization_id == organization_id,
+                Resident.is_active.is_(True),
+            )
+            .order_by(User.full_name.asc())
+            .all()
+        )
+
+    # --------------------------------------------------
+    # Generic Queries
+    # --------------------------------------------------
+
+    def get_by_user_id(
+        self,
+        user_id: int,
+    ) -> Resident | None:
+
+        return (
+            self.db.query(Resident)
+            .options(*self._load_options())
+            .filter(
+                Resident.user_id == user_id,
+            )
+            .first()
+        )
+
+    def get_profile(
+        self,
+        resident_id: int,
+    ) -> Resident | None:
+
+        return self.get_by_id(resident_id)
+
+    def get_by_id(
+        self,
+        resident_id: int,
+    ) -> Resident | None:
+
+        return (
+            self.db.query(Resident)
+            .options(*self._load_options())
+            .filter(
+                Resident.id == resident_id,
+            )
             .first()
         )
 
@@ -95,6 +183,7 @@ class ResidentRepository:
         self,
         unit_id: int,
     ) -> Resident | None:
+
         return (
             self.db.query(Resident)
             .filter(
@@ -103,38 +192,7 @@ class ResidentRepository:
             )
             .first()
         )
-
-    def unit_exists(self, unit_id: int) -> bool:
-        return (
-            self.db.query(Unit)
-            .filter(Unit.id == unit_id)
-            .first()
-            is not None
-        )
-
-    # --------------------------------------------------
-    # Profile
-    # --------------------------------------------------
-
-    def get_profile(
-        self,
-        resident_id: int,
-    ) -> Resident | None:
-        return self.get_by_id(resident_id)
-
-    def get_dropdown(self) -> list[Resident]:
-        return (
-            self.db.query(Resident)
-            .options(
-                joinedload(Resident.user),
-                joinedload(Resident.unit),
-            )
-            .order_by(User.full_name.asc())
-            .join(User)
-            .all()
-        )
-
-    # --------------------------------------------------
+        # --------------------------------------------------
     # Dashboard
     # --------------------------------------------------
 
@@ -195,35 +253,45 @@ class ResidentRepository:
         )
 
         return {
-            "resident": resident,
+            "resident_name": resident.full_name,
+            "unit_number": (
+                resident.unit.unit_number
+                if resident.unit
+                else ""
+            ),
             "vehicles": vehicles,
-            "pending": pending,
-            "approved": approved,
-            "inside": inside,
+            "pending_visitors": pending,
+            "approved_visitors": approved,
+            "inside_visitors": inside,
             "notifications": notifications,
         }
 
     # --------------------------------------------------
-    # Pending Approvals
+    # Validation Helpers
     # --------------------------------------------------
 
-    def get_pending(self) -> list[Resident]:
+    def unit_exists(
+        self,
+        unit_id: int,
+    ) -> bool:
+
         return (
-            self.db.query(Resident)
-            .options(
-                joinedload(Resident.user),
-                joinedload(Resident.unit),
-            )
+            self.db.query(Unit)
             .filter(
-                Resident.status == ResidentStatus.PENDING
+                Unit.id == unit_id
             )
-            .all()
+            .first()
+            is not None
         )
-    
+
+    # --------------------------------------------------
+    # Approval
+    # --------------------------------------------------
+
     def approve(
-            self,
-            resident: Resident,
-        ) -> Resident:
+        self,
+        resident: Resident,
+    ) -> Resident:
 
         resident.status = ResidentStatus.ACTIVE
 
@@ -249,22 +317,3 @@ class ResidentRepository:
         self.db.refresh(resident)
 
         return resident
-
-    def get_pending_by_organization(
-        self,
-        organization_id: int,
-    ) -> list[Resident]:
-
-        return (
-            self.db.query(Resident)
-            .join(User)
-            .options(
-                joinedload(Resident.user),
-                joinedload(Resident.unit),
-            )
-            .filter(
-                Resident.status == ResidentStatus.PENDING,
-                User.organization_id == organization_id,
-            )
-            .all()
-        )

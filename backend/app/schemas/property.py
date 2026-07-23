@@ -1,10 +1,10 @@
 from pydantic import BaseModel
+
 from app.enums import PropertyType
+
 
 class PropertyCreate(BaseModel):
 
-    organization_id: int
-    
     name: str
 
     property_type: PropertyType
@@ -23,6 +23,8 @@ class PropertyCreate(BaseModel):
 class PropertyResponse(PropertyCreate):
 
     id: int
+
+    organization_id: int
 
     class Config:
         from_attributes = True

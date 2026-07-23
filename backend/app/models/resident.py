@@ -111,6 +111,38 @@ class Resident(Base):
     )
 
     # ---------------------------------------
+    # Computed Properties
+    # ---------------------------------------
+
+    @property
+    def full_name(self) -> str | None:
+        return self.user.full_name if self.user else None
+
+    @property
+    def email(self) -> str | None:
+        return self.user.email if self.user else None
+
+    @property
+    def phone(self) -> str | None:
+        return self.user.phone if self.user else None
+
+    @property
+    def unit_number(self) -> str | None:
+        return self.unit.unit_number if self.unit else None
+
+    @property
+    def section_name(self) -> str | None:
+        if self.unit and self.unit.section:
+            return self.unit.section.name
+        return None
+
+    @property
+    def property_name(self) -> str | None:
+        if self.unit and self.unit.property:
+            return self.unit.property.name
+        return None
+    
+    # ---------------------------------------
     # Relationships
     # ---------------------------------------
 

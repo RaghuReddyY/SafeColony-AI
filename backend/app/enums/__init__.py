@@ -9,6 +9,7 @@ from .property_type import PropertyType
 from .unit_type import UnitType
 from .occupancy_status import OccupancyStatus
 from .join_status import JoinStatus
+from .organization_application_status import OrganizationApplicationStatus
 
 __all__ = [
     "UserRole",
@@ -22,4 +23,5 @@ __all__ = [
     "UnitType",
     "OccupancyStatus",
     "JoinStatus",
+    "OrganizationApplicationStatus",
 ]

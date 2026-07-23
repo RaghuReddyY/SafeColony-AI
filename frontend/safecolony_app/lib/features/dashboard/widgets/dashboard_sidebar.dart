@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../routes/app_router.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../../dashboard/dashboard_screen.dart';
@@ -156,7 +155,7 @@ class DashboardSidebar extends ConsumerWidget {
       ),
       decoration: BoxDecoration(
         color: selected
-            ? Colors.white.withOpacity(.12)
+            ? Colors.white.withValues(alpha: .12)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(15),
       ),

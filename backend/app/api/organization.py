@@ -19,6 +19,27 @@ router = APIRouter(
 )
 
 
+# ==========================================================
+# Public Organization Registration
+# ==========================================================
+
+@router.post(
+    "/register",
+    response_model=OrganizationOnboardResponse,
+)
+def register_organization(
+    request: OrganizationOnboardRequest,
+    db: Session = Depends(get_db),
+):
+    service = OrganizationService(db)
+
+    return service.onboard(request)
+
+
+# ==========================================================
+# Create Organization (Internal)
+# ==========================================================
+
 @router.post(
     "",
     response_model=OrganizationResponse,
@@ -39,6 +60,10 @@ def create_organization(
     return service.create(organization)
 
 
+# ==========================================================
+# List Organizations
+# ==========================================================
+
 @router.get(
     "",
     response_model=list[OrganizationResponse],
@@ -57,6 +82,10 @@ def get_organizations(
 
     return service.get_all()
 
+
+# ==========================================================
+# Internal Onboard API (Optional)
+# ==========================================================
 
 @router.post(
     "/onboard",

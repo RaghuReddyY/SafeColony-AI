@@ -24,7 +24,7 @@ class AppSectionTitle extends StatelessWidget {
                   ),
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );

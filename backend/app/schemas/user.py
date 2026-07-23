@@ -8,6 +8,7 @@ from pydantic import (
     StringConstraints,
     field_validator,
 )
+from app.enums import ResidentType
 
 # ------------------------------------------------------------------
 # Reusable Types
@@ -53,10 +54,26 @@ Role = Annotated[
 # ------------------------------------------------------------------
 
 class UserRegister(BaseModel):
+    organization_code: str
+
+    section_id: int
+    unit_number: str
+    resident_type: ResidentType = ResidentType.OWNER
+
     full_name: FullName
     email: EmailStr
     phone: Phone
     password: Password
+
+    @field_validator("unit_number")
+    @classmethod
+    def validate_unit_number(cls, value: str) -> str:
+        value = value.strip().upper()
+
+        if not value:
+            raise ValueError("Unit number is required.")
+
+        return value
 
     @field_validator("password")
     @classmethod
@@ -78,8 +95,6 @@ class UserRegister(BaseModel):
             )
 
         return value
-
-
 # ------------------------------------------------------------------
 # Registration Response
 # ------------------------------------------------------------------

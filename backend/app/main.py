@@ -24,6 +24,7 @@ from app.api.vehicle import router as vehicle_router
 from app.api.visitor import router as visitor_router
 from app.api.join import router as join_router
 from app.api.setup import router as setup_router
+from app.api.public import router as public_router
 
 
 # Core
@@ -116,6 +117,8 @@ app.include_router(delivery_router)
 app.include_router(dashboard_router)
 app.include_router(guard_dashboard_router)
 app.include_router(join_router)
+app.include_router(public_router)
+
 
 
 # Static Files

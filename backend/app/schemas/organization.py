@@ -19,6 +19,7 @@ class OrganizationCreate(BaseModel):
 
 class OrganizationResponse(OrganizationCreate):
     id: int
+    organization_code: str
 
     class Config:
         from_attributes = True
@@ -44,5 +45,6 @@ class OrganizationOnboardResponse(BaseModel):
     message: str
     organization_id: int
     organization_name: str
+    organization_code: str
     admin_user_id: int
     admin_email: EmailStr

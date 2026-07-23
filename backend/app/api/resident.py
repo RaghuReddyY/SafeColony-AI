@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 from app.database.dependency import get_db
-from app.repositories.resident_repository import ResidentRepository
+from app.models.user import User
 from app.schemas.dashboard import ResidentDashboardResponse
 from app.schemas.resident import (
     ResidentCreate,
@@ -13,7 +14,6 @@ from app.schemas.resident import (
 )
 from app.security.permissions import Permissions
 from app.services.resident_service import ResidentService
-from app.enums import ResidentStatus
 
 router = APIRouter(
     prefix="/residents",
@@ -24,15 +24,13 @@ router = APIRouter(
 def get_resident_service(
     db: Session = Depends(get_db),
 ) -> ResidentService:
-    repo = ResidentRepository(db)
-    return ResidentService(repo)
+    return ResidentService(db)
 
 
 @router.post(
     "",
     response_model=ResidentResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create Resident",
     dependencies=[
         Depends(
             require_permission(
@@ -43,15 +41,25 @@ def get_resident_service(
 )
 def create_resident(
     resident: ResidentCreate,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.create(resident)
+    return service.create(
+        user_id=resident.user_id,
+        unit_id=resident.unit_id,
+        resident_type=resident.resident_type,
+        gender=resident.gender,
+        date_of_birth=resident.date_of_birth,
+        emergency_contact=resident.emergency_contact,
+        emergency_contact_name=resident.emergency_contact_name,
+        is_primary=resident.is_primary,
+        current_user=current_user,
+    )
 
 
 @router.get(
     "",
     response_model=list[ResidentResponse],
-    summary="Get All Residents",
     dependencies=[
         Depends(
             require_permission(
@@ -61,15 +69,15 @@ def create_resident(
     ],
 )
 def get_residents(
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.get_all()
+    return service.get_all(current_user)
 
 
 @router.get(
     "/unit/{unit_id}",
     response_model=list[ResidentResponse],
-    summary="Get Residents by Unit",
     dependencies=[
         Depends(
             require_permission(
@@ -80,13 +88,15 @@ def get_residents(
 )
 def get_residents_by_unit(
     unit_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.get_by_unit(unit_id)
-
-
+    return service.get_by_unit(
+        unit_id,
+        current_user,
+    )
 @router.get(
-    "/dashboard/{resident_id}",
+    "/dashboard",
     response_model=ResidentDashboardResponse,
     summary="Resident Dashboard",
     dependencies=[
@@ -98,14 +108,14 @@ def get_residents_by_unit(
     ],
 )
 def dashboard(
-    resident_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.dashboard(resident_id)
+    return service.get_dashboard(current_user)
 
 
 @router.get(
-    "/profile/{resident_id}",
+    "/profile",
     response_model=ResidentProfileResponse,
     summary="Resident Profile",
     dependencies=[
@@ -117,14 +127,14 @@ def dashboard(
     ],
 )
 def get_profile(
-    resident_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.get_profile(resident_id)
+    return service.get_profile(current_user)
 
 
 @router.put(
-    "/profile/{resident_id}",
+    "/profile",
     response_model=ResidentProfileResponse,
     summary="Update Resident Profile",
     dependencies=[
@@ -136,13 +146,13 @@ def get_profile(
     ],
 )
 def update_profile(
-    resident_id: int,
     resident: ResidentProfileUpdate,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
     return service.update_profile(
-        resident_id,
         resident,
+        current_user,
     )
 
 
@@ -158,14 +168,16 @@ def update_profile(
     ],
 )
 def resident_dropdown(
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.dropdown()
+    return service.dropdown(current_user)
+
 
 @router.get(
     "/pending",
     response_model=list[ResidentResponse],
-    summary="Get Pending Residents",
+    summary="Pending Residents",
     dependencies=[
         Depends(
             require_permission(
@@ -175,9 +187,10 @@ def resident_dropdown(
     ],
 )
 def get_pending_residents(
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.get_pending()
+    return service.get_pending(current_user)
 
 
 @router.post(
@@ -194,9 +207,13 @@ def get_pending_residents(
 )
 def approve_resident(
     resident_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.approve(resident_id)
+    return service.approve(
+        resident_id,
+        current_user,
+    )
 
 
 @router.post(
@@ -213,6 +230,10 @@ def approve_resident(
 )
 def reject_resident(
     resident_id: int,
+    current_user: User = Depends(get_current_user),
     service: ResidentService = Depends(get_resident_service),
 ):
-    return service.reject(resident_id)
+    return service.reject(
+        resident_id,
+        current_user,
+    )

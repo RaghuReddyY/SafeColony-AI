@@ -50,7 +50,7 @@ class DeliveryCard extends StatelessWidget {
                 decoration: BoxDecoration(
 
                   color: Colors.orange
-                      .withOpacity(.15),
+                      .withValues(alpha: .15),
 
                   borderRadius:
                       BorderRadius.circular(15),

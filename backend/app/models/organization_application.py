@@ -2,17 +2,19 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     String,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database.base_class import Base
+from app.enums import OrganizationApplicationStatus
+from sqlalchemy.orm import relationship
 
 
-class Organization(Base):
-    __tablename__ = "organizations"
+class OrganizationApplication(Base):
+    __tablename__ = "organization_applications"
 
     id = Column(
         Integer,
@@ -20,16 +22,9 @@ class Organization(Base):
         index=True,
     )
 
-    name = Column(
+    organization_name = Column(
         String(150),
         nullable=False,
-    )
-
-    organization_code = Column(
-        String(20),
-        unique=True,
-        nullable=False,
-        index=True,
     )
 
     organization_type = Column(
@@ -37,14 +32,26 @@ class Organization(Base):
         nullable=False,
     )
 
+    contact_person = Column(
+        String(100),
+        nullable=False,
+    )
+
     email = Column(
         String(150),
-        unique=True,
+        nullable=False,
+        index=True,
     )
 
     phone = Column(
         String(20),
-        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    password_hash = Column(
+        String(255),
+        nullable=False,
     )
 
     address = Column(
@@ -67,6 +74,34 @@ class Organization(Base):
         String(20),
     )
 
+    status = Column(
+        String(20),
+        default=OrganizationApplicationStatus.PENDING.value,
+        nullable=False,
+        index=True,
+    )
+
+    rejection_reason = Column(
+        String(500),
+        nullable=True,
+    )
+
+    approved_by = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True,
+    )
+
+    approved_by_user = relationship(
+        "User",
+        foreign_keys=[approved_by],
+    )
+
+    approved_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     is_active = Column(
         Boolean,
         default=True,
@@ -84,15 +119,4 @@ class Organization(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
-    )
-
-    users = relationship(
-        "User",
-        back_populates="organization",
-    )
-
-    properties = relationship(
-        "Property",
-        back_populates="organization",
-        cascade="all, delete-orphan",
     )

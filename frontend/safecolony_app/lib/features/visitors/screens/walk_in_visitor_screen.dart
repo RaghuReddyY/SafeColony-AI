@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/visitor_create_request.dart';
 import '../providers/visitor_provider.dart';
-import '../../resident/providers/resident_provider.dart';
 import '../../../shared/widgets/selectors/resident_selector.dart';
 import '../../resident/models/resident_dropdown.dart';
 
@@ -164,7 +163,7 @@ ResidentSelector(
 
               /// Visitor Type
               DropdownButtonFormField<String>(
-                value: visitorType,
+                initialValue: visitorType,
                 decoration:
                     decoration("Visitor Type"),
                 items: const [

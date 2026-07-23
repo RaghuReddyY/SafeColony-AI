@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/primary_button.dart';
-import '../dashboard/dashboard_screen.dart';
+
+import '../../routes/role_router.dart';
+
 import 'providers/auth_provider.dart';
 import 'register_screen.dart';
+import 'organization_registration_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,73 +22,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _emailController = TextEditingController();
-
   final _passwordController = TextEditingController();
 
-
   bool _obscurePassword = true;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-       try {
-      final success = await ref.read(authProvider.notifier).login(
-  email: _emailController.text.trim(),
-  password: _passwordController.text,
-);
+    final success = await ref.read(authProvider.notifier).login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
-if (!success) {
-  if (!mounted) return;
+    if (!mounted) return;
 
-  final error = ref.read(authProvider).error ?? "Login failed";
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      backgroundColor: Colors.red,
-      content: Text(error),
-    ),
-  );
-
-  return;
-}
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
+    if (!success) {
+      final error = ref.read(authProvider).error ?? "Login failed";
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red,
-          content: Text(
-            e.toString(),
-          ),
+          content: Text(error),
         ),
       );
+      return;
     }
 
+    final auth = ref.read(authProvider);
+
+    if (auth.user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Unable to load user information."),
+        ),
+      );
+      return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => RoleRouter.getHomeScreen(
+          role: auth.user!.role,
+          residentStatus: auth.residentStatus,
+        ),
+      ),
+    );
   }
 
-@override
-Widget build(BuildContext context) {
-  final authState = ref.watch(authProvider);
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
 
-  final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       body: Stack(
@@ -96,7 +86,6 @@ Widget build(BuildContext context) {
               fit: BoxFit.cover,
             ),
           ),
-
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -111,7 +100,6 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-
           Row(
             children: [
               if (width > 1000)
@@ -119,10 +107,8 @@ Widget build(BuildContext context) {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 80),
                     child: Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
                         Text(
                           "SafeColony AI",
@@ -144,11 +130,11 @@ Widget build(BuildContext context) {
                     ),
                   ),
                 ),
-
               Expanded(
                 child: Center(
                   child: GlassCard(
-                    child: Form(
+                    child: SingleChildScrollView(
+                      child: Form(
                       key: _formKey,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -158,9 +144,7 @@ Widget build(BuildContext context) {
                             size: 70,
                             color: Colors.white,
                           ),
-
                           const SizedBox(height: 20),
-
                           const Text(
                             "Welcome Back",
                             style: TextStyle(
@@ -169,31 +153,25 @@ Widget build(BuildContext context) {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-
-                          const SizedBox(height: 40),
-
+                          const SizedBox(height: 25),
                           AppTextField(
                             controller: _emailController,
                             hint: "Email",
                             icon: Icons.email,
                           ),
-
                           const SizedBox(height: 20),
-
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             validator: (value) {
-                              if (value == null ||
-                                  value.isEmpty) {
+                              if (value == null || value.isEmpty) {
                                 return "Password is required";
                               }
                               return null;
                             },
                             decoration: InputDecoration(
                               hintText: "Password",
-                              prefixIcon:
-                                  const Icon(Icons.lock),
+                              prefixIcon: const Icon(Icons.lock),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
@@ -202,62 +180,107 @@ Widget build(BuildContext context) {
                                 ),
                                 onPressed: () {
                                   setState(() {
-                                    _obscurePassword =
-                                        !_obscurePassword;
+                                    _obscurePassword = !_obscurePassword;
                                   });
                                 },
                               ),
                             ),
                           ),
-
-                          const SizedBox(height: 30),
-
+                          const SizedBox(height: 20),
                           SizedBox(
   width: double.infinity,
-  child: Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      authState.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : PrimaryButton(
-              title: "LOGIN",
-              onPressed: _login,
-            ),
+  child: authState.isLoading
+      ? const Center(
+          child: CircularProgressIndicator(),
+        )
+      : PrimaryButton(
+          title: "LOGIN",
+          onPressed: _login,
+        ),
+),
 
-      const SizedBox(height: 20),
-
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            "Don't have an account?",
-            style: TextStyle(color: Colors.white70),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const RegisterScreen(),
-                ),
-              );
-            },
-            child: const Text("Create Account"),
-          ),
-        ],
-      ),
-    ],
+const Padding(
+  padding: EdgeInsets.symmetric(vertical: 18),
+  child: Divider(
+    color: Colors.white24,
+    thickness: 1,
   ),
 ),
 
-                        
+Column(
+  children: [
+ const Text(
+  "New Community?",
+  style: TextStyle(
+    color: Colors.white70,
+    fontSize: 13,
+  ),
+),
+    TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const OrganizationRegistrationScreen(),
+          ),
+        );
+      },
+      child: const Text(
+        "Register Organization",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+    const SizedBox(height: 6),
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: const [
+    Icon(
+      Icons.group,
+      color: Colors.white70,
+      size: 18,
+    ),
+    SizedBox(width: 6),
+    Flexible(
+      child: Text(
+        "Already have an Organization Code?",
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 13,
+        ),
+      ),
+    ),
+  ],
+),
+    TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RegisterScreen(),
+          ),
+        );
+      },
+      child: const Text(
+        "Join Existing Community",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+  ],
+),
+
                         ],
                       ),
                     ),
                   ),
                 ),
+              ),
               ),
             ],
           ),
@@ -265,6 +288,7 @@ Widget build(BuildContext context) {
       ),
     );
   }
+
 
   @override
   void dispose() {

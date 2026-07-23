@@ -93,3 +93,21 @@ class SectionRepository:
 
         self.db.delete(section)
         self.db.commit()
+
+    def get_by_id_and_organization(
+        self,
+        section_id: int,
+        organization_id: int,
+    ) -> Section | None:
+
+        from app.models.property import Property
+
+        return (
+            self.db.query(Section)
+            .join(Property)
+            .filter(
+                Section.id == section_id,
+                Property.organization_id == organization_id,
+            )
+            .first()
+        )

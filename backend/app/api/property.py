@@ -1,10 +1,11 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 from app.database.dependency import get_db
+
+from app.models.user import User
 
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.property_repository import PropertyRepository
@@ -24,13 +25,13 @@ router = APIRouter(
 )
 
 
-def get_service(db: Session) -> PropertyService:
-    property_repo = PropertyRepository(db)
-    organization_repo = OrganizationRepository(db)
+def get_service(
+    db: Session,
+) -> PropertyService:
 
     return PropertyService(
-        property_repo,
-        organization_repo,
+        PropertyRepository(db),
+        OrganizationRepository(db),
     )
 
 
@@ -47,11 +48,15 @@ def get_service(db: Session) -> PropertyService:
 )
 def create_property(
     property: PropertyCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = get_service(db)
 
-    return service.create(property)
+    return service.create(
+        current_user,
+        property,
+    )
 
 
 @router.get(
@@ -66,17 +71,12 @@ def create_property(
     ],
 )
 def get_properties(
-    organization_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = get_service(db)
 
-    if organization_id:
-        return service.get_by_organization(
-            organization_id
-        )
-
-    return service.get_all()
+    return service.get_all(current_user)
 
 
 @router.get(
@@ -92,11 +92,15 @@ def get_properties(
 )
 def get_property(
     property_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = get_service(db)
 
-    return service.get(property_id)
+    return service.get(
+        current_user,
+        property_id,
+    )
 
 
 @router.put(
@@ -113,11 +117,13 @@ def get_property(
 def update_property(
     property_id: int,
     property: PropertyCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = get_service(db)
 
     return service.update(
+        current_user,
         property_id,
         property,
     )
@@ -135,11 +141,15 @@ def update_property(
 )
 def delete_property(
     property_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = get_service(db)
 
-    service.delete(property_id)
+    service.delete(
+        current_user,
+        property_id,
+    )
 
     return {
         "success": True,

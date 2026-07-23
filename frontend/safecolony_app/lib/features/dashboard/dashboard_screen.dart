@@ -5,6 +5,7 @@ import '../../models/dashboard_summary.dart';
 import 'providers/dashboard_provider.dart';
 import 'widgets/dashboard_body.dart';
 import 'widgets/dashboard_sidebar.dart';
+import '../auth/providers/auth_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -43,39 +44,44 @@ class _DashboardScreenState
         ],
       ),
 
-      body: FutureBuilder<DashboardSummary>(
+body: Builder(
+  builder: (context) {
+    final auth = ref.watch(authProvider);
 
-        future: ref
-            .read(dashboardProvider)
-            .loadDashboard(2),
+    if (auth.user?.role == "SYSTEM_ADMIN") {
+      return const Center(
+        child: Text(
+          "Welcome System Administrator",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
 
-        builder: (context, snapshot) {
-
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
-
-            return const Center(
-              child:
-                  CircularProgressIndicator(),
-            );
-          }
-
-          if (snapshot.hasError) {
-
-            return Center(
-              child: Text(
-                snapshot.error.toString(),
-              ),
-            );
-          }
-
-          final dashboard = snapshot.data!;
-
-          return DashboardBody(
-            dashboard: dashboard,
+    return FutureBuilder<DashboardSummary>(
+      future: ref.read(dashboardProvider).loadDashboard(2),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
           );
-        },
-      ),
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(snapshot.error.toString()),
+          );
+        }
+
+        return DashboardBody(
+          dashboard: snapshot.data!,
+        );
+      },
+    );
+  },
+),
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,

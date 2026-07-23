@@ -85,7 +85,7 @@ class ResidentDeliveryCard extends StatelessWidget {
                   ),
                   Chip(
                     backgroundColor:
-                        statusColor.withOpacity(.15),
+                        statusColor.withValues(alpha: .15),
                     label: Text(
                       delivery.status,
                       style: TextStyle(

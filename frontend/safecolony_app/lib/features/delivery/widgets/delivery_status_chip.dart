@@ -34,7 +34,7 @@ class DeliveryStatusChip extends StatelessWidget {
 
     return Chip(
 
-      backgroundColor: color.withOpacity(.12),
+      backgroundColor: color.withValues(alpha: .12),
 
       label: Text(
         status,

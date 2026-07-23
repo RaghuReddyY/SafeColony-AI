@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models.unit import Unit
+from app.models.property import Property
 
 
 class UnitRepository:
@@ -108,3 +109,66 @@ class UnitRepository:
 
         self.db.delete(unit)
         self.db.commit()
+
+
+    def get_by_id_and_organization(
+        self,
+        unit_id: int,
+        organization_id: int,
+    ) -> Unit | None:
+
+        return (
+            self.db.query(Unit)
+            .join(
+                Property,
+                Unit.property_id == Property.id,
+            )
+            .filter(
+                Unit.id == unit_id,
+                Property.organization_id == organization_id,
+            )
+            .first()
+        )
+    
+    def get_all_by_organization(
+        self,
+        organization_id: int,
+    ) -> list[Unit]:
+
+        return (
+            self.db.query(Unit)
+            .join(
+                Property,
+                Unit.property_id == Property.id,
+            )
+            .filter(
+                Property.organization_id == organization_id,
+            )
+            .all()
+        )
+    
+    def get_by_section_and_number(
+        self,
+        section_id: int,
+        unit_number: str,
+    ) -> Unit | None:
+
+        return (
+            self.db.query(Unit)
+            .filter(
+                Unit.section_id == section_id,
+                Unit.unit_number == unit_number,
+            )
+            .first()
+        )
+
+
+    def create_without_commit(
+        self,
+        unit: Unit,
+    ) -> Unit:
+
+        self.db.add(unit)
+        self.db.flush()
+
+        return unit

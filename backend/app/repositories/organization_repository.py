@@ -39,3 +39,26 @@ class OrganizationRepository:
             .filter(Organization.email == email)
             .first()
         )
+
+    def get_by_code(self, code: str):
+
+        return (
+            self.db.query(Organization)
+            .filter(Organization.organization_code == code)
+            .first()
+        )
+    
+    def get_by_id(self, organization_id: int):
+
+        return (
+            self.db.query(Organization)
+            .filter(Organization.id == organization_id)
+            .first()
+        )
+    
+    def get_by_phone(self, phone: str):
+        return (
+            self.db.query(Organization)
+            .filter(Organization.phone == phone)
+            .first()
+        )

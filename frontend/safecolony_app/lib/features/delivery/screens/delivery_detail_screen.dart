@@ -98,7 +98,7 @@ class DeliveryDetailScreen extends StatelessWidget {
 
                         decoration: BoxDecoration(
                           color: Colors.orange
-                              .withOpacity(.15),
+                              .withValues(alpha: .15),
 
                           borderRadius:
                               BorderRadius.circular(
@@ -180,7 +180,7 @@ class DeliveryDetailScreen extends StatelessWidget {
                     child: Chip(
                       backgroundColor:
                           getStatusColor()
-                              .withOpacity(.15),
+                              .withValues(alpha: .15),
 
                       label: Text(
                         delivery.status,

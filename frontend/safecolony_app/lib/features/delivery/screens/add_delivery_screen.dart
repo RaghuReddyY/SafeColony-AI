@@ -139,7 +139,7 @@ class _AddDeliveryScreenState
                   const SizedBox(
                       height: 20),
                   DropdownButtonFormField<int>(
-                    value: residentId,
+                    initialValue: residentId,
                     decoration:
                         const InputDecoration(
                       labelText: "Resident",
@@ -169,7 +169,7 @@ class _AddDeliveryScreenState
                   const SizedBox(
                       height: 20),
                   DropdownButtonFormField<String>(
-                    value: category,
+                    initialValue: category,
                     decoration:
                         const InputDecoration(
                       labelText:
@@ -221,7 +221,7 @@ class _AddDeliveryScreenState
                   const SizedBox(
                       height: 20),
                   DropdownButtonFormField<String>(
-                    value: priority,
+                    initialValue: priority,
                     decoration:
                         const InputDecoration(
                       labelText:

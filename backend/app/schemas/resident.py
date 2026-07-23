@@ -1,5 +1,6 @@
 from datetime import date
 from typing import Annotated
+from app.enums.resident_status import ResidentStatus
 
 from pydantic import (
     BaseModel,
@@ -81,14 +82,16 @@ class ResidentResponse(BaseModel):
     id: int
     user_id: int
 
-    unit_id: int | None
-
     full_name: str
     email: EmailStr | None
     phone: str | None
 
-    resident_type: str
-    status: str
+    property_name: str | None
+    section_name: str | None
+    unit_number: str | None
+
+    resident_type: ResidentType
+    status: ResidentStatus
 
     gender: str | None
     is_primary: bool
@@ -105,18 +108,20 @@ class ResidentProfileResponse(BaseModel):
 
     full_name: str
     email: EmailStr | None
-    phone: str | None
+    phone: str |None
 
-    resident_type: str
-    status: str
+    property_name: str | None
+    section_name: str | None
+    unit_number: str | None
+
+    resident_type: ResidentType
+    status: ResidentStatus
 
     gender: str | None
     date_of_birth: date | None
 
     emergency_contact: str | None
     emergency_contact_name: str | None
-
-    unit_id: int | None
 
     model_config = ConfigDict(
         from_attributes=True,

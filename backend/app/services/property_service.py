@@ -13,10 +13,14 @@ class PropertyService:
         self.property_repo = property_repo
         self.organization_repo = organization_repo
 
-    def create(self, data):
+    def create(
+        self,
+        current_user,
+        data,
+    ):
 
-        organization = self.organization_repo.get(
-            data.organization_id
+        organization = organization = self.organization_repo.get_by_id(
+            current_user.organization_id
         )
 
         if not organization:
@@ -26,16 +30,16 @@ class PropertyService:
             )
 
         if self.property_repo.exists_by_name(
-            data.organization_id,
+            current_user.organization_id,
             data.name,
         ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Property with this name already exists in the organization.",
+                detail="Property with this name already exists.",
             )
 
         property = Property(
-            organization_id=data.organization_id,
+            organization_id=current_user.organization_id,
             name=data.name,
             property_type=data.property_type,
             address=data.address,
@@ -47,14 +51,26 @@ class PropertyService:
 
         return self.property_repo.create(property)
 
-    def get_all(self):
-        return self.property_repo.get_all()
+    def get_all(
+        self,
+        current_user,
+    ):
+        return self.property_repo.get_by_organization(
+            current_user.organization_id
+        )
 
-    def get(self, property_id):
+    def get(
+        self,
+        current_user,
+        property_id,
+    ):
 
         property = self.property_repo.get(property_id)
 
-        if not property:
+        if (
+            not property
+            or property.organization_id != current_user.organization_id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found.",
@@ -62,23 +78,19 @@ class PropertyService:
 
         return property
 
-    def get_by_organization(
-        self,
-        organization_id: int,
-    ):
-        return self.property_repo.get_by_organization(
-            organization_id
-        )
-
     def update(
         self,
+        current_user,
         property_id,
         data,
     ):
 
         property = self.property_repo.get(property_id)
 
-        if not property:
+        if (
+            not property
+            or property.organization_id != current_user.organization_id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found.",
@@ -87,13 +99,13 @@ class PropertyService:
         if (
             property.name.lower() != data.name.lower()
             and self.property_repo.exists_by_name(
-                property.organization_id,
+                current_user.organization_id,
                 data.name,
             )
         ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Property with this name already exists in the organization.",
+                detail="Property with this name already exists.",
             )
 
         property.name = data.name
@@ -106,11 +118,18 @@ class PropertyService:
 
         return self.property_repo.update(property)
 
-    def delete(self, property_id):
+    def delete(
+        self,
+        current_user,
+        property_id,
+    ):
 
         property = self.property_repo.get(property_id)
 
-        if not property:
+        if (
+            not property
+            or property.organization_id != current_user.organization_id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Property not found.",
