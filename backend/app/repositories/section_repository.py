@@ -11,14 +11,19 @@ class SectionRepository:
     def create(
         self,
         section: Section,
+        commit: bool = True,
     ) -> Section:
 
         self.db.add(section)
-        self.db.commit()
+
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
+
         self.db.refresh(section)
 
         return section
-
 
     def get_all(self) -> list[Section]:
 
@@ -27,7 +32,6 @@ class SectionRepository:
             .order_by(Section.name)
             .all()
         )
-
 
     def get_by_id(
         self,
@@ -42,7 +46,6 @@ class SectionRepository:
             .first()
         )
 
-
     def get_by_property(
         self,
         property_id: int,
@@ -56,7 +59,6 @@ class SectionRepository:
             .order_by(Section.name)
             .all()
         )
-
 
     def exists_by_name(
         self,
@@ -74,7 +76,6 @@ class SectionRepository:
             is not None
         )
 
-
     def update(
         self,
         section: Section,
@@ -84,7 +85,6 @@ class SectionRepository:
         self.db.refresh(section)
 
         return section
-
 
     def delete(
         self,

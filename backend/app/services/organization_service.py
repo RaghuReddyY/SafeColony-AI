@@ -9,15 +9,24 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.user_repository import UserRepository
+from app.models.property import Property
+from app.models.section import Section
 
+from app.repositories.property_repository import PropertyRepository
+from app.repositories.section_repository import SectionRepository
+
+from app.enums import PropertyType
 
 class OrganizationService:
 
     def __init__(self, db: Session):
         self.db = db
+
         self.organization_repo = OrganizationRepository(db)
         self.user_repo = UserRepository(db)
 
+        self.property_repo = PropertyRepository(db)
+        self.section_repo = SectionRepository(db)
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -146,6 +155,10 @@ class OrganizationService:
 
         try:
 
+            # ----------------------------------------------------
+            # Create Organization
+            # ----------------------------------------------------
+
             organization = self.create_organization(
                 name=request.organization.name,
                 organization_type=request.organization.organization_type,
@@ -159,6 +172,47 @@ class OrganizationService:
                 commit=False,
             )
 
+            # ----------------------------------------
+            # Create Default Property
+            # ----------------------------------------
+
+            default_property = Property(
+                name=organization.name,
+                property_type=self._default_property_type(
+                    organization.organization_type,
+                ),
+                organization_id=organization.id,
+
+                address=organization.address,
+                city=organization.city,
+                state=organization.state,
+                country=organization.country,
+                pincode=organization.pincode,
+            )
+
+            default_property = self.property_repo.create(
+                default_property,
+                commit=False,
+            )
+
+            # ----------------------------------------
+            # Create Default Section
+            # ----------------------------------------
+
+            default_section = Section(
+                property_id=default_property.id,
+                name="Main",
+                description="Default Section",
+            )
+
+            self.section_repo.create(
+                default_section,
+                commit=False,
+            )
+            # ----------------------------------------------------
+            # Create Organization Admin
+            # ----------------------------------------------------
+
             admin = self.create_organization_admin(
                 organization_id=organization.id,
                 full_name=request.admin.full_name,
@@ -171,6 +225,8 @@ class OrganizationService:
             self.db.commit()
 
             self.db.refresh(organization)
+            self.db.refresh(default_property)
+            self.db.refresh(default_section)
             self.db.refresh(admin)
 
             return {
@@ -178,6 +234,8 @@ class OrganizationService:
                 "organization_id": organization.id,
                 "organization_code": organization.organization_code,
                 "organization_name": organization.name,
+                "property_id": default_property.id,
+                "section_id": default_section.id,
                 "admin_user_id": admin.id,
                 "admin_email": admin.email,
             }
@@ -185,3 +243,14 @@ class OrganizationService:
         except Exception:
             self.db.rollback()
             raise
+
+    def _default_property_type(
+        self,
+        organization_type: str,
+    ) -> PropertyType:
+
+        if organization_type == "APARTMENT":
+            return PropertyType.APARTMENT
+
+        # Residential layouts are treated as gated communities
+        return PropertyType.GATED_COMMUNITY

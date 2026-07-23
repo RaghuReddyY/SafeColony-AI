@@ -8,10 +8,21 @@ class PropertyRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, property: Property) -> Property:
+    def create(
+        self,
+        property: Property,
+        commit: bool = True,
+    ) -> Property:
+
         self.db.add(property)
-        self.db.commit()
+
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
+
         self.db.refresh(property)
+
         return property
 
     def get_all(self) -> list[Property]:
@@ -21,7 +32,10 @@ class PropertyRepository:
             .all()
         )
 
-    def get(self, property_id: int) -> Property | None:
+    def get(
+        self,
+        property_id: int,
+    ) -> Property | None:
         return (
             self.db.query(Property)
             .filter(Property.id == property_id)
@@ -54,11 +68,20 @@ class PropertyRepository:
             is not None
         )
 
-    def update(self, property: Property) -> Property:
+    def update(
+        self,
+        property: Property,
+    ) -> Property:
+
         self.db.commit()
         self.db.refresh(property)
+
         return property
 
-    def delete(self, property: Property) -> None:
+    def delete(
+        self,
+        property: Property,
+    ) -> None:
+
         self.db.delete(property)
         self.db.commit()

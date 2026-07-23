@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'resident_approval_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -39,8 +40,13 @@ class AdminDashboardScreen extends StatelessWidget {
                 subtitle: const Text("View and approve pending residents"),
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
-                  // Navigate in next step
-                },
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ResidentApprovalScreen(),
+                      ),
+                    );
+                  },
               ),
             ),
 
