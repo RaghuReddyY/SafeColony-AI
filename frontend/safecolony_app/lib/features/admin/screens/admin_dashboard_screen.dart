@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'resident_approval_screen.dart';
+import '../property/screens/property_list_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -47,6 +48,29 @@ class AdminDashboardScreen extends StatelessWidget {
                       ),
                     );
                   },
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            const SizedBox(height: 15),
+
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.apartment),
+                title: const Text("Property Management"),
+                subtitle: const Text(
+                  "Create, update and manage properties",
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PropertyListScreen(),
+                    ),
+                  );
+                },
               ),
             ),
 
