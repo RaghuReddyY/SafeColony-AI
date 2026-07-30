@@ -12,21 +12,30 @@ class DashboardRepository:
     def __init__(self, db):
         self.db = db
 
-    def get_summary(self, resident_id: int):
+    def get_summary(self, user_id: int):
 
+        # -------------------------------------------------------
+        # Find the logged-in user's resident record
+        # -------------------------------------------------------
         resident = (
             self.db.query(Resident)
-            .filter(Resident.id == resident_id)
+            .filter(Resident.user_id == user_id)
             .first()
         )
 
         if resident is None:
             return None
 
+        resident_id = resident.id
+
+        # -------------------------------------------------------
+        # Visitors
+        # -------------------------------------------------------
         visitor_count = (
             self.db.query(func.count(Visitor.id))
             .filter(Visitor.resident_id == resident_id)
             .scalar()
+            or 0
         )
 
         pending_visitors = (
@@ -36,12 +45,17 @@ class DashboardRepository:
                 Visitor.status == "PENDING",
             )
             .scalar()
+            or 0
         )
 
+        # -------------------------------------------------------
+        # Deliveries
+        # -------------------------------------------------------
         delivery_count = (
             self.db.query(func.count(Delivery.id))
             .filter(Delivery.resident_id == resident_id)
             .scalar()
+            or 0
         )
 
         pending_deliveries = (
@@ -51,12 +65,17 @@ class DashboardRepository:
                 Delivery.status == "ARRIVED",
             )
             .scalar()
+            or 0
         )
 
+        # -------------------------------------------------------
+        # Notifications
+        # -------------------------------------------------------
         notification_count = (
             self.db.query(func.count(Notification.id))
             .filter(Notification.resident_id == resident_id)
             .scalar()
+            or 0
         )
 
         unread_notifications = (
@@ -66,8 +85,12 @@ class DashboardRepository:
                 Notification.is_read == False,
             )
             .scalar()
+            or 0
         )
 
+        # -------------------------------------------------------
+        # Vacation Mode
+        # -------------------------------------------------------
         vacation = (
             self.db.query(VacationMode)
             .filter(
@@ -79,6 +102,9 @@ class DashboardRepository:
 
         vacation_mode = vacation is not None
 
+        # -------------------------------------------------------
+        # Security Score
+        # -------------------------------------------------------
         security_score = 100
 
         security_score -= pending_visitors * 2
@@ -93,13 +119,12 @@ class DashboardRepository:
 
         security_score = max(0, min(100, security_score))
 
+        # -------------------------------------------------------
+        # Response
+        # -------------------------------------------------------
         return {
             "resident_name": resident.full_name,
-            "unit_number": (
-                    resident.unit.unit_number
-                            if resident.unit
-                            else "Not Assigned"
-                        ),
+            "unit_number": resident.unit_number or "Not Assigned",
             "visitor_count": visitor_count,
             "pending_visitors": pending_visitors,
             "delivery_count": delivery_count,

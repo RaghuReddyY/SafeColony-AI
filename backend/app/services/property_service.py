@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 
 from app.models.property import Property
+from app.models.section import Section
 
 
 class PropertyService:
@@ -9,9 +10,11 @@ class PropertyService:
         self,
         property_repo,
         organization_repo,
+        section_repo,
     ):
         self.property_repo = property_repo
         self.organization_repo = organization_repo
+        self.section_repo = section_repo
 
     def create(
         self,
@@ -42,6 +45,7 @@ class PropertyService:
             organization_id=current_user.organization_id,
             name=data.name,
             property_type=data.property_type,
+            has_multiple_sections=data.has_multiple_sections,
             address=data.address,
             city=data.city,
             state=data.state,
@@ -49,7 +53,17 @@ class PropertyService:
             pincode=data.pincode,
         )
 
-        return self.property_repo.create(property)
+        property = self.property_repo.create(property)
+
+        if not property.has_multiple_sections:
+            main_section = Section(
+                property_id=property.id,
+                name="Main",
+            )
+
+            self.section_repo.create(main_section)
+
+        return property
 
     def get_all(
         self,

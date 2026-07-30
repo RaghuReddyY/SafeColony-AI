@@ -6,14 +6,18 @@ class DashboardService:
     def __init__(self, repo):
         self.repo = repo
 
-    def get_summary(self, resident_id: int):
+    def get_summary(self, user_id: int):
+        """
+        user_id comes from the logged-in JWT user.
+        Repository will internally find the corresponding Resident.
+        """
 
-        summary = self.repo.get_summary(resident_id)
+        summary = self.repo.get_summary(user_id)
 
         if summary is None:
             raise HTTPException(
                 status_code=404,
-                detail="Resident not found",
+                detail="Resident profile not found for this user.",
             )
 
         return summary

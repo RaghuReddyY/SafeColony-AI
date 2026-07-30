@@ -5,6 +5,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     UniqueConstraint,
+    Boolean,
 )
 
 from sqlalchemy.orm import relationship
@@ -39,6 +40,13 @@ class Property(Base):
     property_type = Column(
         Enum(PropertyType),
         nullable=False,
+    )
+
+    has_multiple_sections = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false"
     )
 
     organization_id = Column(

@@ -9,6 +9,7 @@ from app.models.user import User
 
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.property_repository import PropertyRepository
+from app.repositories.section_repository import SectionRepository
 
 from app.security.permissions import Permissions
 
@@ -32,6 +33,7 @@ def get_service(
     return PropertyService(
         PropertyRepository(db),
         OrganizationRepository(db),
+        SectionRepository(db),
     )
 
 

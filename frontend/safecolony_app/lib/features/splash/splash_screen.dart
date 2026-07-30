@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/login_screen.dart';
 import '../auth/providers/auth_provider.dart';
-import '../dashboard/dashboard_screen.dart';
+import '../../routes/role_router.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -24,23 +24,27 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     if (!mounted) return;
 
-    final authState = ref.read(authProvider);
+    final auth = ref.read(authProvider);
 
-    if (authState.isLoggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DashboardScreen(),
-        ),
-      );
-    } else {
+    if (!auth.isLoggedIn || auth.user == null) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => const LoginScreen(),
         ),
       );
+      return;
     }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoleRouter.getHomeScreen(
+          role: auth.user!.role,
+          residentStatus: auth.residentStatus,
+        ),
+      ),
+    );
   }
 
   @override

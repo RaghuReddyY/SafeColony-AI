@@ -65,7 +65,9 @@ class VehicleService:
         self,
         resident_id: int,
     ):
-        return self.repo.get_by_resident(resident_id)
+        return self.repo.get_by_resident(
+            resident_id
+        )
 
     def get_by_vehicle_number(
         self,

@@ -2,6 +2,7 @@ class Property {
   final int id;
   final String name;
   final String propertyType;
+  final bool hasMultipleSections;
   final int organizationId;
   final String address;
   final String city;
@@ -13,6 +14,7 @@ class Property {
     required this.id,
     required this.name,
     required this.propertyType,
+    required this.hasMultipleSections,
     required this.organizationId,
     required this.address,
     required this.city,
@@ -26,6 +28,7 @@ class Property {
       id: json["id"],
       name: json["name"],
       propertyType: json["property_type"],
+      hasMultipleSections: json["has_multiple_sections"] ?? false,
       organizationId: json["organization_id"],
       address: json["address"],
       city: json["city"],
@@ -40,6 +43,7 @@ class Property {
       "id": id,
       "name": name,
       "property_type": propertyType,
+      "has_multiple_sections": hasMultipleSections,
       "organization_id": organizationId,
       "address": address,
       "city": city,

@@ -142,3 +142,23 @@ class Vehicle(Base):
         "Resident",
         back_populates="vehicles",
     )
+
+    # --------------------------------------------------
+    # Computed Properties
+    # --------------------------------------------------
+
+    @property
+    def resident_name(self) -> str | None:
+        return self.resident.full_name if self.resident else None
+
+    @property
+    def property_name(self) -> str | None:
+        return self.resident.property_name if self.resident else None
+
+    @property
+    def section_name(self) -> str | None:
+        return self.resident.section_name if self.resident else None
+
+    @property
+    def unit_number(self) -> str | None:
+        return self.resident.unit_number if self.resident else None

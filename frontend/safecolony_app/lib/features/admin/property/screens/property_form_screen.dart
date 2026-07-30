@@ -5,6 +5,7 @@ import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/primary_button.dart';
 
+import '../../section/screens/section_list_screen.dart';
 import '../models/property.dart';
 import '../models/property_request.dart';
 import '../providers/property_provider.dart';
@@ -27,25 +28,18 @@ class _PropertyFormScreenState
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-
   final _addressController = TextEditingController();
-
   final _cityController = TextEditingController();
-
   final _stateController = TextEditingController();
-
   final _countryController =
       TextEditingController(text: "India");
-
-  final _pincodeController =
-      TextEditingController();
+  final _pincodeController = TextEditingController();
 
   String _propertyType = "APARTMENT";
-
+  bool _hasMultipleSections = false;
   bool _saving = false;
 
-  bool get _isEdit =>
-      widget.property != null;
+  bool get _isEdit => widget.property != null;
 
   @override
   void initState() {
@@ -55,41 +49,25 @@ class _PropertyFormScreenState
       final property = widget.property!;
 
       _nameController.text = property.name;
+      _addressController.text = property.address;
+      _cityController.text = property.city;
+      _stateController.text = property.state;
+      _countryController.text = property.country;
+      _pincodeController.text = property.pincode;
 
-      _addressController.text =
-          property.address;
-
-      _cityController.text =
-          property.city;
-
-      _stateController.text =
-          property.state;
-
-      _countryController.text =
-          property.country;
-
-      _pincodeController.text =
-          property.pincode;
-
-      _propertyType =
-          property.propertyType;
+      _propertyType = property.propertyType;
+      _hasMultipleSections = property.hasMultipleSections;
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-
     _addressController.dispose();
-
     _cityController.dispose();
-
     _stateController.dispose();
-
     _countryController.dispose();
-
     _pincodeController.dispose();
-
     super.dispose();
   }
 
@@ -106,6 +84,7 @@ class _PropertyFormScreenState
       final request = PropertyRequest(
         name: _nameController.text.trim(),
         propertyType: _propertyType,
+        hasMultipleSections: _hasMultipleSections,
         address: _addressController.text.trim(),
         city: _cityController.text.trim(),
         state: _stateController.text.trim(),
@@ -113,25 +92,21 @@ class _PropertyFormScreenState
         pincode: _pincodeController.text.trim(),
       );
 
+      Property createdProperty;
+
       if (_isEdit) {
-        await ref
+        createdProperty = await ref
             .read(propertyProvider)
-            .updateProperty(
-              widget.property!.id,
-              request,
-            );
+            .updateProperty(widget.property!.id, request);
       } else {
-        await ref
+        createdProperty = await ref
             .read(propertyProvider)
-            .createProperty(
-              request,
-            );
+            .createProperty(request);
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.green,
           content: Text(
@@ -142,12 +117,29 @@ class _PropertyFormScreenState
         ),
       );
 
-      Navigator.pop(context, true);
+      if (_isEdit) {
+        Navigator.pop(context, true);
+      } else if (createdProperty.hasMultipleSections) {
+        final result = await Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SectionListScreen(
+              propertyId: createdProperty.id,
+              isSetupFlow: true,
+            ),
+          ),
+        );
+
+        if (mounted) {
+          Navigator.pop(context, result ?? true);
+        }
+      } else {
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red,
           content: Text(e.toString()),
@@ -161,7 +153,8 @@ class _PropertyFormScreenState
       }
     }
   }
-    Widget _buildForm() {
+
+  Widget _buildForm() {
     return GlassCard(
       child: Form(
         key: _formKey,
@@ -169,9 +162,7 @@ class _PropertyFormScreenState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Icon(
-              _isEdit
-                  ? Icons.edit
-                  : Icons.apartment,
+              _isEdit ? Icons.edit : Icons.apartment,
               size: 70,
               color: Colors.blue,
             ),
@@ -198,12 +189,12 @@ class _PropertyFormScreenState
             ),
 
             const SizedBox(height: 16),
-
-            DropdownButtonFormField<String>(
+                        DropdownButtonFormField<String>(
               value: _propertyType,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.apartment),
                 border: OutlineInputBorder(),
+                labelText: "Property Type",
               ),
               items: const [
                 DropdownMenuItem(
@@ -238,6 +229,24 @@ class _PropertyFormScreenState
 
             const SizedBox(height: 16),
 
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                "Property has multiple sections",
+              ),
+              subtitle: const Text(
+                "Examples: Block A, Block B, Wing A, Wing B",
+              ),
+              value: _hasMultipleSections,
+              onChanged: (value) {
+                setState(() {
+                  _hasMultipleSections = value;
+                });
+              },
+            ),
+
+            const SizedBox(height: 16),
+
             AppTextField(
               controller: _addressController,
               hint: "Address",
@@ -255,9 +264,7 @@ class _PropertyFormScreenState
                     icon: Icons.location_city,
                   ),
                 ),
-
                 const SizedBox(width: 16),
-
                 Expanded(
                   child: AppTextField(
                     controller: _stateController,
@@ -279,9 +286,7 @@ class _PropertyFormScreenState
                     icon: Icons.public,
                   ),
                 ),
-
                 const SizedBox(width: 16),
-
                 Expanded(
                   child: AppTextField(
                     controller: _pincodeController,
@@ -296,8 +301,7 @@ class _PropertyFormScreenState
 
             _saving
                 ? const Center(
-                    child:
-                        CircularProgressIndicator(),
+                    child: CircularProgressIndicator(),
                   )
                 : PrimaryButton(
                     title: _isEdit
@@ -310,7 +314,8 @@ class _PropertyFormScreenState
       ),
     );
   }
-    @override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(

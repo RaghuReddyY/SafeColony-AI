@@ -7,8 +7,7 @@ class StorageService {
   static const String tokenKey = "access_token";
 
   Future<void> saveToken(String token) async {
-    print("Saving token: $token");
-
+    
     await _storage.write(
       key: tokenKey,
       value: token,

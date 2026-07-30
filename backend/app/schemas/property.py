@@ -9,6 +9,8 @@ class PropertyCreate(BaseModel):
 
     property_type: PropertyType
 
+    has_multiple_sections: bool = False
+
     address: str
 
     city: str
@@ -25,6 +27,8 @@ class PropertyResponse(PropertyCreate):
     id: int
 
     organization_id: int
+
+    has_multiple_sections: bool
 
     class Config:
         from_attributes = True

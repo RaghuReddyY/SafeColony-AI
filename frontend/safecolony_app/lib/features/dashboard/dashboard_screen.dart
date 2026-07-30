@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/dashboard_summary.dart';
+import '../auth/providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'widgets/dashboard_body.dart';
 import 'widgets/dashboard_sidebar.dart';
-import '../auth/providers/auth_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -24,7 +24,6 @@ class _DashboardScreenState
   Widget build(BuildContext context) {
 
     return Scaffold(
-
       backgroundColor: const Color(0xffF5F7FB),
 
       drawer: const DashboardSidebar(),
@@ -34,7 +33,6 @@ class _DashboardScreenState
         backgroundColor: Colors.white,
         title: const Text("SafeColony AI"),
         actions: const [
-
           Padding(
             padding: EdgeInsets.only(right: 20),
             child: CircleAvatar(
@@ -44,44 +42,58 @@ class _DashboardScreenState
         ],
       ),
 
-body: Builder(
-  builder: (context) {
-    final auth = ref.watch(authProvider);
+      body: Builder(
+        builder: (context) {
 
-    if (auth.user?.role == "SYSTEM_ADMIN") {
-      return const Center(
-        child: Text(
-          "Welcome System Administrator",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
+          final auth = ref.watch(authProvider);
 
-    return FutureBuilder<DashboardSummary>(
-      future: ref.read(dashboardProvider).loadDashboard(2),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
+          if (auth.user?.role == "SYSTEM_ADMIN") {
+            return const Center(
+              child: Text(
+                "Welcome System Administrator",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          }
+
+          return FutureBuilder<DashboardSummary>(
+            future: ref
+                .read(dashboardProvider)
+                .loadDashboard(),
+
+            builder: (context, snapshot) {
+
+              if (snapshot.connectionState ==
+                  ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    snapshot.error.toString(),
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: Text("No dashboard data found."),
+                );
+              }
+
+              return DashboardBody(
+                dashboard: snapshot.data!,
+              );
+            },
           );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(snapshot.error.toString()),
-          );
-        }
-
-        return DashboardBody(
-          dashboard: snapshot.data!,
-        );
-      },
-    );
-  },
-),
+        },
+      ),
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
@@ -93,9 +105,7 @@ body: Builder(
         },
 
         type: BottomNavigationBarType.fixed,
-
         selectedItemColor: Colors.indigo,
-
         unselectedItemColor: Colors.grey,
 
         items: const [

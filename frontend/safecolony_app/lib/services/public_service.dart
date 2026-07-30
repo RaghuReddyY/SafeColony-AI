@@ -23,10 +23,15 @@ class PublicService {
       "/public/properties/$propertyId/sections",
     );
 
+      print("API Response:");
+      print(response.data);
+      
     return (response.data as List)
         .map(
           (e) => SectionLookup.fromJson(e),
         )
         .toList();
   }
+
+  
 }

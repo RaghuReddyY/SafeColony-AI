@@ -9,6 +9,11 @@ class AppTextField extends StatefulWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
 
+  // NEW
+  final int maxLines;
+  final bool enabled;
+  final bool readOnly;
+
   const AppTextField({
     super.key,
     required this.controller,
@@ -17,6 +22,11 @@ class AppTextField extends StatefulWidget {
     this.obscure = false,
     this.keyboardType = TextInputType.text,
     this.validator,
+
+    // NEW
+    this.maxLines = 1,
+    this.enabled = true,
+    this.readOnly = false,
   });
 
   @override
@@ -38,6 +48,9 @@ class _AppTextFieldState extends State<AppTextField> {
       controller: widget.controller,
       keyboardType: widget.keyboardType,
       obscureText: _obscure,
+      enabled: widget.enabled,
+      readOnly: widget.readOnly,
+      maxLines: widget.obscure ? 1 : widget.maxLines,
       validator: widget.validator ??
           (value) {
             if (value == null || value.trim().isEmpty) {
@@ -48,6 +61,7 @@ class _AppTextFieldState extends State<AppTextField> {
       decoration: InputDecoration(
         hintText: widget.hint,
         prefixIcon: Icon(widget.icon),
+        border: const OutlineInputBorder(),
         suffixIcon: widget.obscure
             ? IconButton(
                 icon: Icon(

@@ -64,3 +64,11 @@ class PropertyService {
     );
   }
 }
+
+Future<Property> getProperty(int propertyId) async {
+  final response = await ApiClient.dio.get(
+    '/properties/$propertyId',
+  );
+
+  return Property.fromJson(response.data);
+}

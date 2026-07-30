@@ -60,7 +60,7 @@ class PublicNotifier extends StateNotifier<PublicState> {
       final sections =
           await _service.getSections(propertyId);
 
-      state = state.copyWith(
+        state = state.copyWith(
         isLoading: false,
         sections: sections,
       );

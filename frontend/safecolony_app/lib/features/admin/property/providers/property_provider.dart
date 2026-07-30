@@ -50,4 +50,7 @@ class PropertyProvider {
       propertyId,
     );
   }
+  Future<Property> getProperty(int propertyId) async {
+    return await _service.getProperty(propertyId);
+  }
 }
