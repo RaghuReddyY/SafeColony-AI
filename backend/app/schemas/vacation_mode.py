@@ -13,8 +13,6 @@ from app.enums.visitor_policy import VisitorPolicy
 
 class VacationModeCreate(BaseModel):
 
-    resident_id: int = Field(..., description="Resident ID")
-
     start_date: date = Field(..., description="Vacation start date")
 
     end_date: date = Field(..., description="Vacation end date")
@@ -89,7 +87,7 @@ class VacationModeResponse(BaseModel):
 
     id: int
 
-    resident_id: int
+    resident_id: int | None = None
 
     start_date: date
 

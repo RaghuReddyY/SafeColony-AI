@@ -17,6 +17,10 @@ from app.schemas.scan import (
     QRScanRequest,
     QRScanResponse,
 )
+from app.auth.dependencies import get_current_user
+from app.models.user import User
+from app.repositories.resident_repository import ResidentRepository
+from app.schemas.visitor import ResidentVisitorCreate
 
 router = APIRouter(
     prefix="/visitors",
@@ -263,4 +267,118 @@ def scan_exit(
         purpose=visitor.purpose,
         vehicle_number=visitor.vehicle_number,
         status=visitor.status,
+    )
+
+@router.post(
+    "/resident",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_CREATE,
+            )
+        )
+    ],
+)
+def create_visitor_for_resident(
+    visitor: ResidentVisitorCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    visitor_repo = VisitorRepository(db)
+    resident_repo = ResidentRepository(db)
+
+    service = VisitorService(
+        visitor_repo,
+        resident_repo,
+    )
+
+    return service.create_for_resident(
+        current_user,
+        visitor,
+    )
+
+@router.post(
+    "/resident/{visitor_id}/approve",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_VIEW,
+            )
+        )
+    ],
+)
+def resident_approve(
+    visitor_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    visitor_repo = VisitorRepository(db)
+    resident_repo = ResidentRepository(db)
+
+    service = VisitorService(
+        visitor_repo,
+        resident_repo,
+    )
+
+    return service.resident_approve(
+        current_user,
+        visitor_id,
+    )
+
+@router.post(
+    "/resident/{visitor_id}/reject",
+    response_model=VisitorResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_VIEW,
+            )
+        )
+    ],
+)
+def resident_reject(
+    visitor_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    visitor_repo = VisitorRepository(db)
+    resident_repo = ResidentRepository(db)
+
+    service = VisitorService(
+        visitor_repo,
+        resident_repo,
+    )
+
+    return service.resident_reject(
+        current_user,
+        visitor_id,
+    )
+
+@router.get(
+    "/resident/pending",
+    response_model=list[VisitorResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_VIEW,
+            )
+        )
+    ],
+)
+def get_pending_visitors_for_resident(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    visitor_repo = VisitorRepository(db)
+    resident_repo = ResidentRepository(db)
+
+    service = VisitorService(
+        visitor_repo,
+        resident_repo,
+    )
+
+    return service.get_pending_for_resident(
+        current_user
     )

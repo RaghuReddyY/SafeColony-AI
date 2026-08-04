@@ -1,14 +1,22 @@
 from datetime import datetime
 
 from pydantic import BaseModel
+
+from app.enums.approval_mode import ApprovalMode
+from app.enums.entry_mode import EntryMode
 from app.enums.visitor_status import VisitorStatus
 from app.enums.visitor_type import VisitorType
-from app.enums.entry_mode import EntryMode
-from app.enums.approval_mode import ApprovalMode
 
-class VisitorCreate(BaseModel):
-    resident_id: int
+
+# ============================================================
+# Resident Creates Visitor
+# resident_id comes from JWT
+# ============================================================
+
+class ResidentVisitorCreate(BaseModel):
+
     visitor_name: str
+
     phone: str
 
     visitor_type: VisitorType = VisitorType.GUEST
@@ -19,14 +27,38 @@ class VisitorCreate(BaseModel):
 
     expected_time: datetime | None = None
 
-    # -----------------------------
-    # Walk-in Support
-    # -----------------------------
     entry_mode: EntryMode = EntryMode.QR
 
     visitor_photo: str | None = None
 
-    created_by_guard: bool = False
+    # ============================================================
+# Guard/Admin Creates Visitor
+# resident_id supplied by request
+# ============================================================
+
+class VisitorCreate(BaseModel):
+
+    resident_id: int
+
+    visitor_name: str
+
+    phone: str
+
+    visitor_type: VisitorType = VisitorType.GUEST
+
+    purpose: str | None = None
+
+    vehicle_number: str | None = None
+
+    expected_time: datetime | None = None
+
+    entry_mode: EntryMode = EntryMode.QR
+
+    visitor_photo: str | None = None
+
+ # ============================================================
+# Response
+# ============================================================
 
 class VisitorResponse(BaseModel):
 

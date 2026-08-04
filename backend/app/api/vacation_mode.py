@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.dependency import get_db
-
 from app.repositories.vacation_repository import VacationRepository
 from app.schemas.vacation_mode import (
     VacationModeCreate,
@@ -11,7 +10,9 @@ from app.schemas.vacation_mode import (
     ActiveVacationResponse,
 )
 from app.services.vacation_service import VacationService
-
+from app.auth.dependencies import get_current_user
+from app.models.user import User
+from app.repositories.resident_repository import ResidentRepository
 
 router = APIRouter(
     prefix="/vacation-mode",
@@ -20,39 +21,56 @@ router = APIRouter(
 
 
 def get_service(db: Session) -> VacationService:
-    """
-    Creates VacationService with all required dependencies.
-    """
     vacation_repo = VacationRepository(db)
     return VacationService(vacation_repo)
 
 
-# ------------------------------------------------------------------
-# Enable Vacation Mode
-# ------------------------------------------------------------------
+# ==========================================================
+# Enable Vacation
+# ==========================================================
+
 @router.post(
     "",
     response_model=VacationModeResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Enable Vacation Mode",
-    description="Create a new vacation schedule for a resident.",
 )
 def enable_vacation(
     vacation: VacationModeCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+
+    print("========== VACATION ==========")
+    print("Current User ID :", current_user.id)
+
+    resident = ResidentRepository(db).get_by_user_id(current_user.id)
+
+    print("Resident :", resident)
+
+    if resident is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resident profile not found.",
+        )
+
+    print("Resident ID :", resident.id)
+    print("==============================")
+
     service = get_service(db)
-    return service.enable(vacation)
+
+    return service.enable(
+        resident.id,
+        vacation,
+    )
 
 
-# ------------------------------------------------------------------
-# Get Active Vacations
-# ------------------------------------------------------------------
+# ==========================================================
+# Active Vacations
+# ==========================================================
+
 @router.get(
     "/active",
     response_model=list[ActiveVacationResponse],
-    summary="Get Active Vacations",
-    description="Returns all currently active vacations for guard dashboard.",
 )
 def get_active_vacations(
     db: Session = Depends(get_db),
@@ -61,14 +79,13 @@ def get_active_vacations(
     return service.get_active_vacations()
 
 
-# ------------------------------------------------------------------
+# ==========================================================
 # Vacation History
-# ------------------------------------------------------------------
+# ==========================================================
+
 @router.get(
     "/resident/{resident_id}",
     response_model=list[VacationModeResponse],
-    summary="Resident Vacation History",
-    description="Returns complete vacation history for a resident.",
 )
 def get_vacation_history(
     resident_id: int,
@@ -78,14 +95,13 @@ def get_vacation_history(
     return service.get_history(resident_id)
 
 
-# ------------------------------------------------------------------
+# ==========================================================
 # Vacation Summary
-# ------------------------------------------------------------------
+# ==========================================================
+
 @router.get(
     "/resident/{resident_id}/summary",
     response_model=VacationSummaryResponse,
-    summary="Vacation Summary",
-    description="Returns vacation statistics for a resident.",
 )
 def get_vacation_summary(
     resident_id: int,
@@ -95,14 +111,13 @@ def get_vacation_summary(
     return service.get_summary(resident_id)
 
 
-# ------------------------------------------------------------------
+# ==========================================================
 # Cancel Vacation
-# ------------------------------------------------------------------
+# ==========================================================
+
 @router.put(
     "/{vacation_id}/cancel",
     response_model=VacationModeResponse,
-    summary="Cancel Vacation",
-    description="Cancels a scheduled or active vacation.",
 )
 def cancel_vacation(
     vacation_id: int,
@@ -110,3 +125,23 @@ def cancel_vacation(
 ):
     service = get_service(db)
     return service.cancel(vacation_id)
+
+@router.get(
+    "/my-history",
+    response_model=list[VacationModeResponse],
+)
+def my_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resident = ResidentRepository(db).get_by_user_id(current_user.id)
+
+    if resident is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resident not found",
+        )
+
+    service = get_service(db)
+
+    return service.get_history(resident.id)

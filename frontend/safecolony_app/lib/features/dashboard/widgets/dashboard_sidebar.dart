@@ -8,12 +8,15 @@ import '../../delivery/screens/delivery_dashboard_screen.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../guard/screens/guard_dashboard_screen.dart';
+import '../../vacation/screens/vacation_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
   const DashboardSidebar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    final user = auth.user;
     return Drawer(
       elevation: 0,
       child: Container(
@@ -33,7 +36,7 @@ class DashboardSidebar extends ConsumerWidget {
                     ],
                   ),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
                     CircleAvatar(
                       radius: 36,
@@ -46,7 +49,7 @@ class DashboardSidebar extends ConsumerWidget {
                     ),
                     SizedBox(height: 15),
                     Text(
-                      "Raghunatha Reddy",
+                      user?.fullName ?? "Unknown User",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -55,7 +58,7 @@ class DashboardSidebar extends ConsumerWidget {
                     ),
                     SizedBox(height: 5),
                     Text(
-                      "Resident",
+                      user?.role ?? "",
                       style: TextStyle(color: Colors.white70),
                     ),
                   ],
@@ -78,7 +81,7 @@ class DashboardSidebar extends ConsumerWidget {
                 icon: Icons.people,
                 title: "Visitors",
               ),
-
+            if (user?.role == "SECURITY_GUARD")
               _menu(
                 context,
                 ref,
@@ -175,12 +178,6 @@ class DashboardSidebar extends ConsumerWidget {
 
           switch (title) {
             case "Dashboard":
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const DashboardScreen(),
-                ),
-              );
               break;
 
             case "Visitors":
@@ -209,6 +206,15 @@ class DashboardSidebar extends ConsumerWidget {
                 ),
               );
               break;
+
+            case "Vacation":
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VacationScreen(),
+                    ),
+                  );
+                  break;
 
             case "Logout":
               await ref.read(authProvider.notifier).logout();

@@ -6,6 +6,10 @@ import '../auth/providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'widgets/dashboard_body.dart';
 import 'widgets/dashboard_sidebar.dart';
+import '../visitors/screens/visitor_list_screen.dart';
+import '../delivery/screens/delivery_dashboard_screen.dart';
+import '../profile/screens/profile_screen.dart';
+
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -42,67 +46,105 @@ class _DashboardScreenState
         ],
       ),
 
-      body: Builder(
-        builder: (context) {
+body: IndexedStack(
+  index: currentIndex,
+  children: [
 
-          final auth = ref.watch(authProvider);
+    Builder(
+      builder: (context) {
 
-          if (auth.user?.role == "SYSTEM_ADMIN") {
-            return const Center(
-              child: Text(
-                "Welcome System Administrator",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            );
-          }
+        final auth = ref.watch(authProvider);
 
-          return FutureBuilder<DashboardSummary>(
-            future: ref
-                .read(dashboardProvider)
-                .loadDashboard(),
-
-            builder: (context, snapshot) {
-
-              if (snapshot.connectionState ==
-                  ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    snapshot.error.toString(),
-                  ),
-                );
-              }
-
-              if (!snapshot.hasData) {
-                return const Center(
-                  child: Text("No dashboard data found."),
-                );
-              }
-
-              return DashboardBody(
-                dashboard: snapshot.data!,
-              );
-            },
+        if (auth.user?.role == "SYSTEM_ADMIN") {
+          return const Center(
+            child: Text(
+              "Welcome System Administrator",
+            ),
           );
-        },
-      ),
+        }
+
+        return FutureBuilder<DashboardSummary>(
+          future: ref
+              .read(dashboardProvider)
+              .loadDashboard(),
+          builder: (context,snapshot){
+
+            if(snapshot.connectionState==
+                ConnectionState.waiting){
+              return const Center(
+                child:CircularProgressIndicator(),
+              );
+            }
+
+            if(snapshot.hasError){
+              return Center(
+                child: Text(snapshot.error.toString()),
+              );
+            }
+
+            if(!snapshot.hasData){
+              return const Center(
+                child: Text("No data"),
+              );
+            }
+
+            return DashboardBody(
+              dashboard: snapshot.data!,
+            );
+          },
+        );
+      },
+    ),
+
+    const VisitorListScreen(),
+
+    const DeliveryDashboardScreen(),
+
+    const ProfileScreen(),
+  ],
+),
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
 
         onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
+  if (index == currentIndex) return;
+
+  setState(() {
+    currentIndex = index;
+  });
+
+  switch (index) {
+    case 0:
+      break; // Already on Dashboard
+
+    case 1:
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const VisitorListScreen(),
+        ),
+      );
+      break;
+
+    case 2:
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DeliveryDashboardScreen(),
+        ),
+      );
+      break;
+
+    case 3:
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Profile module coming soon"),
+        ),
+      );
+      break;
+  }
+},
 
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.indigo,

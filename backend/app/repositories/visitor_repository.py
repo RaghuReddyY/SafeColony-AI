@@ -4,7 +4,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.visitor import Visitor
-
+from app.enums.visitor_status import VisitorStatus
+from app.enums.approval_mode import ApprovalMode
 
 class VisitorRepository:
 
@@ -136,4 +137,16 @@ class VisitorRepository:
                 func.date(Visitor.check_out_time) == today
             )
             .count()
+        )
+
+    def get_pending_for_resident(self, resident_id: int):
+        return (
+            self.db.query(Visitor)
+            .filter(
+                Visitor.resident_id == resident_id,
+                Visitor.status == VisitorStatus.PENDING.value,
+                Visitor.approval_mode == ApprovalMode.RESIDENT.value,
+            )
+            .order_by(Visitor.created_at.desc())
+            .all()
         )

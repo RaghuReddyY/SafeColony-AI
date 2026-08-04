@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 
 from app.core.event_bus import event_bus
 from app.core.exceptions import (
@@ -23,7 +23,11 @@ class VacationService:
     # Enable Vacation Mode
     # =====================================================
 
-    def enable(self, data):
+    def enable(self, resident_id: int, data):
+
+        print("===== SERVICE =====")
+        print("resident_id =", resident_id)
+        print("===================")
 
         today = datetime.utcnow().date()
 
@@ -33,7 +37,7 @@ class VacationService:
             )
 
         overlapping = self.vacation_repo.has_overlapping_vacation(
-            resident_id=data.resident_id,
+            resident_id=resident_id,
             start_date=data.start_date,
             end_date=data.end_date,
         )
@@ -51,7 +55,7 @@ class VacationService:
             activated_at = None
 
         vacation = VacationMode(
-            resident_id=data.resident_id,
+            resident_id=resident_id,
             start_date=data.start_date,
             end_date=data.end_date,
             reason=data.reason,
@@ -67,7 +71,6 @@ class VacationService:
 
         vacation = self.vacation_repo.create(vacation)
 
-        # Publish event only when vacation becomes ACTIVE
         if vacation.status == VacationStatus.ACTIVE.value:
 
             resident = vacation.resident
@@ -90,7 +93,6 @@ class VacationService:
     # =====================================================
 
     def get_history(self, resident_id: int):
-
         return self.vacation_repo.get_by_resident(resident_id)
 
     # =====================================================
@@ -167,10 +169,9 @@ class VacationService:
     # =====================================================
 
     def get_summary(self, resident_id: int):
-
         return self.vacation_repo.get_summary(resident_id)
-    
-        # =====================================================
+
+    # =====================================================
     # Scheduler - Activate Scheduled Vacations
     # =====================================================
 
