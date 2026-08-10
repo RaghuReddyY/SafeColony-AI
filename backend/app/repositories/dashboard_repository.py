@@ -73,7 +73,7 @@ class DashboardRepository:
         # -------------------------------------------------------
         notification_count = (
             self.db.query(func.count(Notification.id))
-            .filter(Notification.resident_id == resident_id)
+            .filter(Notification.user_id == user_id)
             .scalar()
             or 0
         )
@@ -81,7 +81,7 @@ class DashboardRepository:
         unread_notifications = (
             self.db.query(func.count(Notification.id))
             .filter(
-                Notification.resident_id == resident_id,
+                Notification.user_id == user_id,
                 Notification.is_read == False,
             )
             .scalar()

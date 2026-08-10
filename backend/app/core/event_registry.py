@@ -2,6 +2,7 @@ from app.core.event_bus import event_bus
 
 from app.events.vacation_events import (
     VacationStartedEvent,
+    VacationCancelledEvent,
 )
 
 from app.handlers.resident_notification_handler import (
@@ -11,7 +12,14 @@ from app.handlers.resident_notification_handler import (
 
 def register_event_handlers():
 
+    handler = ResidentNotificationHandler()
+
     event_bus.subscribe(
         VacationStartedEvent,
-        ResidentNotificationHandler(),
+        handler,
+    )
+
+    event_bus.subscribe(
+        VacationCancelledEvent,
+        handler,
     )

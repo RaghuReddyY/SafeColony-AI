@@ -111,3 +111,13 @@ class SectionRepository:
             )
             .first()
         )
+
+    def get_by_property(self, property_id: int):
+        return (
+            self.db.query(Section)
+            .filter(
+                Section.property_id == property_id
+            )
+            .order_by(Section.name)
+            .all()
+        )

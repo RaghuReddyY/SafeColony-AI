@@ -9,6 +9,7 @@ from app.enums import UserRole, UserStatus
 if TYPE_CHECKING:
     from app.models.organization import Organization
     from app.models.resident import Resident
+    from app.models.notification import Notification
 
 
 class User(Base):
@@ -40,14 +41,12 @@ class User(Base):
         nullable=False,
     )
 
-    # Store role as STRING in database
     role: Mapped[str] = mapped_column(
         String(30),
         default=UserRole.RESIDENT.value,
         nullable=False,
     )
 
-    # Account approval status
     status: Mapped[str] = mapped_column(
         String(20),
         default=UserStatus.PENDING.value,
@@ -73,4 +72,10 @@ class User(Base):
     resident: Mapped["Resident"] = relationship(
         back_populates="user",
         uselist=False,
+    )
+
+    notifications = relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )

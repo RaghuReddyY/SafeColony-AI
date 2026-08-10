@@ -76,8 +76,9 @@ class VacationService:
             resident = vacation.resident
 
             event = VacationStartedEvent(
+                user_id=resident.user.id,
                 resident_id=resident.id,
-                resident_name=resident.full_name,
+                resident_name=resident.user.full_name,
                 start_date=vacation.start_date,
                 end_date=vacation.end_date,
                 visitor_policy=vacation.visitor_policy,
@@ -125,8 +126,9 @@ class VacationService:
         resident = vacation.resident
 
         event = VacationCancelledEvent(
+            user_id=resident.user.id,
             resident_id=resident.id,
-            resident_name=resident.full_name,
+            resident_name=resident.user.full_name,
         )
 
         event_bus.publish(event)
@@ -149,7 +151,7 @@ class VacationService:
 
             response.append(
                 {
-                    "resident_name": vacation.resident.full_name,
+                    "resident_name": vacation.resident.user.full_name,
                     "unit_number": vacation.resident.unit.unit_number,
                     "start_date": vacation.start_date,
                     "end_date": vacation.end_date,
@@ -190,8 +192,9 @@ class VacationService:
             resident = vacation.resident
 
             event = VacationStartedEvent(
+                user_id=resident.user.id,
                 resident_id=resident.id,
-                resident_name=resident.full_name,
+                resident_name=resident.user.full_name,
                 start_date=vacation.start_date,
                 end_date=vacation.end_date,
                 visitor_policy=vacation.visitor_policy,

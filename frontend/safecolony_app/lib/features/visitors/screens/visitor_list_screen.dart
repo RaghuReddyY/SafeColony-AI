@@ -41,7 +41,7 @@ class _VisitorListScreenState
 
   Future<void> _approveVisitor(
       Visitor visitor) async {
-
+        print("Calling Resident Approve API");
     final approved =
         await showDialog<bool>(
               context: context,

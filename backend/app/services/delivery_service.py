@@ -19,6 +19,7 @@ from app.repositories.security_alert_repository import (
     SecurityAlertRepository,
 )
 from app.repositories.vacation_repository import VacationRepository
+from app.repositories.resident_repository import ResidentRepository
 
 
 class DeliveryService:
@@ -29,21 +30,95 @@ class DeliveryService:
     ):
         self.repo = repo
 
-    # --------------------------------------------------
+    # ==================================================
+    # Notification Helper
+    # ==================================================
+
+    def _notify_resident(
+        self,
+        resident_id: int,
+        title: str,
+        message: str,
+        notification_type: str = "DELIVERY",
+    ):
+        """
+        Resident ID -> Resident.user_id -> Notification.user_id
+        """
+
+        resident_repo = ResidentRepository(
+            self.repo.db
+        )
+
+        resident = resident_repo.get_by_id(
+            resident_id
+        )
+
+        if resident is None:
+            logger.warning(
+                "Unable to send delivery notification. "
+                "Resident not found: %s",
+                resident_id,
+            )
+            return None
+
+        if resident.user_id is None:
+            logger.warning(
+                "Unable to send delivery notification. "
+                "Resident %s has no user account.",
+                resident_id,
+            )
+            return None
+
+        notification_repo = NotificationRepository(
+            self.repo.db
+        )
+
+        notification = Notification(
+            user_id=resident.user_id,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+        )
+
+        saved_notification = notification_repo.create(
+            notification
+        )
+
+        logger.info(
+            "Delivery notification created | "
+            "resident_id=%s | user_id=%s | "
+            "type=%s | title=%s",
+            resident_id,
+            resident.user_id,
+            notification_type,
+            title,
+        )
+
+        return saved_notification
+
+    # ==================================================
     # Create Delivery
-    # --------------------------------------------------
+    # ==================================================
 
     def create(self, data):
 
-        vacation_repo = VacationRepository(self.repo.db)
-
-        notification_repo = NotificationRepository(self.repo.db)
-
-        alert_repo = SecurityAlertRepository(self.repo.db)
-
-        vacation = vacation_repo.is_resident_on_vacation(
-            data.resident_id
+        vacation_repo = VacationRepository(
+            self.repo.db
         )
+
+        alert_repo = SecurityAlertRepository(
+            self.repo.db
+        )
+
+        vacation = (
+            vacation_repo.is_resident_on_vacation(
+                data.resident_id
+            )
+        )
+
+        # --------------------------------------------------
+        # Create Delivery
+        # --------------------------------------------------
 
         delivery = Delivery(
             resident_id=data.resident_id,
@@ -56,47 +131,49 @@ class DeliveryService:
             status=DeliveryStatus.ARRIVED.value,
         )
 
-        saved_delivery = self.repo.create(delivery)
+        saved_delivery = self.repo.create(
+            delivery
+        )
 
-        # ----------------------------------------
+        # ==================================================
         # Vacation Mode
-        # ----------------------------------------
+        # ==================================================
 
         if vacation:
 
             if vacation.allow_deliveries:
 
-                saved_delivery.status = DeliveryStatus.ARRIVED.value
+                saved_delivery.status = (
+                    DeliveryStatus.ARRIVED.value
+                )
 
-                notification_repo.create(
-                    Notification(
-                        resident_id=data.resident_id,
-                        title="Package Received",
-                        message=(
-                            f"Package from "
-                            f"{saved_delivery.courier_name} "
-                            "received at security gate."
-                        ),
-                        notification_type="DELIVERY",
-                    )
+                self._notify_resident(
+                    resident_id=data.resident_id,
+                    title="Package Received",
+                    message=(
+                        f"Package from "
+                        f"{saved_delivery.courier_name} "
+                        "received at security gate."
+                    ),
+                    notification_type="DELIVERY",
                 )
 
             else:
 
-                saved_delivery.status = DeliveryStatus.REJECTED.value
+                saved_delivery.status = (
+                    DeliveryStatus.REJECTED.value
+                )
 
-                notification_repo.create(
-                    Notification(
-                        resident_id=data.resident_id,
-                        title="Package Rejected",
-                        message=(
-                            f"Package from "
-                            f"{saved_delivery.courier_name} "
-                            "was rejected because Vacation Mode "
-                            "does not allow deliveries."
-                        ),
-                        notification_type="DELIVERY",
-                    )
+                self._notify_resident(
+                    resident_id=data.resident_id,
+                    title="Package Rejected",
+                    message=(
+                        f"Package from "
+                        f"{saved_delivery.courier_name} "
+                        "was rejected because Vacation Mode "
+                        "does not allow deliveries."
+                    ),
+                    notification_type="DELIVERY",
                 )
 
                 alert_repo.create(
@@ -106,28 +183,33 @@ class DeliveryService:
                         message=(
                             f"Courier "
                             f"{saved_delivery.courier_name} "
-                            "attempted delivery during Vacation Mode."
+                            "attempted delivery during "
+                            "Vacation Mode."
                         ),
                         alert_type="DELIVERY",
                         severity="MEDIUM",
                     )
                 )
 
+        # ==================================================
+        # Normal Delivery
+        # ==================================================
+
         else:
 
-            saved_delivery.status = DeliveryStatus.NOTIFIED.value
+            saved_delivery.status = (
+                DeliveryStatus.NOTIFIED.value
+            )
 
-            notification_repo.create(
-                Notification(
-                    resident_id=data.resident_id,
-                    title="Package Arrived",
-                    message=(
-                        f"Courier "
-                        f"{saved_delivery.courier_name} "
-                        "has arrived."
-                    ),
-                    notification_type="DELIVERY",
-                )
+            self._notify_resident(
+                resident_id=data.resident_id,
+                title="Package Arrived",
+                message=(
+                    f"Courier "
+                    f"{saved_delivery.courier_name} "
+                    "has arrived."
+                ),
+                notification_type="DELIVERY",
             )
 
         logger.info(
@@ -136,30 +218,39 @@ class DeliveryService:
             saved_delivery.resident_id,
         )
 
-        return self.repo.save(saved_delivery)
+        return self.repo.save(
+            saved_delivery
+        )
 
-    # --------------------------------------------------
+    # ==================================================
     # Queries
-    # --------------------------------------------------
+    # ==================================================
 
     def get_all(self):
+
         return self.repo.get_all()
 
     def get_by_id(
         self,
         delivery_id: int,
     ):
-        return self.repo.get_by_id(delivery_id)
+
+        return self.repo.get_by_id(
+            delivery_id
+        )
 
     def get_by_resident(
         self,
         resident_id: int,
     ):
-        return self.repo.get_by_resident(resident_id)
 
-    # --------------------------------------------------
+        return self.repo.get_by_resident(
+            resident_id
+        )
+
+    # ==================================================
     # Guard Receives Delivery
-    # --------------------------------------------------
+    # ==================================================
 
     def receive(
         self,
@@ -167,13 +258,20 @@ class DeliveryService:
         security_guard: str,
     ):
 
-        delivery = self.repo.get_by_id(delivery_id)
+        delivery = self.repo.get_by_id(
+            delivery_id
+        )
 
         if delivery is None:
-            raise NotFoundException("Delivery")
+            raise NotFoundException(
+                "Delivery"
+            )
 
         delivery.received_by = security_guard
-        delivery.status = DeliveryStatus.RECEIVED.value
+
+        delivery.status = (
+            DeliveryStatus.RECEIVED.value
+        )
 
         logger.info(
             "Delivery Received: ID=%s Guard=%s",
@@ -181,11 +279,13 @@ class DeliveryService:
             security_guard,
         )
 
-        return self.repo.save(delivery)
+        return self.repo.save(
+            delivery
+        )
 
-    # --------------------------------------------------
+    # ==================================================
     # OTP Verification
-    # --------------------------------------------------
+    # ==================================================
 
     def verify_otp(
         self,
@@ -193,7 +293,9 @@ class DeliveryService:
         otp: str,
     ):
 
-        delivery = self.repo.get_by_id(delivery_id)
+        delivery = self.repo.get_by_id(
+            delivery_id
+        )
 
         if delivery is None:
 
@@ -202,9 +304,14 @@ class DeliveryService:
                 delivery_id,
             )
 
-            raise NotFoundException("Delivery")
+            raise NotFoundException(
+                "Delivery"
+            )
 
-        if delivery.status == DeliveryStatus.COLLECTED.value:
+        if (
+            delivery.status
+            == DeliveryStatus.COLLECTED.value
+        ):
 
             logger.warning(
                 "Delivery already collected: ID=%s",
@@ -226,8 +333,13 @@ class DeliveryService:
                 "Invalid OTP."
             )
 
-        delivery.status = DeliveryStatus.COLLECTED.value
-        delivery.collected_at = datetime.utcnow()
+        delivery.status = (
+            DeliveryStatus.COLLECTED.value
+        )
+
+        delivery.collected_at = (
+            datetime.utcnow()
+        )
 
         logger.info(
             "Delivery Collected: ID=%s Resident=%s",
@@ -235,11 +347,13 @@ class DeliveryService:
             delivery.resident_id,
         )
 
-        return self.repo.save(delivery)
+        return self.repo.save(
+            delivery
+        )
 
-    # --------------------------------------------------
+    # ==================================================
     # Helpers
-    # --------------------------------------------------
+    # ==================================================
 
     def _generate_otp(self):
 
@@ -249,6 +363,7 @@ class DeliveryService:
                 999999,
             )
         )
-    
+
     def pending_deliveries(self):
+
         return self.repo.pending_deliveries()

@@ -125,17 +125,23 @@ class GuardService:
 
         return {
 
-            "expected_visitors": len(visitors),
+            "pending_visitors":
+                self.repo.pending_count(),
 
-            "walk_in_requests": 0,
+            "approved_visitors":
+                self.repo.approved_count(),
 
-            "deliveries": len(
-                self.delivery_service.pending_deliveries()
-            ),
+            "inside_visitors":
+                self.repo.inside_count(),
 
-            "vacant_houses": 0,
+            "deliveries":
+                len(
+                    self.delivery_service
+                        .pending_deliveries()
+                ),
 
-            "checked_in_today": checked_in_today,
+            "checked_in_today":
+                checked_in_today,
         }
 
     def _expected_visitors(self, visitors):
@@ -227,40 +233,60 @@ class GuardService:
 
         messages = []
 
-        if summary["expected_visitors"] == 0:
+        pending = summary["pending_visitors"]
+        approved = summary["approved_visitors"]
+        inside = summary["inside_visitors"]
+        deliveries = summary["deliveries"]
 
+        # Pending Visitors
+        if pending == 0:
             messages.append(
-                "No visitors are expected today."
+                "No visitor approvals are pending."
             )
-
-        elif summary["expected_visitors"] == 1:
-
+        elif pending == 1:
             messages.append(
-                "1 visitor is expected today."
+                "1 visitor is waiting for resident approval."
             )
-
         else:
-
             messages.append(
-                f'{summary["expected_visitors"]} visitors are expected today.'
+                f"{pending} visitors are waiting for resident approval."
             )
 
-        if summary["checked_in_today"] == 0:
-
+        # Approved Visitors
+        if approved == 0:
             messages.append(
-                "No visitors have checked in yet."
+                "No approved visitors are waiting at the gate."
             )
-
-        elif summary["checked_in_today"] == 1:
-
+        elif approved == 1:
             messages.append(
-                "1 visitor has already checked in."
+                "1 approved visitor is waiting for check-in."
             )
-
         else:
-
             messages.append(
-                f'{summary["checked_in_today"]} visitors have already checked in.'
+                f"{approved} approved visitors are waiting for check-in."
+            )
+
+        # Visitors Inside
+        if inside == 0:
+            messages.append(
+                "No visitors are currently inside the colony."
+            )
+        elif inside == 1:
+            messages.append(
+                "1 visitor is currently inside."
+            )
+        else:
+            messages.append(
+                f"{inside} visitors are currently inside."
+            )
+
+        # Deliveries
+        if deliveries > 0:
+            messages.append(
+                f"{deliveries} delivery requests are pending."
             )
 
         return "\n\n".join(messages)
+
+    def approved_visitors(self):
+        return self.repo.approved_visitors()

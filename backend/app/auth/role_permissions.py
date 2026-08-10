@@ -1,5 +1,6 @@
-from app.models.user import UserRole
+from app.enums import UserRole
 from app.security.permissions import Permissions
+
 
 ROLE_PERMISSIONS = {
 
@@ -49,6 +50,7 @@ ROLE_PERMISSIONS = {
 
         Permissions.NOTIFICATION_VIEW,
         Permissions.NOTIFICATION_CREATE,
+        Permissions.NOTIFICATION_UPDATE,
 
         Permissions.VACATION_VIEW,
         Permissions.VACATION_CREATE,
@@ -106,12 +108,15 @@ ROLE_PERMISSIONS = {
         Permissions.GUARD_VISITOR_VIEW,
         Permissions.GUARD_VISITOR_CHECKIN,
         Permissions.GUARD_VISITOR_CHECKOUT,
+
         Permissions.GUARD_DELIVERY_VIEW,
         Permissions.GUARD_DELIVERY_RECEIVE,
         Permissions.GUARD_DELIVERY_VERIFY,
+
         Permissions.GUARD_VEHICLE_VIEW,
         Permissions.GUARD_VEHICLE_ENTRY,
         Permissions.GUARD_VEHICLE_EXIT,
+
         Permissions.GUARD_QR_SCAN,
 
         Permissions.NOTIFICATION_VIEW,
@@ -139,6 +144,16 @@ ROLE_PERMISSIONS = {
         Permissions.GUARD_VEHICLE_EXIT,
 
         Permissions.GUARD_QR_SCAN,
+        Permissions.GUARD_WALKIN_VISITOR,
+
+        Permissions.GUARD_PROPERTY_VIEW,
+        Permissions.GUARD_SECTION_VIEW,
+        Permissions.GUARD_UNIT_VIEW,
+        Permissions.GUARD_RESIDENT_VIEW,
+
+        # Notifications
+        Permissions.NOTIFICATION_VIEW,
+        Permissions.NOTIFICATION_UPDATE,
     },
 
     # ==========================================================
@@ -162,7 +177,9 @@ ROLE_PERMISSIONS = {
         Permissions.VACATION_CREATE,
         Permissions.VACATION_CANCEL,
 
+        # Notifications
         Permissions.NOTIFICATION_VIEW,
+        Permissions.NOTIFICATION_UPDATE,
 
         Permissions.DASHBOARD_VIEW,
 
@@ -171,6 +188,3 @@ ROLE_PERMISSIONS = {
         Permissions.JOIN_REQUEST_REJECT,
     },
 }
-
-
-

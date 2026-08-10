@@ -3,8 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/visitor_create_request.dart';
 import '../providers/visitor_provider.dart';
+
+import '../../../shared/widgets/selectors/property_selector.dart';
+import '../../../shared/widgets/selectors/section_selector.dart';
+import '../../../shared/widgets/selectors/unit_selector.dart';
 import '../../../shared/widgets/selectors/resident_selector.dart';
-import '../../resident/models/resident_dropdown.dart';
+
+import '../../guard/models/guard_property.dart';
+import '../../guard/models/guard_section.dart';
+import '../../guard/models/guard_unit.dart';
+import '../../guard/models/guard_resident.dart';
 
 class WalkInVisitorScreen extends ConsumerStatefulWidget {
   const WalkInVisitorScreen({super.key});
@@ -16,81 +24,115 @@ class WalkInVisitorScreen extends ConsumerStatefulWidget {
 
 class _WalkInVisitorScreenState
     extends ConsumerState<WalkInVisitorScreen> {
+
   final _formKey = GlobalKey<FormState>();
 
-ResidentDropdown? selectedResident;
+  GuardProperty? selectedProperty;
+  GuardSection? selectedSection;
+  GuardUnit? selectedUnit;
+  GuardResident? selectedResident;
 
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
   final purposeController = TextEditingController();
   final vehicleController = TextEditingController();
 
-  String visitorType = "Guest";
-
   bool loading = false;
 
+  String visitorType = "Guest";
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    purposeController.dispose();
+    vehicleController.dispose();
+    super.dispose();
+  }
 
   Future<void> createWalkInVisitor() async {
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
-if (selectedResident == null) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text("Please select a resident"),
-    ),
-  );
-  return;
-}
+
+    if (selectedResident == null) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select resident"),
+        ),
+      );
+
+      return;
+    }
+
     setState(() {
       loading = true;
     });
 
     try {
+
       final request = VisitorCreateRequest(
+
         residentId: selectedResident!.id,
+
         visitorName: nameController.text.trim(),
+
         phone: phoneController.text.trim(),
+
         visitorType: visitorType,
+
         purpose: purposeController.text.trim(),
-        vehicleNumber:
-            vehicleController.text.trim(),
+
+        vehicleNumber: vehicleController.text.trim(),
+
         entryMode: "WALK_IN",
+
         createdByGuard: true,
+
       );
 
       final visitor = await ref
           .read(visitorProvider)
-          .createVisitor(request);
+          .createWalkInVisitor(request);
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            "Walk-in Visitor ${visitor.visitorName} created successfully.",
-          ),
           backgroundColor: Colors.green,
+          content: Text(
+            "${visitor.visitorName} registered successfully",
+          ),
         ),
       );
 
       Navigator.pop(context, true);
+
     } catch (e) {
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
           backgroundColor: Colors.red,
+          content: Text(e.toString()),
         ),
       );
+
     } finally {
+
       if (mounted) {
+
         setState(() {
           loading = false;
         });
+
       }
+
     }
+
   }
 
   InputDecoration decoration(String label) {
@@ -102,134 +144,232 @@ if (selectedResident == null) {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+
       appBar: AppBar(
-        title:
-            const Text("Walk-In Visitor Registration"),
+        title: const Text(
+          "Walk-In Visitor",
+        ),
       ),
+
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+
+        padding: const EdgeInsets.all(20),
+
         child: Form(
+
           key: _formKey,
+
           child: Column(
+
             children: [
 
-              /// Resident ID
-ResidentSelector(
-  initialValue: selectedResident,
-  onChanged: (resident) {
-    setState(() {
-      selectedResident = resident;
-    });
-  },
-),
+              PropertySelector(
+
+                initialValue: selectedProperty,
+
+                onChanged: (property) {
+
+                  setState(() {
+
+                    selectedProperty = property;
+
+                    selectedSection = null;
+                    selectedUnit = null;
+                    selectedResident = null;
+
+                  });
+
+                },
+
+              ),
 
               const SizedBox(height: 16),
 
-              /// Visitor Name
+              SectionSelector(
+
+                property: selectedProperty,
+
+                initialValue: selectedSection,
+
+                onChanged: (section) {
+
+                  setState(() {
+
+                    selectedSection = section;
+
+                    selectedUnit = null;
+                    selectedResident = null;
+
+                  });
+
+                },
+
+              ),
+
+              const SizedBox(height: 16),
+
+              UnitSelector(
+
+                section: selectedSection,
+
+                initialValue: selectedUnit,
+
+                onChanged: (unit) {
+
+                  setState(() {
+
+                    selectedUnit = unit;
+
+                    selectedResident = null;
+
+                  });
+
+                },
+
+              ),
+
+              const SizedBox(height: 16),
+
+              ResidentSelector(
+
+                unit: selectedUnit,
+
+                initialValue: selectedResident,
+
+                onChanged: (resident) {
+
+                  setState(() {
+                    selectedResident = resident;
+                  });
+
+                },
+
+              ),
+
+              const SizedBox(height: 24),
+
               TextFormField(
                 controller: nameController,
-                decoration:
-                    decoration("Visitor Name"),
-                validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
-                    return "Visitor name is required";
-                  }
-
-                  return null;
-                },
+                decoration: decoration("Visitor Name"),
+                validator: (v) =>
+                    v == null || v.isEmpty
+                        ? "Required"
+                        : null,
               ),
 
               const SizedBox(height: 16),
 
-              /// Phone
               TextFormField(
                 controller: phoneController,
+                decoration: decoration("Phone Number"),
                 keyboardType: TextInputType.phone,
-                decoration:
-                    decoration("Phone Number"),
-                validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
-                    return "Phone number is required";
-                  }
-
-                  return null;
-                },
+                validator: (v) =>
+                    v == null || v.isEmpty
+                        ? "Required"
+                        : null,
               ),
 
               const SizedBox(height: 16),
 
-              /// Visitor Type
               DropdownButtonFormField<String>(
                 initialValue: visitorType,
-                decoration:
-                    decoration("Visitor Type"),
+                decoration: decoration("Visitor Type"),
                 items: const [
+
                   DropdownMenuItem(
                     value: "Guest",
                     child: Text("Guest"),
                   ),
-                  DropdownMenuItem(
-                    value: "Delivery",
-                    child: Text("Delivery"),
-                  ),
+
                   DropdownMenuItem(
                     value: "Family",
                     child: Text("Family"),
                   ),
+
                   DropdownMenuItem(
                     value: "Service",
                     child: Text("Service"),
                   ),
+
+                  DropdownMenuItem(
+                    value: "Delivery",
+                    child: Text("Delivery"),
+                  ),
+
                 ],
                 onChanged: (value) {
+
                   setState(() {
                     visitorType = value!;
                   });
+
                 },
               ),
 
               const SizedBox(height: 16),
 
-              /// Purpose
               TextFormField(
                 controller: purposeController,
-                decoration:
-                    decoration("Purpose"),
+                decoration: decoration("Purpose"),
               ),
 
               const SizedBox(height: 16),
 
-              /// Vehicle
               TextFormField(
                 controller: vehicleController,
-                decoration:
-                    decoration("Vehicle Number"),
+                decoration: decoration("Vehicle Number"),
               ),
 
               const SizedBox(height: 30),
 
               SizedBox(
+
                 width: double.infinity,
-                height: 50,
+
+                height: 52,
+
                 child: FilledButton.icon(
+
                   onPressed: loading
                       ? null
                       : createWalkInVisitor,
-                  icon: const Icon(Icons.badge),
-                  label: loading
-                      ? const CircularProgressIndicator()
-                      : const Text(
-                          "Register Walk-In Visitor",
-                        ),
+
+                  icon: loading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child:
+                              CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.person_add),
+
+                  label: Text(
+
+                    loading
+                        ? "Registering..."
+                        : "Register Walk-In Visitor",
+
+                  ),
+
                 ),
+
               ),
+
             ],
+
           ),
+
         ),
+
       ),
+
     );
+
   }
+
 }

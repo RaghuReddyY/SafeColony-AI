@@ -8,7 +8,7 @@ from app.models.unit import Unit
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.visitor import Visitor
-
+from sqlalchemy.orm import joinedload
 
 class ResidentRepository:
 
@@ -244,13 +244,13 @@ class ResidentRepository:
         )
 
         notifications = (
-            self.db.query(func.count(Notification.id))
-            .filter(
-                Notification.resident_id == resident_id,
-                Notification.is_read.is_(False),
+                self.db.query(func.count(Notification.id))
+                .filter(
+                    Notification.user_id == resident.user_id,
+                    Notification.is_read.is_(False),
+                )
+                .scalar()
             )
-            .scalar()
-        )
 
         return {
             "resident_name": resident.full_name,
@@ -317,3 +317,13 @@ class ResidentRepository:
         self.db.refresh(resident)
 
         return resident
+
+    def get_by_unit(self, unit_id: int):
+        return (
+            self.db.query(Resident)
+            .options(joinedload(Resident.user))
+            .filter(
+                Resident.unit_id == unit_id
+            )
+            .all()
+        )

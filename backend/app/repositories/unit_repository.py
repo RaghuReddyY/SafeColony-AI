@@ -172,3 +172,13 @@ class UnitRepository:
         self.db.flush()
 
         return unit
+
+    def get_by_section(self, section_id: int):
+        return (
+            self.db.query(Unit)
+            .filter(
+                Unit.section_id == section_id
+            )
+            .order_by(Unit.unit_number)
+            .all()
+        )

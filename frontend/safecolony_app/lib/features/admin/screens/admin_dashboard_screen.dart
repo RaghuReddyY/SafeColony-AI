@@ -6,6 +6,7 @@ import '../unit/screens/unit_list_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/login_screen.dart';
+import '../guard/screens/guard_list_screen.dart';
 
 
 class AdminDashboardScreen extends ConsumerWidget {
@@ -121,7 +122,24 @@ class AdminDashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 15),
-
+Card(
+  child: ListTile(
+    leading: const Icon(Icons.security),
+    title: const Text("Security Guards"),
+    subtitle: const Text(
+      "Create and manage security guards",
+    ),
+    trailing: const Icon(Icons.arrow_forward_ios),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const GuardListScreen(),
+        ),
+      );
+    },
+  ),
+),
            Card(
   child: ListTile(
     leading: const Icon(Icons.logout),

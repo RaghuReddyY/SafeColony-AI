@@ -60,3 +60,37 @@ class UserRepository:
 
     def exists_by_phone(self, phone: str) -> bool:
         return self.get_by_phone(phone) is not None
+
+        # ==========================================================
+    # Guard Management
+    # ==========================================================
+
+    def get_guards_by_organization(
+        self,
+        organization_id: int,
+    ):
+
+        return (
+            self.db.query(User)
+            .filter(
+                User.organization_id == organization_id,
+                User.role == "SECURITY_GUARD",
+            )
+            .order_by(User.full_name.asc())
+            .all()
+        )
+
+    def create_guard(
+        self,
+        guard: User,
+        commit: bool = True,
+    ):
+
+        self.db.add(guard)
+        self.db.flush()
+
+        if commit:
+            self.db.commit()
+            self.db.refresh(guard)
+
+        return guard

@@ -1,11 +1,10 @@
 class GuardDashboard {
   final DashboardSummary summary;
   final List<ExpectedVisitor> expectedVisitors;
-   final List<RecentActivity> recentActivities;
+  final List<RecentActivity> recentActivities;
   final String aiMessage;
-  
 
-  GuardDashboard({
+  const GuardDashboard({
     required this.summary,
     required this.expectedVisitors,
     required this.recentActivities,
@@ -19,18 +18,20 @@ class GuardDashboard {
       summary: DashboardSummary.fromJson(
         json["summary"],
       ),
+
       expectedVisitors:
           (json["expected_visitors"] as List)
               .map(
                 (e) => ExpectedVisitor.fromJson(e),
               )
               .toList(),
-        recentActivities:
-      (json["recent_activities"] as List)
-          .map(
-            (e) => RecentActivity.fromJson(e),
-          )
-          .toList(),
+
+      recentActivities:
+          (json["recent_activities"] as List)
+              .map(
+                (e) => RecentActivity.fromJson(e),
+              )
+              .toList(),
 
       aiMessage: json["ai_message"],
     );
@@ -38,17 +39,17 @@ class GuardDashboard {
 }
 
 class DashboardSummary {
-  final int expectedVisitors;
-  final int walkInRequests;
+  final int pendingVisitors;
+  final int approvedVisitors;
+  final int insideVisitors;
   final int deliveries;
-  final int vacantHouses;
   final int checkedInToday;
 
-  DashboardSummary({
-    required this.expectedVisitors,
-    required this.walkInRequests,
+  const DashboardSummary({
+    required this.pendingVisitors,
+    required this.approvedVisitors,
+    required this.insideVisitors,
     required this.deliveries,
-    required this.vacantHouses,
     required this.checkedInToday,
   });
 
@@ -56,16 +57,20 @@ class DashboardSummary {
     Map<String, dynamic> json,
   ) {
     return DashboardSummary(
-      expectedVisitors:
-          json["expected_visitors"],
-      walkInRequests:
-          json["walk_in_requests"],
+      pendingVisitors:
+          json["pending_visitors"] ?? 0,
+
+      approvedVisitors:
+          json["approved_visitors"] ?? 0,
+
+      insideVisitors:
+          json["inside_visitors"] ?? 0,
+
       deliveries:
-          json["deliveries"],
-      vacantHouses:
-          json["vacant_houses"],
+          json["deliveries"] ?? 0,
+
       checkedInToday:
-          json["checked_in_today"],
+          json["checked_in_today"] ?? 0,
     );
   }
 }
@@ -84,7 +89,7 @@ class ExpectedVisitor {
 
   final String status;
 
-  ExpectedVisitor({
+  const ExpectedVisitor({
     required this.id,
     required this.residentId,
     required this.visitorName,
@@ -114,12 +119,11 @@ class ExpectedVisitor {
 }
 
 class RecentActivity {
-
   final String icon;
   final String title;
   final String time;
 
-  RecentActivity({
+  const RecentActivity({
     required this.icon,
     required this.title,
     required this.time,
@@ -128,13 +132,9 @@ class RecentActivity {
   factory RecentActivity.fromJson(
     Map<String, dynamic> json,
   ) {
-
     return RecentActivity(
-
       icon: json["icon"],
-
       title: json["title"],
-
       time: json["time"],
     );
   }

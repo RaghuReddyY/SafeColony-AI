@@ -66,4 +66,9 @@ class VisitorProvider {
       visitorId,
     );
   }
+
+  Future<Visitor> createWalkInVisitor(
+    VisitorCreateRequest request) {
+  return _service.createWalkInVisitor(request);
+}
 }

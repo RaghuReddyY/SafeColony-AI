@@ -17,6 +17,7 @@ from app.repositories.section_repository import SectionRepository
 
 from app.enums import PropertyType
 
+
 class OrganizationService:
 
     def __init__(self, db: Session):
@@ -244,6 +245,94 @@ class OrganizationService:
             self.db.rollback()
             raise
 
+        # ------------------------------------------------------------------
+    # Guard Management
+    # ------------------------------------------------------------------
+
+    def create_guard(
+        self,
+        current_user,
+        data,
+    ):
+
+        if self.user_repo.exists_by_email(data.email):
+            raise ConflictException(
+                "Email already exists."
+            )
+
+        if self.user_repo.exists_by_phone(data.phone):
+            raise ConflictException(
+                "Phone already exists."
+            )
+
+        guard = User(
+            full_name=data.full_name,
+            email=data.email.lower().strip(),
+            phone=data.phone.strip(),
+            password_hash=hash_password(data.password),
+            role=UserRole.SECURITY_GUARD.value,
+            status=UserStatus.ACTIVE.value,
+            organization_id=current_user.organization_id,
+            is_active=True,
+        )
+
+        return self.user_repo.create_guard(guard)
+
+    # ------------------------------------------------------------------
+
+    def get_guards(
+        self,
+        current_user,
+    ):
+
+        return self.user_repo.get_guards_by_organization(
+            current_user.organization_id,
+        )
+
+    # ------------------------------------------------------------------
+    # Guard Management
+    # ------------------------------------------------------------------
+
+    def create_guard(
+        self,
+        current_user,
+        data,
+    ):
+
+        if self.user_repo.exists_by_email(data.email):
+            raise ConflictException(
+                "Email already exists."
+            )
+
+        if self.user_repo.exists_by_phone(data.phone):
+            raise ConflictException(
+                "Phone already exists."
+            )
+
+        guard = User(
+            full_name=data.full_name,
+            email=data.email.lower().strip(),
+            phone=data.phone.strip(),
+            password_hash=hash_password(data.password),
+            role=UserRole.SECURITY_GUARD.value,
+            status=UserStatus.ACTIVE.value,
+            organization_id=current_user.organization_id,
+            is_active=True,
+        )
+
+        return self.user_repo.create_guard(guard)
+
+    # ------------------------------------------------------------------
+
+    def get_guards(
+        self,
+        current_user,
+    ):
+
+        return self.user_repo.get_guards_by_organization(
+            current_user.organization_id,
+        )
+    
     def _default_property_type(
         self,
         organization_type: str,

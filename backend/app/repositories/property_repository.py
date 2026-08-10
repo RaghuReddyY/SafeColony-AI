@@ -85,3 +85,10 @@ class PropertyRepository:
 
         self.db.delete(property)
         self.db.commit()
+
+    def get_all(self):
+        return (
+            self.db.query(Property)
+            .order_by(Property.name)
+            .all()
+        )

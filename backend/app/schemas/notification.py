@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class NotificationCreate(BaseModel):
-    resident_id: int
+    user_id: int
     title: str
     message: str
     notification_type: str
@@ -12,7 +12,7 @@ class NotificationCreate(BaseModel):
 
 class NotificationResponse(BaseModel):
     id: int
-    resident_id: int
+    user_id: int
     title: str
     message: str
     notification_type: str

@@ -1,19 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/login_screen.dart';
+import '../../auth/providers/auth_provider.dart';
+
+import '../../notifications/providers/notification_provider.dart';
+import '../../notifications/screens/notification_screen.dart';
+
+import '../../visitors/screens/walk_in_visitor_screen.dart';
+
 import '../models/guard_dashboard.dart';
 import '../providers/guard_dashboard_provider.dart';
+import '../providers/guard_visitor_provider.dart';
+
+import '../screens/qr_scanner_screen.dart';
+import '../screens/visitor_detail_screen.dart';
 
 import '../widgets/cards/ai_insight_card.dart';
 import '../widgets/cards/expected_visitor_card.dart';
-import '../widgets/sections/quick_actions_section.dart';
-
-import 'visitor_detail_screen.dart';
 import '../widgets/cards/recent_activity_card.dart';
-import 'dart:async';
-import '../../visitors/screens/walk_in_visitor_screen.dart';
-import 'qr_scanner_screen.dart';
+
 import '../widgets/hero_banner.dart';
+
+import '../widgets/sections/approved_visitors_section.dart';
+import '../widgets/sections/pending_visitors_section.dart';
+import '../widgets/sections/quick_actions_section.dart';
+import '../widgets/sections/visitors_inside_section.dart';
+
 import '../../../../shared/widgets/dashboard_stat_chip.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -28,52 +43,132 @@ class GuardDashboardScreen extends ConsumerStatefulWidget {
 
 class _GuardDashboardScreenState
     extends ConsumerState<GuardDashboardScreen> {
+  Timer? _timer;
 
-  late Future<GuardDashboard> _future;
-
-  Timer? _refreshTimer;
+  // ============================================================
+  // INIT
+  // ============================================================
 
   @override
   void initState() {
     super.initState();
 
-    _loadDashboard();
+    Future.microtask(() async {
+      if (!mounted) return;
 
-    _startAutoRefresh();
-  }
+      // Initial dashboard load
+      await ref
+          .read(guardDashboardProvider.notifier)
+          .load();
 
-  void _loadDashboard() {
-    _future = ref
-        .read(guardDashboardProvider)
-        .loadDashboard();
-  }
+      if (!mounted) return;
 
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(
+      // Initial visitor load
+      await ref
+          .read(guardVisitorProvider.notifier)
+          .loadAll();
+
+      if (!mounted) return;
+
+      // Initial notification load
+      final user = ref.read(authProvider).user;
+
+      if (user != null) {
+        await ref
+            .read(notificationProvider.notifier)
+            .load(user.id);
+      }
+    });
+
+    // ============================================================
+    // BACKGROUND AUTO REFRESH
+    // ============================================================
+
+    _timer = Timer.periodic(
       const Duration(seconds: 30),
-      (_) {
+      (_) async {
         if (!mounted) return;
 
-        setState(() {
-          _loadDashboard();
-        });
+        // --------------------------------------------------------
+        // Dashboard
+        // --------------------------------------------------------
+
+        ref
+            .read(guardDashboardProvider.notifier)
+            .refresh();
+
+        // --------------------------------------------------------
+        // Visitors
+        //
+        // IMPORTANT:
+        // Do not show loading spinner during background refresh.
+        // Existing visitor data remains visible.
+        // --------------------------------------------------------
+
+        ref
+            .read(guardVisitorProvider.notifier)
+            .loadAll(
+              showLoading: false,
+            );
+
+        // --------------------------------------------------------
+        // Notifications
+        // --------------------------------------------------------
+
+        final user = ref.read(authProvider).user;
+
+        if (user != null) {
+          ref
+              .read(notificationProvider.notifier)
+              .load(user.id);
+        }
       },
     );
   }
 
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _loadDashboard();
-    });
+  // ============================================================
+  // MANUAL REFRESH
+  // ============================================================
 
-    await _future;
+  Future<void> _refresh() async {
+    final user = ref.read(authProvider).user;
+
+    final futures = <Future<void>>[
+      ref
+          .read(guardDashboardProvider.notifier)
+          .refresh(),
+
+      ref
+          .read(guardVisitorProvider.notifier)
+          .loadAll(
+            showLoading: false,
+          ),
+    ];
+
+    if (user != null) {
+      futures.add(
+        ref
+            .read(notificationProvider.notifier)
+            .load(user.id),
+      );
+    }
+
+    await Future.wait(futures);
   }
+
+  // ============================================================
+  // GREETING
+  // ============================================================
 
   String greeting() {
     final hour = DateTime.now().hour;
@@ -89,294 +184,709 @@ class _GuardDashboardScreenState
     return "Good Evening 🌙";
   }
 
+  // ============================================================
+  // COLONY STATUS
+  // ============================================================
+
   String colonyStatus(
     GuardDashboard dashboard,
   ) {
-    if (dashboard.summary.expectedVisitors > 20) {
-      return "🟡 Busy";
+    if (dashboard.summary.pendingVisitors > 20) {
+      return "Busy";
     }
 
-    if (dashboard.summary.checkedInToday > 10) {
-      return "🟢 Active";
+    if (dashboard.summary.insideVisitors > 10) {
+      return "Active";
     }
 
-    return "🟢 Normal";
+    return "Normal";
   }
 
-Future<void> _onScanQR() async {
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const QRScannerScreen(),
-    ),
-  );
+  // ============================================================
+  // VISITOR GRID
+  // ============================================================
 
-  if (!mounted) return;
+  int visitorGridCount(double width) {
+    if (width > 1500) return 4;
 
-  _refresh();
-}
+    if (width > 1100) return 3;
 
-void _onDelivery() {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text("Delivery module coming soon"),
-    ),
-  );
-}
+    if (width > 700) return 2;
 
-void _onWalkIn() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const WalkInVisitorScreen(),
-    ),
-  );
-}
+    return 1;
+  }
 
-void _onEmergency() {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text("Emergency module coming soon"),
-    ),
-  );
-}
+  // ============================================================
+  // ACTION GRID
+  // ============================================================
+
+  int actionGridCount(double width) {
+    if (width > 900) return 4;
+
+    return 2;
+  }
+
+  // ============================================================
+  // STAT GRID
+  // ============================================================
+
+  int statGridCount(double width) {
+    if (width > 900) return 4;
+
+    return 2;
+  }
+
+  // ============================================================
+  // QR SCANNER
+  // ============================================================
+
+  Future<void> _scanQR() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const QRScannerScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    await _refresh();
+  }
+
+  // ============================================================
+  // WALK-IN VISITOR
+  // ============================================================
+
+  Future<void> _walkIn() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const WalkInVisitorScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    await _refresh();
+  }
+
+  // ============================================================
+  // DELIVERY
+  // ============================================================
+
+  void _delivery() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "Delivery module coming soon",
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // EMERGENCY
+  // ============================================================
+
+  void _emergency() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "Emergency module coming soon",
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
+  Future<void> _logout() async {
+    await ref
+        .read(authProvider.notifier)
+        .logout();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(),
+      ),
+      (_) => false,
+    );
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
+    // ----------------------------------------------------------
+    // Dashboard state
+    // ----------------------------------------------------------
+
+    final dashboardState =
+        ref.watch(guardDashboardProvider);
+
+    final dashboard =
+        dashboardState.dashboard;
+
+    // ----------------------------------------------------------
+    // Notification state
+    // ----------------------------------------------------------
+
+    final notificationState =
+        ref.watch(notificationProvider);
+
+    // ----------------------------------------------------------
+    // Initial loading
+    //
+    // Only show full-screen loading if there is no existing
+    // dashboard data.
+    //
+    // During background refresh, dashboard remains visible.
+    // ----------------------------------------------------------
+
+    if (dashboardState.loading &&
+        dashboard == null) {
+      return const Scaffold(
+        backgroundColor:
+            Color(0xffF5F7FB),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // ----------------------------------------------------------
+    // Initial error
+    // ----------------------------------------------------------
+
+    if (dashboardState.error != null &&
+        dashboard == null) {
+      return Scaffold(
+        backgroundColor:
+            const Color(0xffF5F7FB),
+        body: ErrorStateWidget(
+          title: "Unable to load dashboard",
+          message: "Please try again.",
+          onRetry: () {
+            ref
+                .read(
+                  guardDashboardProvider.notifier,
+                )
+                .load();
+          },
+        ),
+      );
+    }
+
+    // ----------------------------------------------------------
+    // No dashboard data
+    // ----------------------------------------------------------
+
+    if (dashboard == null) {
+      return Scaffold(
+        backgroundColor:
+            const Color(0xffF5F7FB),
+        body: Center(
+          child: ElevatedButton(
+            onPressed: () {
+              ref
+                  .read(
+                    guardDashboardProvider.notifier,
+                  )
+                  .load();
+            },
+            child: const Text(
+              "Load Dashboard",
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ==========================================================
+    // MAIN SCAFFOLD
+    // ==========================================================
+
     return Scaffold(
-      backgroundColor: const Color(0xffF5F7FB),
+      backgroundColor:
+          const Color(0xffF5F7FB),
+
+      // ========================================================
+      // APP BAR
+      // ========================================================
 
       appBar: AppBar(
-        title: const Text("Guard Dashboard"),
+        title: const Text(
+          "Guard Dashboard",
+        ),
+
+        actions: [
+          // ----------------------------------------------------
+          // Notification
+          // ----------------------------------------------------
+
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.notifications,
+                ),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const NotificationScreen(),
+                    ),
+                  );
+
+                  if (!mounted) return;
+
+                  // Refresh notification count when
+                  // returning from notification screen.
+                  final user =
+                      ref.read(authProvider).user;
+
+                  if (user != null) {
+                    ref
+                        .read(
+                          notificationProvider
+                              .notifier,
+                        )
+                        .load(user.id);
+                  }
+                },
+              ),
+
+              if (notificationState.unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.all(4),
+                    decoration:
+                        const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      "${notificationState.unreadCount}",
+                      style:
+                          const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          // ----------------------------------------------------
+          // Logout
+          // ----------------------------------------------------
+
+          IconButton(
+            icon: const Icon(
+              Icons.logout,
+            ),
+            onPressed: _logout,
+          ),
+        ],
       ),
 
-      body: FutureBuilder<GuardDashboard>(
-        future: _future,
+      // ========================================================
+      // BODY
+      // ========================================================
 
-        builder: (context, snapshot) {
+      body: RefreshIndicator(
+        onRefresh: _refresh,
 
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+        child: ListView(
+          padding:
+              const EdgeInsets.all(24),
 
-          if (snapshot.hasError) {
-            return ErrorStateWidget(
-  title: "Unable to load dashboard",
-  message: "Please check your internet connection and try again.",
-  onRetry: () {
-    setState(() {
-      _loadDashboard();
-    });
-  },
-);
-          }
+          children: [
+            // ==================================================
+            // HERO
+            // ==================================================
 
-          final dashboard = snapshot.data!;
+            GuardHeroBanner(
+              greeting: greeting(),
 
-          return RefreshIndicator(
-            onRefresh: _refresh,
+              guardName:
+                  "Security Guard",
 
-            child: ListView(
-              padding: const EdgeInsets.all(20),
+              colonyStatus:
+                  colonyStatus(
+                dashboard,
+              ),
+
+              expectedVisitors:
+                  dashboard
+                      .summary
+                      .pendingVisitors,
+
+              checkedInVisitors:
+                  dashboard
+                      .summary
+                      .insideVisitors,
+
+              deliveries:
+                  dashboard
+                      .summary
+                      .deliveries,
+            ),
+
+            const SizedBox(
+              height: 30,
+            ),
+
+            // ==================================================
+            // AI INSIGHT
+            // ==================================================
+
+            AIInsightCard(
+              message:
+                  dashboard.aiMessage,
+            ),
+
+            const SizedBox(
+              height: 30,
+            ),
+
+            // ==================================================
+            // QUICK ACTIONS
+            // ==================================================
+
+            QuickActionsSection(
+              crossAxisCount:
+                  actionGridCount(
+                MediaQuery.of(context)
+                    .size
+                    .width,
+              ),
+
+              onScanQR: _scanQR,
+
+              onDelivery:
+                  _delivery,
+
+              onWalkIn:
+                  _walkIn,
+
+              onEmergency:
+                  _emergency,
+            ),
+
+            const SizedBox(
+              height: 30,
+            ),
+
+            // ==================================================
+            // LIVE STATUS
+            // ==================================================
+
+            const Text(
+              "Live Status",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 16,
+            ),
+
+            GridView.count(
+              shrinkWrap: true,
+
+              physics:
+                  const NeverScrollableScrollPhysics(),
+
+              crossAxisCount:
+                  statGridCount(
+                MediaQuery.of(context)
+                    .size
+                    .width,
+              ),
+
+              crossAxisSpacing: 16,
+
+              mainAxisSpacing: 16,
+
+              childAspectRatio: 1.8,
 
               children: [
+                DashboardStatChip(
+                  icon:
+                      Icons.hourglass_top,
 
-              GuardHeroBanner(
-  greeting: greeting(),
-  guardName: "Security Guard",
-  colonyStatus: colonyStatus(dashboard),
-  expectedVisitors: dashboard.summary.expectedVisitors,
-  checkedInVisitors: dashboard.summary.checkedInToday,
-  deliveries: dashboard.summary.deliveries,
-),
+                  value:
+                      "${dashboard.summary.pendingVisitors}",
 
-const SizedBox(height: 20),
+                  label:
+                      "Pending",
 
-                AIInsightCard(
-                  message: dashboard.aiMessage,
+                  color:
+                      Colors.orange,
                 ),
 
-                const SizedBox(height: 24),
+                DashboardStatChip(
+                  icon:
+                      Icons.verified,
 
-                QuickActionsSection(
-  onScanQR: _onScanQR,
-  onDelivery: _onDelivery,
-  onWalkIn: _onWalkIn,
-  onEmergency: _onEmergency,
-),
+                  value:
+                      "${dashboard.summary.approvedVisitors}",
 
-                const SizedBox(height: 30),
+                  label:
+                      "Approved",
 
-                const Text(
-                  "Today's Expected Visitors",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  color:
+                      Colors.blue,
                 ),
 
-                const SizedBox(height: 18),
+                DashboardStatChip(
+                  icon:
+                      Icons.login,
 
-                if (dashboard.expectedVisitors.isEmpty)
+                  value:
+                      "${dashboard.summary.insideVisitors}",
 
-                const EmptyStateWidget(
-  icon: Icons.celebration,
-  color: Colors.green,
-  title: "No Visitors Today",
-  message: "Enjoy your peaceful shift 🎉",
-)
-                else
+                  label:
+                      "Inside",
 
-                  ...dashboard.expectedVisitors.map(
-
-                    (visitor) {
-
-                      return Padding(
-                        padding:
-                            const EdgeInsets.only(
-                          bottom: 16,
-                        ),
-
-                        child: ExpectedVisitorCard(
-
-                          visitor: visitor,
-
-                          onDetails: () {
-
-                            Navigator.push(
-
-                              context,
-
-                              MaterialPageRoute(
-
-                                builder: (_) =>
-                                    GuardVisitorDetailScreen(
-                                  visitor: visitor,
-                                ),
-                              ),
-                            );
-                          },
-
-                          onScan: () {
-
-                            Navigator.push(
-                              context,
-                                  MaterialPageRoute(
-      builder: (_) => const QRScannerScreen(),
-    ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-
-                const SizedBox(height: 30),
-
-                const Text(
-                  "Live Status",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  color:
+                      Colors.green,
                 ),
 
-                const SizedBox(height: 15),
+                DashboardStatChip(
+                  icon:
+                      Icons.inventory_2,
 
-GridView.count(
-  shrinkWrap: true,
-  physics: const NeverScrollableScrollPhysics(),
-  crossAxisCount: 2,
-  crossAxisSpacing: 12,
-  mainAxisSpacing: 12,
-  childAspectRatio: 1.3,
-  children: [
-    DashboardStatChip(
-      icon: Icons.people,
-      value: "${dashboard.summary.expectedVisitors}",
-      label: "Expected Visitors",
-      color: Colors.blue,
-    ),
+                  value:
+                      "${dashboard.summary.deliveries}",
 
-    DashboardStatChip(
-      icon: Icons.login,
-      value: "${dashboard.summary.checkedInToday}",
-      label: "Checked In",
-      color: Colors.green,
-    ),
+                  label:
+                      "Deliveries",
 
-    DashboardStatChip(
-      icon: Icons.inventory_2,
-      value: "${dashboard.summary.deliveries}",
-      label: "Deliveries",
-      color: Colors.orange,
-    ),
-
-    DashboardStatChip(
-      icon: Icons.home_work,
-      value: "${dashboard.summary.vacantHouses}",
-      label: "Vacation Homes",
-      color: Colors.deepPurple,
-    ),
-  ],
-),
-
-                const SizedBox(height: 30),
-
-                const Text(
-                  "Recent Activity",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  color:
+                      Colors.deepPurple,
                 ),
-
-                const SizedBox(height: 15),
-
-                if (dashboard
-                    .recentActivities.isEmpty)
-
-const EmptyStateWidget(
-  icon: Icons.history_toggle_off,
-  color: Colors.grey,
-  title: "No Recent Activity",
-  message: "Everything is quiet right now.",
-)
-
-                else
-
-                  ...dashboard
-                      .recentActivities
-                      .map(
-
-                    (activity) {
-
-                      return Padding(
-                        padding:
-                            const EdgeInsets.only(
-                          bottom: 12,
-                        ),
-
-                        child:
-                            RecentActivityCard(
-
-                          icon: activity.icon,
-
-                          title: activity.title,
-
-                          time: activity.time,
-                        ),
-                      );
-                    },
-                  ),
-
-                const SizedBox(height: 40),
               ],
             ),
-          );
-        },
+
+            const SizedBox(
+              height: 30,
+            ),
+
+            // ==================================================
+            // TODAY'S EXPECTED VISITORS
+            // ==================================================
+
+            const Text(
+              "Today's Expected Visitors",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 18,
+            ),
+
+            if (dashboard
+                .expectedVisitors
+                .isEmpty)
+              const EmptyStateWidget(
+                icon:
+                    Icons.people_outline,
+
+                color:
+                    Colors.green,
+
+                title:
+                    "No Visitors Today",
+
+                message:
+                    "Enjoy your peaceful shift.",
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+
+                physics:
+                    const NeverScrollableScrollPhysics(),
+
+                itemCount:
+                    dashboard
+                        .expectedVisitors
+                        .length,
+
+                gridDelegate:
+                    SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount:
+                      visitorGridCount(
+                    MediaQuery.of(context)
+                        .size
+                        .width,
+                  ),
+
+                  crossAxisSpacing:
+                      18,
+
+                  mainAxisSpacing:
+                      18,
+
+                  // ------------------------------------------------
+                  // FIX:
+                  // Use fixed card height instead of childAspectRatio.
+                  //
+                  // This prevents huge cards on wide screens.
+                  // ------------------------------------------------
+
+                  mainAxisExtent:
+                      220,
+                ),
+
+                itemBuilder:
+                    (_, index) {
+                  final visitor =
+                      dashboard
+                              .expectedVisitors[
+                          index];
+
+                  return ExpectedVisitorCard(
+                    visitor:
+                        visitor,
+
+                    onDetails: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              GuardVisitorDetailScreen(
+                            visitor:
+                                visitor,
+                          ),
+                        ),
+                      );
+                    },
+
+                    onScan:
+                        _scanQR,
+                  );
+                },
+              ),
+
+            const SizedBox(
+              height: 36,
+            ),
+
+            // ==================================================
+            // PENDING VISITORS
+            // ==================================================
+
+            const PendingVisitorsSection(),
+
+            const SizedBox(
+              height: 36,
+            ),
+
+            // ==================================================
+            // APPROVED VISITORS
+            // ==================================================
+
+            const ApprovedVisitorsSection(),
+
+            const SizedBox(
+              height: 36,
+            ),
+
+            // ==================================================
+            // VISITORS INSIDE
+            // ==================================================
+
+            const VisitorsInsideSection(),
+
+            const SizedBox(
+              height: 36,
+            ),
+
+            // ==================================================
+            // RECENT ACTIVITY
+            // ==================================================
+
+            const Text(
+              "Recent Activity",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 16,
+            ),
+
+            if (dashboard
+                .recentActivities
+                .isEmpty)
+              const EmptyStateWidget(
+                icon:
+                    Icons.history,
+
+                color:
+                    Colors.grey,
+
+                title:
+                    "No Activity",
+
+                message:
+                    "Everything is quiet.",
+              )
+            else
+              ...dashboard
+                  .recentActivities
+                  .map(
+                (activity) =>
+                    Padding(
+                  padding:
+                      const EdgeInsets.only(
+                    bottom: 12,
+                  ),
+
+                  child:
+                      RecentActivityCard(
+                    icon:
+                        activity.icon,
+
+                    title:
+                        activity.title,
+
+                    time:
+                        activity.time,
+                  ),
+                ),
+              ),
+
+            const SizedBox(
+              height: 40,
+            ),
+          ],
+        ),
       ),
     );
   }

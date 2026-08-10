@@ -48,3 +48,24 @@ class OrganizationOnboardResponse(BaseModel):
     organization_code: str
     admin_user_id: int
     admin_email: EmailStr
+
+
+# ------------------------------------------------------------------
+# Guard Management
+# ------------------------------------------------------------------
+
+class GuardCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone: str
+    password: str
+
+
+class GuardResponse(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    phone: str
+
+    class Config:
+        from_attributes = True

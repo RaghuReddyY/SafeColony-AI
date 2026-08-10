@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/app_card.dart';
-
 class GuardHeroBanner extends StatelessWidget {
   final String greeting;
   final String guardName;
@@ -23,164 +21,265 @@ class GuardHeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth > 850;
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xff2563EB),
+                Color(0xff4F46E5),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.indigo.withOpacity(.18),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: desktop
+              ? _desktopLayout()
+              : _mobileLayout(),
+        );
+      },
+    );
+  }
+
+  Widget _desktopLayout() {
+    return Row(
+      children: [
+
+        const CircleAvatar(
+          radius: 38,
+          backgroundColor: Colors.white,
+          child: Icon(
+            Icons.security,
+            size: 42,
+            color: Color(0xff2563EB),
+          ),
+        ),
+
+        const SizedBox(width: 24),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
-              const CircleAvatar(
-                radius: 28,
-                backgroundColor: Color(0xFFE8F5E9),
-                child: Icon(
-                  Icons.security,
-                  color: Colors.green,
-                  size: 30,
+
+              Text(
+                greeting,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
 
-              const SizedBox(width: 16),
+              const SizedBox(height: 8),
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      greeting,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+              Text(
+                "Welcome back, $guardName",
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
 
-                    const SizedBox(height: 4),
+              const SizedBox(height: 18),
 
-                    Text(
-                      "Welcome back, $guardName",
-                      style: theme.textTheme.bodyMedium,
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.circle,
-                          color: Colors.green,
-                          size: 10,
-                        ),
-
-                        const SizedBox(width: 6),
-
-                        Text(
-                          "Colony Status : $colonyStatus",
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius:
+                      BorderRadius.circular(25),
+                ),
+                child: Text(
+                  "🟢 Colony Status : $colonyStatus",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
+        ),
 
-          const SizedBox(height: 24),
+        Row(
+          children: [
 
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.people,
-                  value: expectedVisitors.toString(),
-                  label: "Visitors",
-                  color: Colors.blue,
-                ),
+            _Stat(
+              value: expectedVisitors.toString(),
+              label: "Visitors",
+            ),
+
+            const SizedBox(width: 32),
+
+            _Stat(
+              value: checkedInVisitors.toString(),
+              label: "Checked In",
+            ),
+
+            const SizedBox(width: 32),
+
+            _Stat(
+              value: deliveries.toString(),
+              label: "Deliveries",
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _mobileLayout() {
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+
+        Row(
+          children: [
+
+            const CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.white,
+              child: Icon(
+                Icons.security,
+                color: Color(0xff2563EB),
               ),
+            ),
 
-              const SizedBox(width: 12),
+            const SizedBox(width: 14),
 
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.login,
-                  value: checkedInVisitors.toString(),
-                  label: "Inside",
-                  color: Colors.green,
-                ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+
+                  Text(
+                    greeting,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    guardName,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
               ),
+            ),
+          ],
+        ),
 
-              const SizedBox(width: 12),
+        const SizedBox(height: 18),
 
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.inventory_2,
-                  value: deliveries.toString(),
-                  label: "Delivery",
-                  color: Colors.orange,
-                ),
-              ),
-            ],
+        Container(
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 6,
           ),
-        ],
-      ),
+          decoration: BoxDecoration(
+            color: Colors.white24,
+            borderRadius:
+                BorderRadius.circular(20),
+          ),
+          child: Text(
+            "🟢 $colonyStatus",
+            style: const TextStyle(
+              color: Colors.white,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        Row(
+          children: [
+
+            Expanded(
+              child: _Stat(
+                value:
+                    expectedVisitors.toString(),
+                label: "Visitors",
+              ),
+            ),
+
+            Expanded(
+              child: _Stat(
+                value:
+                    checkedInVisitors.toString(),
+                label: "Inside",
+              ),
+            ),
+
+            Expanded(
+              child: _Stat(
+                value: deliveries.toString(),
+                label: "Delivery",
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  final IconData icon;
+class _Stat extends StatelessWidget {
   final String value;
   final String label;
-  final Color color;
 
-  const _StatTile({
-    required this.icon,
+  const _Stat({
     required this.value,
     required this.label,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 14,
-        horizontal: 12,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: color,
+    return Column(
+      children: [
+
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
           ),
+        ),
 
-          const SizedBox(height: 8),
+        const SizedBox(height: 4),
 
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
           ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.black54,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

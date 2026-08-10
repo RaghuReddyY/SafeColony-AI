@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/app_card.dart';
-
 class AIInsightCard extends StatelessWidget {
   final String message;
 
@@ -12,129 +10,152 @@ class AIInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xffEEF4FF),
+            Color(0xffF8FAFF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.indigo.shade100,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final desktop = constraints.maxWidth > 700;
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          //------------------------------------------------------------------
-          // Header
-          //------------------------------------------------------------------
+            if (desktop) {
+              return Row(
+                children: [
+                  _buildAvatar(),
 
-          Row(
+                  const SizedBox(width: 24),
+
+                  Expanded(
+                    child: _buildContent(context),
+                  ),
+                ],
+              );
+            }
+
+            return Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                _buildAvatar(),
+
+                const SizedBox(height: 18),
+
+                _buildContent(context),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xff2563EB),
+            Color(0xff4F46E5),
+          ],
+        ),
+        borderRadius:
+            BorderRadius.circular(18),
+      ),
+      child: const Icon(
+        Icons.smart_toy_rounded,
+        color: Colors.white,
+        size: 36,
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+
+        Row(
+          children: [
+            const Icon(
+              Icons.auto_awesome,
+              color: Colors.indigo,
+            ),
+
+            const SizedBox(width: 8),
+
+            Text(
+              "AI Security Assistant",
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        Text(
+          message,
+          style: const TextStyle(
+            fontSize: 15,
+            height: 1.5,
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        Container(
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius:
+                BorderRadius.circular(12),
+          ),
+          child: const Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Colors.deepPurple,
-                  size: 30,
-                ),
+
+              Icon(
+                Icons.lightbulb,
+                color: Colors.orange,
               ),
 
-              const SizedBox(width: 16),
+              SizedBox(width: 10),
 
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "AI Security Assistant",
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      "Smart insights for today's security operations",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          //------------------------------------------------------------------
-          // AI Message
-          //------------------------------------------------------------------
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.lightbulb_outline_rounded,
-                  color: Colors.deepPurple,
-                  size: 20,
-                ),
-
-                const SizedBox(width: 10),
-
-                Expanded(
-                  child: Text(
-                    message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      height: 1.6,
-                    ),
+                child: Text(
+                  "Recommendation: Monitor today's visitors carefully and verify every QR before allowing entry.",
+                  style: TextStyle(
+                    fontWeight:
+                        FontWeight.w500,
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          //------------------------------------------------------------------
-          // Footer
-          //------------------------------------------------------------------
-
-          Row(
-            children: [
-              Icon(
-                Icons.schedule_rounded,
-                size: 16,
-                color: Colors.grey.shade600,
-              ),
-
-              const SizedBox(width: 6),
-
-              Text(
-                "Updated just now",
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
-              ),
-
-              const Spacer(),
-
-              Icon(
-                Icons.auto_awesome,
-                color: Colors.deepPurple.shade300,
-                size: 18,
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

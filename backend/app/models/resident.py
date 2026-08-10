@@ -173,12 +173,7 @@ class Resident(Base):
         back_populates="resident",
     )
 
-    notifications = relationship(
-        "Notification",
-        back_populates="resident",
-        cascade="all, delete-orphan",
-    )
-
+   
     vacation_modes = relationship(
         "VacationMode",
         back_populates="resident",

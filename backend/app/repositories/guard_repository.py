@@ -114,7 +114,15 @@ class GuardRepository:
         return (
             self.db.query(Visitor)
             .filter(
-                Visitor.status == "PENDING"
+                Visitor.status.in_(
+                    [
+                        "PENDING",
+                        "APPROVED",
+                    ]
+                )
+            )
+            .order_by(
+                Visitor.expected_time.asc()
             )
             .all()
         )
@@ -132,7 +140,52 @@ class GuardRepository:
             )
             .all()
         )
-    
+
+    def approved_visitors(self):
+
+        return (
+            self.db.query(Visitor)
+            .filter(
+                Visitor.status == "APPROVED"
+            )
+            .order_by(
+                Visitor.expected_time.asc()
+            )
+            .all()
+        )
+
+    def approved_count(self):
+        return (
+            self.db.query(func.count(Visitor.id))
+            .filter(
+                Visitor.status == "APPROVED"
+            )
+            .scalar()
+            or 0
+        )
+
+
+    def pending_count(self):
+        return (
+            self.db.query(func.count(Visitor.id))
+            .filter(
+                Visitor.status == "PENDING"
+            )
+            .scalar()
+            or 0
+        )
+
+
+    def inside_count(self):
+        return (
+            self.db.query(func.count(Visitor.id))
+            .filter(
+                Visitor.status == "CHECKED_IN"
+            )
+            .scalar()
+            or 0
+        )
+
     @property
     def delivery_repository(self) -> DeliveryRepository:
         return DeliveryRepository(self.db)

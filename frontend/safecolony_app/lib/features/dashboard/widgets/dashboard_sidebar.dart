@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
 import '../../auth/providers/auth_provider.dart';
-import '../../dashboard/dashboard_screen.dart';
 import '../../delivery/screens/delivery_dashboard_screen.dart';
-import '../../visitors/screens/visitor_list_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../guard/screens/guard_dashboard_screen.dart';
 import '../../vacation/screens/vacation_screen.dart';
+import '../../guard/screens/guard_visitors_screen.dart';
+import '../../visitors/screens/visitor_list_screen.dart';
+import '../../notifications/screens/notification_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
   const DashboardSidebar({super.key});
@@ -70,6 +71,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.dashboard,
                 title: "Dashboard",
                 selected: true,
@@ -78,6 +80,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.people,
                 title: "Visitors",
               ),
@@ -85,6 +88,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.qr_code_scanner,
                 title: "Guard Scanner",
               ),
@@ -92,6 +96,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.inventory_2,
                 title: "Deliveries",
               ),
@@ -99,6 +104,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.beach_access,
                 title: "Vacation",
               ),
@@ -106,6 +112,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.notifications,
                 title: "Notifications",
               ),
@@ -113,6 +120,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.auto_awesome,
                 title: "AI Assistant",
               ),
@@ -125,6 +133,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.settings,
                 title: "Settings",
               ),
@@ -132,6 +141,7 @@ class DashboardSidebar extends ConsumerWidget {
               _menu(
                 context,
                 ref,
+                role: user?.role ?? "",
                 icon: Icons.logout,
                 title: "Logout",
               ),
@@ -149,6 +159,7 @@ class DashboardSidebar extends ConsumerWidget {
     WidgetRef ref, {
     required IconData icon,
     required String title,
+    required String role,
     bool selected = false,
   }) {
     return Container(
@@ -180,14 +191,30 @@ class DashboardSidebar extends ConsumerWidget {
             case "Dashboard":
               break;
 
-            case "Visitors":
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const VisitorListScreen(),
-                ),
-              );
-              break;
+case "Visitors":
+
+  if (role == "SECURITY_GUARD" ||
+      role == "SECURITY_MANAGER") {
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const GuardVisitorsScreen(),
+      ),
+    );
+
+  } else {
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const VisitorListScreen(),
+      ),
+    );
+
+  }
+
+  break;
 
             case "Guard Scanner":
   Navigator.push(
@@ -215,7 +242,14 @@ class DashboardSidebar extends ConsumerWidget {
                     ),
                   );
                   break;
-
+case "Notifications":
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const NotificationScreen(),
+    ),
+  );
+  break;
             case "Logout":
               await ref.read(authProvider.notifier).logout();
 

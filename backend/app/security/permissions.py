@@ -106,6 +106,7 @@ class Permissions:
     GUARD_DASHBOARD = "guard:dashboard"
 
     GUARD_VISITOR_VIEW = "guard:visitor:view"
+    GUARD_WALKIN_VISITOR = "guard:visitor:create"
 
     GUARD_VISITOR_CHECKIN = "guard:visitor:checkin"
     GUARD_VISITOR_CHECKOUT = "guard:visitor:checkout"
@@ -117,6 +118,11 @@ class Permissions:
     GUARD_VEHICLE_VIEW = "guard:vehicle:view"
     GUARD_VEHICLE_ENTRY = "guard:vehicle:entry"
     GUARD_VEHICLE_EXIT = "guard:vehicle:exit"
+    # Guard Lookup
+    GUARD_PROPERTY_VIEW = "guard:property:view"
+    GUARD_SECTION_VIEW = "guard:section:view"
+    GUARD_UNIT_VIEW = "guard:unit:view"
+    GUARD_RESIDENT_VIEW = "guard:resident:view"
 
     GUARD_QR_SCAN = "guard:qr:scan"
 

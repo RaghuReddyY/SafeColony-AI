@@ -3,8 +3,9 @@ import 'package:dio/dio.dart';
 import '../../../core/api/api_client.dart';
 import '../models/visitor.dart';
 import '../models/visitor_create_request.dart';
+
 class VisitorService {
-  /// Get all visitors
+  /// Get all visitors (Admin)
   Future<List<Visitor>> getVisitors() async {
     final Response response =
         await ApiClient.dio.get("/visitors");
@@ -14,7 +15,7 @@ class VisitorService {
         .toList();
   }
 
-  /// Get resident visitors
+  /// Resident Visitor List
   Future<List<Visitor>> getResidentVisitors(
       int residentId) async {
     final Response response =
@@ -27,41 +28,55 @@ class VisitorService {
         .toList();
   }
 
-  /// Create visitor
+  /// Resident creates planned visitor
   Future<Visitor> createVisitor(
-    VisitorCreateRequest request) async {
+    VisitorCreateRequest request,
+  ) async {
     final Response response =
         await ApiClient.dio.post(
-      "/visitors",
+      "/visitors/resident",
       data: request.toJson(),
     );
 
     return Visitor.fromJson(response.data);
   }
 
-  /// Approve visitor
+  /// Guard creates walk-in visitor
+  Future<Visitor> createWalkInVisitor(
+    VisitorCreateRequest request,
+  ) async {
+    final Response response =
+        await ApiClient.dio.post(
+      "/guard/walk-in",
+      data: request.toJson(),
+    );
+
+    return Visitor.fromJson(response.data);
+  }
+
+  /// Resident approves visitor
   Future<Visitor> approveVisitor(
       int visitorId) async {
     final Response response =
         await ApiClient.dio.post(
-      "/visitors/$visitorId/approve",
+      "/visitors/resident/$visitorId/approve",
     );
 
     return Visitor.fromJson(response.data);
   }
 
-  /// Reject visitor
+  /// Resident rejects visitor
   Future<Visitor> rejectVisitor(
       int visitorId) async {
     final Response response =
         await ApiClient.dio.post(
-      "/visitors/$visitorId/reject",
+      "/visitors/resident/$visitorId/reject",
     );
 
     return Visitor.fromJson(response.data);
   }
 
-  /// Check In
+  /// Guard Check In
   Future<Visitor> checkInVisitor(
       int visitorId) async {
     final Response response =
@@ -72,7 +87,7 @@ class VisitorService {
     return Visitor.fromJson(response.data);
   }
 
-  /// Check Out
+  /// Guard Check Out
   Future<Visitor> checkOutVisitor(
       int visitorId) async {
     final Response response =

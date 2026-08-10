@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_card.dart';
+import '../../core/widgets/app_card.dart';
 
 class DashboardStatChip extends StatelessWidget {
   final IconData icon;
@@ -20,43 +20,108 @@ class DashboardStatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AppCard(
-      padding: const EdgeInsets.symmetric(
-        vertical: 18,
-        horizontal: 12,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: color.withValues(alpha: 0.12),
-            child: Icon(
-              icon,
-              color: color,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth > 220;
+
+        return AppCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
           ),
+          child: desktop
+              ? Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor:
+                          color.withOpacity(.12),
+                      child: Icon(
+                        icon,
+                        color: color,
+                        size: 24,
+                      ),
+                    ),
 
-          const SizedBox(height: 12),
+                    const SizedBox(width: 16),
 
-          Text(
-            value,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            value,
+                            style: theme
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                              fontWeight:
+                                  FontWeight.bold,
+                            ),
+                          ),
 
-          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
 
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.grey.shade600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+                          Text(
+                            label,
+                            style: theme
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor:
+                          color.withOpacity(.12),
+                      child: Icon(
+                        icon,
+                        color: color,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      value,
+                      style: theme
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      label,
+                      style: theme
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

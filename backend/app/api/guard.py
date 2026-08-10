@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.permissions import require_permission
 from app.database.dependency import get_db
+from app.schemas.visitor import VisitorCreate
 
 from app.repositories.guard_repository import GuardRepository
 from app.repositories.visitor_repository import VisitorRepository
@@ -18,6 +19,20 @@ from app.security.permissions import Permissions
 
 from app.services.guard_service import GuardService
 from app.services.visitor_service import VisitorService
+from app.services.guard_lookup_service import GuardLookupService
+
+from app.repositories.property_repository import PropertyRepository
+from app.repositories.section_repository import SectionRepository
+from app.repositories.unit_repository import UnitRepository
+from app.repositories.resident_repository import ResidentRepository
+from app.schemas.visitor import VisitorCreate, VisitorResponse
+
+from app.schemas.guard_lookup import (
+    GuardPropertyResponse,
+    GuardSectionResponse,
+    GuardUnitResponse,
+    GuardResidentResponse,
+)
 
 router = APIRouter(
     prefix="/guard",
@@ -64,6 +79,16 @@ def get_visitor_service(
         VisitorRepository(db)
     )
 
+def get_guard_lookup_service(
+    db: Session = Depends(get_db),
+) -> GuardLookupService:
+
+    return GuardLookupService(
+        PropertyRepository(db),
+        SectionRepository(db),
+        UnitRepository(db),
+        ResidentRepository(db),
+    )
 
 # ==========================================================
 # Dashboard
@@ -250,7 +275,80 @@ def vehicle_exit(
         request.guard_name,
     )
 
+@router.get(
+    "/properties",
+    response_model=list[GuardPropertyResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_PROPERTY_VIEW,
+            )
+        )
+    ],
+)
+def guard_properties(
+    service: GuardLookupService = Depends(
+        get_guard_lookup_service,
+    ),
+):
+    return service.properties()
 
+@router.get(
+    "/sections/{property_id}",
+    response_model=list[GuardSectionResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_SECTION_VIEW,
+            )
+        )
+    ],
+)
+def guard_sections(
+    property_id: int,
+    service: GuardLookupService = Depends(
+        get_guard_lookup_service,
+    ),
+):
+    return service.sections(property_id)
+
+@router.get(
+    "/units/{section_id}",
+    response_model=list[GuardUnitResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_UNIT_VIEW,
+            )
+        )
+    ],
+)
+def guard_units(
+    section_id: int,
+    service: GuardLookupService = Depends(
+        get_guard_lookup_service,
+    ),
+):
+    return service.units(section_id)
+
+@router.get(
+    "/residents/{unit_id}",
+    response_model=list[GuardResidentResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_RESIDENT_VIEW,
+            )
+        )
+    ],
+)
+def guard_residents(
+    unit_id: int,
+    service: GuardLookupService = Depends(
+        get_guard_lookup_service,
+    ),
+):
+    return service.residents(unit_id)
 # ==========================================================
 # Visitor QR
 # ==========================================================
@@ -310,3 +408,36 @@ def check_out(
     return service.check_out(
         request.visitor_id,
     )
+
+@router.post(
+    "/walk-in",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_WALKIN_VISITOR,
+            )
+        )
+    ],
+)
+def create_walk_in_visitor(
+    request: VisitorCreate,
+    service: VisitorService = Depends(get_visitor_service),
+):
+    return service.create_walk_in(request)
+
+@router.get(
+    "/approved",
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.GUARD_VISITOR_VIEW,
+            )
+        )
+    ],
+)
+def approved_visitors(
+    service: GuardService = Depends(
+        get_guard_service,
+    ),
+):
+    return service.approved_visitors()

@@ -10,6 +10,7 @@ class VacationStartedEvent(BaseEvent):
 
     def __init__(
         self,
+        user_id: int,
         resident_id: int,
         resident_name: str,
         start_date: date,
@@ -19,11 +20,11 @@ class VacationStartedEvent(BaseEvent):
     ):
         super().__init__()
 
+        self.user_id = user_id
         self.resident_id = resident_id
         self.resident_name = resident_name
         self.start_date = start_date
         self.end_date = end_date
-
         self.visitor_policy = visitor_policy
         self.delivery_policy = delivery_policy
 
@@ -35,10 +36,12 @@ class VacationCancelledEvent(BaseEvent):
 
     def __init__(
         self,
+        user_id: int,
         resident_id: int,
         resident_name: str,
     ):
         super().__init__()
 
+        self.user_id = user_id
         self.resident_id = resident_id
         self.resident_name = resident_name

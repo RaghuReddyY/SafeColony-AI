@@ -11,7 +11,11 @@ from app.schemas.organization import (
     OrganizationOnboardRequest,
     OrganizationOnboardResponse,
     OrganizationResponse,
+    GuardCreate,
+    GuardResponse,
 )
+from app.auth.dependencies import get_current_user
+from app.models.user import User
 
 router = APIRouter(
     prefix="/organizations",
@@ -105,3 +109,50 @@ def onboard_organization(
     service = OrganizationService(db)
 
     return service.onboard(request)
+
+# ==========================================================
+# Guard Management
+# ==========================================================
+
+@router.post(
+    "/guards",
+    response_model=GuardResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.ORGANIZATION_CREATE,
+            )
+        )
+    ],
+)
+def create_guard(
+    guard: GuardCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = OrganizationService(db)
+
+    return service.create_guard(
+        current_user,
+        guard,
+    )
+
+
+@router.get(
+    "/guards",
+    response_model=list[GuardResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.ORGANIZATION_VIEW,
+            )
+        )
+    ],
+)
+def get_guards(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = OrganizationService(db)
+
+    return service.get_guards(current_user)
