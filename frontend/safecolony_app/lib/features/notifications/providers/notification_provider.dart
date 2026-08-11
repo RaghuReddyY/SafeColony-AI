@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/notification.dart';
 import '../services/notification_service.dart';
+import '../../settings/services/settings_service.dart';
 
 final notificationProvider =
     StateNotifierProvider<
@@ -50,6 +51,48 @@ class NotificationNotifier
   final NotificationService _service =
       NotificationService();
 
+  final SettingsService _settingsService =
+      SettingsService();
+
+  Future<List<AppNotification>> _applyNotificationPreferences(
+    List<AppNotification> notifications,
+  ) async {
+    final inApp =
+        await _settingsService.getInAppNotifications();
+
+    if (!inApp) {
+      return const [];
+    }
+
+    final visitor =
+        await _settingsService.getVisitorNotifications();
+    final delivery =
+        await _settingsService.getDeliveryNotifications();
+    final maintenance =
+        await _settingsService.getMaintenanceNotifications();
+    final security =
+        await _settingsService.getSecurityNotifications();
+
+    return notifications.where((notification) {
+      final type = notification.notificationType.toUpperCase();
+
+      switch (type) {
+        case 'VISITOR':
+          return visitor;
+        case 'DELIVERY':
+          return delivery;
+        case 'MAINTENANCE':
+        case 'PAYMENT':
+          return maintenance;
+        case 'SECURITY':
+        case 'EMERGENCY':
+          return security;
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
   // ==========================================================
   // LOAD NOTIFICATIONS
   // ==========================================================
@@ -68,15 +111,20 @@ class NotificationNotifier
         residentId,
       );
 
-      final count =
-          await _service.unreadCount(
-        residentId,
+      final visibleNotifications =
+          await _applyNotificationPreferences(
+        notifications,
       );
+
+      final visibleUnreadCount =
+          visibleNotifications.where(
+        (notification) => !notification.isRead,
+      ).length;
 
       state = state.copyWith(
         loading: false,
-        notifications: notifications,
-        unreadCount: count,
+        notifications: visibleNotifications,
+        unreadCount: visibleUnreadCount,
         error: null,
       );
     } catch (e) {

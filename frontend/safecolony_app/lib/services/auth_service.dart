@@ -61,6 +61,19 @@ Future<void> register(
     rethrow;
   }
 }
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await ApiClient.dio.post(
+      "/auth/change-password",
+      data: {
+        "current_password": currentPassword,
+        "new_password": newPassword,
+      },
+    );
+  }
+
   Future<User> getCurrentUser() async {
     final response = await ApiClient.dio.get(
       "/auth/me",

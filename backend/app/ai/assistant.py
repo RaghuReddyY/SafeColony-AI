@@ -1,0 +1,375 @@
+import json
+import urllib.error
+import urllib.request
+from decimal import Decimal
+
+from sqlalchemy import func
+
+from app.config import settings
+from app.core.exceptions import BadRequestException
+from app.core.logger import logger
+from app.models.delivery import Delivery
+from app.models.maintenance_bill import MaintenanceBill
+from app.models.maintenance_period import MaintenancePeriod
+from app.models.maintenance_expense import MaintenanceExpense
+from app.models.resident import Resident
+from app.models.user import User
+from app.models.visitor import Visitor
+from app.models.vacation_mode import VacationMode
+from app.repositories.resident_repository import ResidentRepository
+
+
+class AIAssistant:
+    """Role-aware SafeColony assistant backed by Gemini."""
+
+    def __init__(self, db):
+        self.db = db
+
+    def chat(self, user: User, messages):
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            raise BadRequestException(
+                "Gemini API is not configured. Add GEMINI_API_KEY to backend/.env and restart the server."
+            )
+
+        prompt_messages = messages[-20:]
+        system_instruction = self._system_instruction(user)
+        contents = []
+
+        for item in prompt_messages:
+            role = "user" if item.role == "user" else "model"
+            contents.append(
+                {
+                    "role": role,
+                    "parts": [{"text": item.content.strip()}],
+                }
+            )
+
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": system_instruction}],
+            },
+            "contents": contents,
+            "generationConfig": {
+                "temperature": 0.35,
+                "maxOutputTokens": 1200,
+            },
+        }
+
+        model = settings.GEMINI_MODEL
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/"
+            f"models/{model}:generateContent"
+        )
+
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            try:
+                error_body = exc.read().decode("utf-8")
+            except Exception:
+                error_body = ""
+            logger.error("Gemini API HTTP %s: %s", exc.code, error_body)
+            if exc.code in (401, 403):
+                raise BadRequestException(
+                    "Gemini API rejected the API key. Check GEMINI_API_KEY."
+                )
+            raise BadRequestException(
+                "Gemini API request failed. Please try again."
+            )
+        except (urllib.error.URLError, TimeoutError) as exc:
+            logger.error("Gemini API connection failed: %s", exc)
+            raise BadRequestException(
+                "Unable to reach Gemini right now. Please try again."
+            )
+
+        text = self._extract_text(body)
+        if not text:
+            logger.warning("Gemini returned no text: %s", body)
+            raise BadRequestException(
+                "Gemini returned an empty response. Please try again."
+            )
+
+        return text.strip()
+
+    def _system_instruction(self, user: User) -> str:
+        role = user.role
+        context = self._build_context(user)
+
+        role_guidance = {
+            "ORGANIZATION_ADMIN": """
+You are the SafeColony AI Assistant for an organization administrator.
+Help with residents, properties, units, security guards, visitors, deliveries,
+notifications, vacations, maintenance/money management, reports, and community
+operations. Give concise, practical administrative guidance. Never invent a live
+number or status that is not present in the supplied context.
+""",
+            "SECURITY_MANAGER": """
+You are the SafeColony AI Assistant for a security manager.
+Focus on security operations, visitors, deliveries, alerts, vacations, guard
+workflows, and community safety. Give actionable operational guidance. Never
+invent a live number or status that is not present in the supplied context.
+""",
+            "SECURITY_GUARD": """
+You are the SafeColony AI Assistant for a security guard.
+Focus on visitor verification, QR/entry procedures, deliveries, residents,
+vacation alerts, notifications, and safe security operations. Give short,
+practical instructions suitable for a guard at the gate. Never invent a live
+number or status that is not present in the supplied context.
+""",
+            "RESIDENT": """
+You are the SafeColony AI Assistant for a resident.
+Help with visitors, deliveries, maintenance payments, vacation mode,
+notifications, profile/community workflows, and general SafeColony usage.
+Give simple step-by-step guidance. Never invent a live amount, date, or status
+that is not present in the supplied context.
+""",
+            "PROPERTY_MANAGER": """
+You are the SafeColony AI Assistant for a property manager.
+Focus on property, unit, resident, maintenance, visitor and operational
+workflows. Never invent a live number or status that is not present in context.
+""",
+            "SYSTEM_ADMIN": """
+You are the SafeColony AI Assistant for a system administrator.
+Explain SafeColony administration, configuration, roles, permissions and
+operational workflows. Do not expose secrets, tokens or API keys.
+""",
+        }.get(role, "You are the SafeColony AI Assistant. Help the user use SafeColony safely.")
+
+        return (
+            "You are SafeColony AI, a professional residential community assistant.\n"
+            f"Current user: {user.full_name}. Role: {role}.\n"
+            "Do not reveal API keys, passwords, tokens, internal security secrets, "
+            "or private data belonging to other users. If a request needs an action "
+            "that the current app does not support, say so clearly instead of pretending "
+            "that you performed it.\n\n"
+            + role_guidance.strip()
+            + "\n\nLIVE SAFEColony CONTEXT:\n"
+            + context
+        )
+
+    def _build_context(self, user: User) -> str:
+        organization_id = user.organization_id
+        lines = [f"organization_id={organization_id}"]
+
+        if not organization_id:
+            return "No organization context is available."
+
+        if user.role in {
+            "ORGANIZATION_ADMIN",
+            "PROPERTY_MANAGER",
+            "SYSTEM_ADMIN",
+        }:
+            resident_count = (
+                self.db.query(func.count(Resident.id))
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    Resident.is_active.is_(True),
+                )
+                .scalar()
+                or 0
+            )
+            guard_count = (
+                self.db.query(func.count(User.id))
+                .filter(
+                    User.organization_id == organization_id,
+                    User.role.in_(["SECURITY_GUARD", "SECURITY_MANAGER"]),
+                    User.is_active.is_(True),
+                )
+                .scalar()
+                or 0
+            )
+            pending_visitors = (
+                self.db.query(func.count(Visitor.id))
+                .join(Resident, Visitor.resident_id == Resident.id)
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    Visitor.status == "PENDING",
+                )
+                .scalar()
+                or 0
+            )
+            pending_deliveries = (
+                self.db.query(func.count(Delivery.id))
+                .join(Resident, Delivery.resident_id == Resident.id)
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    Delivery.status.in_(["ARRIVED", "NOTIFIED"]),
+                )
+                .scalar()
+                or 0
+            )
+            lines.extend(
+                [
+                    f"active_residents={resident_count}",
+                    f"active_security_staff={guard_count}",
+                    f"pending_visitors={pending_visitors}",
+                    f"pending_deliveries={pending_deliveries}",
+                ]
+            )
+
+            period = (
+                self.db.query(MaintenancePeriod)
+                .filter(MaintenancePeriod.organization_id == organization_id)
+                .order_by(MaintenancePeriod.month.desc())
+                .first()
+            )
+            if period:
+                collected = (
+                    self.db.query(func.coalesce(func.sum(MaintenanceBill.amount_paid), 0))
+                    .filter(MaintenanceBill.period_id == period.id)
+                    .scalar()
+                    or Decimal("0")
+                )
+                expenses = (
+                    self.db.query(func.coalesce(func.sum(MaintenanceExpense.amount), 0))
+                    .filter(MaintenanceExpense.period_id == period.id)
+                    .scalar()
+                    or Decimal("0")
+                )
+                unpaid = (
+                    self.db.query(func.count(MaintenanceBill.id))
+                    .filter(
+                        MaintenanceBill.period_id == period.id,
+                        MaintenanceBill.status.in_(["UNPAID", "PARTIAL"]),
+                    )
+                    .scalar()
+                    or 0
+                )
+                lines.extend(
+                    [
+                        f"latest_maintenance_month={period.month}",
+                        f"maintenance_monthly_amount={period.monthly_amount}",
+                        f"maintenance_collected={collected}",
+                        f"maintenance_unpaid_or_partial_bills={unpaid}",
+                    ]
+                )
+
+        elif user.role == "RESIDENT":
+            resident = ResidentRepository(self.db).get_by_user_id(user.id)
+            if resident:
+                lines.extend(
+                    [
+                        f"resident_id={resident.id}",
+                        f"unit_number={resident.unit_number or 'not assigned'}",
+                    ]
+                )
+                bill = (
+                    self.db.query(MaintenanceBill)
+                    .filter(MaintenanceBill.resident_id == resident.id)
+                    .order_by(MaintenanceBill.due_date.desc())
+                    .first()
+                )
+                if bill:
+                    balance = Decimal(str(bill.total_due)) - Decimal(str(bill.amount_paid))
+                    lines.extend(
+                        [
+                            f"latest_maintenance_status={bill.status}",
+                            f"latest_maintenance_balance={balance}",
+                            f"latest_maintenance_due_date={bill.due_date}",
+                        ]
+                    )
+                active_vacation = (
+                    self.db.query(VacationMode)
+                    .filter(
+                        VacationMode.resident_id == resident.id,
+                        VacationMode.status == "ACTIVE",
+                    )
+                    .first()
+                )
+                lines.append(
+                    "vacation_mode=ACTIVE" if active_vacation else "vacation_mode=INACTIVE"
+                )
+                pending_deliveries = (
+                    self.db.query(func.count(Delivery.id))
+                    .filter(
+                        Delivery.resident_id == resident.id,
+                        Delivery.status.in_(["ARRIVED", "NOTIFIED"]),
+                    )
+                    .scalar()
+                    or 0
+                )
+                lines.append(f"pending_deliveries={pending_deliveries}")
+
+        elif user.role in {"SECURITY_GUARD", "SECURITY_MANAGER"}:
+            pending_visitors = (
+                self.db.query(func.count(Visitor.id))
+                .join(Resident, Visitor.resident_id == Resident.id)
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    Visitor.status.in_(["PENDING", "APPROVED"]),
+                )
+                .scalar()
+                or 0
+            )
+            visitors_inside = (
+                self.db.query(func.count(Visitor.id))
+                .join(Resident, Visitor.resident_id == Resident.id)
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    Visitor.status == "CHECKED_IN",
+                )
+                .scalar()
+                or 0
+            )
+            pending_deliveries = (
+                self.db.query(func.count(Delivery.id))
+                .join(Resident, Delivery.resident_id == Resident.id)
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    Delivery.status.in_(["ARRIVED", "NOTIFIED"]),
+                )
+                .scalar()
+                or 0
+            )
+            active_vacations = (
+                self.db.query(func.count(VacationMode.id))
+                .join(Resident, VacationMode.resident_id == Resident.id)
+                .join(User, Resident.user_id == User.id)
+                .filter(
+                    User.organization_id == organization_id,
+                    VacationMode.status == "ACTIVE",
+                )
+                .scalar()
+                or 0
+            )
+            lines.extend(
+                [
+                    f"pending_or_approved_visitors={pending_visitors}",
+                    f"visitors_inside={visitors_inside}",
+                    f"pending_deliveries={pending_deliveries}",
+                    f"active_vacations={active_vacations}",
+                ]
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _extract_text(body: dict) -> str:
+        candidates = body.get("candidates") or []
+        if not candidates:
+            return ""
+        content = candidates[0].get("content") or {}
+        parts = content.get("parts") or []
+        return "\n".join(
+            part.get("text", "")
+            for part in parts
+            if part.get("text")
+        )

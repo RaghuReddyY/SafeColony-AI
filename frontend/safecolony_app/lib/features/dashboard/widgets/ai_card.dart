@@ -1,20 +1,29 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/dashboard_summary.dart';
+
 class AICard extends StatelessWidget {
-  const AICard({super.key});
+  final DashboardSummary dashboard;
+
+  const AICard({
+    super.key,
+    required this.dashboard,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final temperature = dashboard.weatherTemperature;
+    final weather = temperature == null
+        ? 'Weather unavailable'
+        : '${temperature.toStringAsFixed(0)}°C${dashboard.weatherCity == null ? '' : ' • ${dashboard.weatherCity}'}';
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xff4F46E5),
-            Color(0xff2563EB),
-          ],
+          colors: [Color(0xff4F46E5), Color(0xff2563EB)],
         ),
         boxShadow: [
           BoxShadow(
@@ -29,19 +38,16 @@ class AICard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 CircleAvatar(
                   radius: 22,
                   backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.auto_awesome,
-                    color: Colors.indigo,
-                  ),
+                  child: Icon(Icons.auto_awesome, color: Colors.indigo),
                 ),
                 SizedBox(width: 12),
                 Text(
-                  "SafeColony AI",
+                  'SafeColony AI',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -50,83 +56,66 @@ class AICard extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 25),
-
             _info(
               Icons.people,
-              "2 Visitors waiting for approval",
+              '${dashboard.pendingVisitors} visitor${dashboard.pendingVisitors == 1 ? '' : 's'} waiting for approval',
             ),
-
             const SizedBox(height: 15),
-
             _info(
               Icons.inventory_2,
-              "1 Delivery expected today",
+              '${dashboard.pendingDeliveries} delivery${dashboard.pendingDeliveries == 1 ? '' : 'ies'} waiting at the gate',
             ),
-
             const SizedBox(height: 15),
-
             _info(
               Icons.shield,
-              "Security Score : 92%",
+              'Security Score: ${dashboard.securityScore}%',
             ),
-
             const SizedBox(height: 20),
-
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: .12),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Text(
-                "Recommendation\n\nApprove today's pending visitor before 6:00 PM for a smoother entry experience.",
-                style: TextStyle(
+              child: Text(
+                'Recommendation\n\n${dashboard.recommendation}',
+                style: const TextStyle(
                   color: Colors.white,
                   height: 1.5,
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            const Divider(
-              color: Colors.white30,
-            ),
-
+            const Divider(color: Colors.white30),
             const SizedBox(height: 10),
-
-            const Row(
+            Row(
               children: [
-                Icon(
-                  Icons.wb_sunny,
-                  color: Colors.amber,
-                ),
-                SizedBox(width: 10),
-                Text(
-                  "29°C  •  Bangalore",
-                  style: TextStyle(
-                    color: Colors.white,
+                const Icon(Icons.wb_sunny, color: Colors.amber),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    dashboard.weatherDescription == null
+                        ? weather
+                        : '$weather • ${dashboard.weatherDescription}',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.check_circle,
-                  color: Colors.greenAccent,
+                  color: dashboard.communityStatus == 'Secure'
+                      ? Colors.greenAccent
+                      : Colors.amberAccent,
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
-                  "Community Status : Secure",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
+                  'Community Status: ${dashboard.communityStatus}',
+                  style: const TextStyle(color: Colors.white),
                 ),
               ],
             ),
@@ -136,16 +125,10 @@ class AICard extends StatelessWidget {
     );
   }
 
-  Widget _info(
-    IconData icon,
-    String text,
-  ) {
+  Widget _info(IconData icon, String text) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: Colors.white,
-        ),
+        Icon(icon, color: Colors.white),
         const SizedBox(width: 12),
         Expanded(
           child: Text(

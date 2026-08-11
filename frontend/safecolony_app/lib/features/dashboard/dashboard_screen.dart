@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/dashboard_summary.dart';
 import '../auth/providers/auth_provider.dart';
+import '../ai/screens/ai_assistant_screen.dart';
 import '../notifications/widgets/notification_bell.dart';
 import 'providers/dashboard_provider.dart';
 import 'widgets/dashboard_body.dart';
@@ -52,6 +53,23 @@ class _DashboardScreenState
           ),
         ],
       ),
+
+      floatingActionButton: user?.role == "RESIDENT"
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AIAssistantScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.auto_awesome_rounded),
+              label: const Text("AI Assistant"),
+              backgroundColor: const Color(0xff4F46E5),
+              foregroundColor: Colors.white,
+            )
+          : null,
 
       body: IndexedStack(
         index: currentIndex,
@@ -118,42 +136,6 @@ class _DashboardScreenState
           setState(() {
             currentIndex = index;
           });
-
-          switch (index) {
-            case 0:
-              break;
-
-            case 1:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const VisitorListScreen(),
-                ),
-              );
-              break;
-
-            case 2:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const DeliveryDashboardScreen(),
-                ),
-              );
-              break;
-
-            case 3:
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    "Profile module coming soon",
-                  ),
-                ),
-              );
-              break;
-          }
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.indigo,

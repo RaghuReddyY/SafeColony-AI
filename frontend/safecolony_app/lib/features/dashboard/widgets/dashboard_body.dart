@@ -18,8 +18,7 @@ class DashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop =
-        MediaQuery.of(context).size.width > 1000;
+    final isDesktop = MediaQuery.of(context).size.width > 1000;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -31,65 +30,54 @@ class DashboardBody extends StatelessWidget {
             unit: dashboard.unitNumber,
             score: dashboard.securityScore,
           ),
-
           const SizedBox(height: 30),
-
           const Text(
-            "Overview",
+            'Overview',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 20),
-
-          DashboardStats(
-            dashboard: dashboard,
-          ),
-
+          DashboardStats(dashboard: dashboard),
           const SizedBox(height: 35),
-
           const Text(
-            "Quick Actions",
+            'Quick Actions',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
           ),
-
           const SizedBox(height: 20),
-
           const QuickActionGrid(),
-
           const SizedBox(height: 35),
-
           if (isDesktop)
             Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
+                Expanded(
                   flex: 2,
-                  child: VisitorChart(),
+                  child: VisitorChart(
+                    weeklyVisitors: dashboard.weeklyVisitors,
+                  ),
                 ),
-
                 const SizedBox(width: 20),
-
-                const Expanded(
-                  child: AICard(),
+                Expanded(
+                  child: AICard(dashboard: dashboard),
                 ),
               ],
             )
           else ...[
-            const VisitorChart(),
+            VisitorChart(
+              weeklyVisitors: dashboard.weeklyVisitors,
+            ),
             const SizedBox(height: 20),
-            const AICard(),
+            AICard(dashboard: dashboard),
           ],
-
           const SizedBox(height: 30),
-
-          const ActivityTimeline(),
+          ActivityTimeline(
+            activities: dashboard.recentActivity,
+          ),
         ],
       ),
     );

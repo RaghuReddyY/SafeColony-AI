@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
 import '../../auth/providers/auth_provider.dart';
+import '../../ai/screens/ai_assistant_screen.dart';
 import '../../delivery/screens/delivery_dashboard_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../guard/screens/guard_dashboard_screen.dart';
@@ -11,6 +12,7 @@ import '../../guard/screens/guard_visitors_screen.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../../maintenance/screens/maintenance_resident_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
   const DashboardSidebar({super.key});
@@ -252,6 +254,24 @@ case "Visitors":
                   builder: (_) => role == "RESIDENT"
                       ? const MaintenanceResidentScreen()
                       : const MaintenanceAdminScreen(),
+                ),
+              );
+              break;
+
+            case "AI Assistant":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AIAssistantScreen(),
+                ),
+              );
+              break;
+
+            case "Settings":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
                 ),
               );
               break;
