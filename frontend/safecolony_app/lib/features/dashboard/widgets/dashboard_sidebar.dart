@@ -9,7 +9,8 @@ import '../../guard/screens/guard_dashboard_screen.dart';
 import '../../vacation/screens/vacation_screen.dart';
 import '../../guard/screens/guard_visitors_screen.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
-import '../../notifications/screens/notification_screen.dart';
+import '../../maintenance/screens/maintenance_admin_screen.dart';
+import '../../maintenance/screens/maintenance_resident_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
   const DashboardSidebar({super.key});
@@ -101,6 +102,15 @@ class DashboardSidebar extends ConsumerWidget {
                 title: "Deliveries",
               ),
 
+              if (user?.role == "ORGANIZATION_ADMIN" || user?.role == "PROPERTY_MANAGER" || user?.role == "RESIDENT")
+                _menu(
+                  context,
+                  ref,
+                  role: user?.role ?? "",
+                  icon: Icons.account_balance_wallet,
+                  title: "Maintenance",
+                ),
+
               _menu(
                 context,
                 ref,
@@ -109,13 +119,14 @@ class DashboardSidebar extends ConsumerWidget {
                 title: "Vacation",
               ),
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.notifications,
-                title: "Notifications",
-              ),
+              if (user?.role != "RESIDENT")
+                _menu(
+                  context,
+                  ref,
+                  role: user?.role ?? "",
+                  icon: Icons.notifications,
+                  title: "Notifications",
+                ),
 
               _menu(
                 context,
@@ -234,6 +245,17 @@ case "Visitors":
               );
               break;
 
+            case "Maintenance":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => role == "RESIDENT"
+                      ? const MaintenanceResidentScreen()
+                      : const MaintenanceAdminScreen(),
+                ),
+              );
+              break;
+
             case "Vacation":
                   Navigator.push(
                     context,
@@ -242,14 +264,6 @@ case "Visitors":
                     ),
                   );
                   break;
-case "Notifications":
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const NotificationScreen(),
-    ),
-  );
-  break;
             case "Logout":
               await ref.read(authProvider.notifier).logout();
 

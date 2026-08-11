@@ -10,7 +10,7 @@ from app.repositories.guard_repository import GuardRepository
 from app.repositories.visitor_repository import VisitorRepository
 
 from app.schemas.delivery import (
-    DeliveryResponse,
+    GuardDeliveryResponse,
     VerifyOtpRequest,
 )
 from app.schemas.vehicle import VehicleResponse
@@ -152,7 +152,7 @@ def visitors_inside(
 
 @router.get(
     "/pending-deliveries",
-    response_model=list[DeliveryResponse],
+    response_model=list[GuardDeliveryResponse],
     dependencies=[
         Depends(
             require_permission(
@@ -169,7 +169,7 @@ def pending_deliveries(
 
 @router.post(
     "/receive-delivery/{delivery_id}",
-    response_model=DeliveryResponse,
+    response_model=GuardDeliveryResponse,
     dependencies=[
         Depends(
             require_permission(
@@ -191,7 +191,7 @@ def receive_delivery(
 
 @router.post(
     "/verify-delivery/{delivery_id}",
-    response_model=DeliveryResponse,
+    response_model=GuardDeliveryResponse,
     dependencies=[
         Depends(
             require_permission(

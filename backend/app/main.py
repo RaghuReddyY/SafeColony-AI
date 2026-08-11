@@ -23,6 +23,7 @@ from app.api.vacation_mode import router as vacation_router
 from app.api.vehicle import router as vehicle_router
 from app.api.visitor import router as visitor_router
 from app.api.join import router as join_router
+from app.api.maintenance import router as maintenance_router
 from app.api.setup import router as setup_router
 from app.api.public import router as public_router
 
@@ -117,6 +118,7 @@ app.include_router(delivery_router)
 app.include_router(dashboard_router)
 app.include_router(guard_dashboard_router)
 app.include_router(join_router)
+app.include_router(maintenance_router)
 app.include_router(public_router)
 
 

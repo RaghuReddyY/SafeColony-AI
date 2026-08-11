@@ -14,3 +14,7 @@ from app.models.notification import Notification
 from app.models.vacation_mode import VacationMode
 from app.models.security_alert import SecurityAlert
 from app.models.delivery import Delivery
+from app.models.maintenance_period import MaintenancePeriod
+from app.models.maintenance_bill import MaintenanceBill
+from app.models.maintenance_payment import MaintenancePayment
+from app.models.maintenance_expense import MaintenanceExpense

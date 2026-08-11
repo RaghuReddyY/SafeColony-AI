@@ -16,16 +16,17 @@ class OTPDialog extends StatefulWidget {
 
 class _OTPDialogState extends State<OTPDialog> {
   final _otpController = TextEditingController();
-
   final DeliveryService _service = DeliveryService();
 
   bool loading = false;
 
   Future<void> verify() async {
-    if (_otpController.text.trim().isEmpty) {
+    final otp = _otpController.text.trim();
+
+    if (otp.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please enter OTP"),
+          content: Text("Please enter the 6-digit OTP."),
         ),
       );
       return;
@@ -38,7 +39,7 @@ class _OTPDialogState extends State<OTPDialog> {
     try {
       await _service.verifyOtp(
         deliveryId: widget.deliveryId,
-        otp: _otpController.text.trim(),
+        otp: otp,
       );
 
       if (!mounted) return;
@@ -48,49 +49,43 @@ class _OTPDialogState extends State<OTPDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Colors.green,
-          content: Text(
-            "Package collected successfully",
-          ),
+          content: Text("Package collected successfully."),
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: Colors.red,
-          content: Text(
-            "Invalid OTP",
-          ),
+          content: Text("Unable to collect package: $e"),
         ),
       );
-    }
-
-    if (mounted) {
-      setState(() {
-        loading = false;
-      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Verify OTP"),
-
+      title: const Text("Verify Collection OTP"),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            "Ask the resident for the 6-digit OTP.",
+            "Ask the resident for the 6-digit OTP and enter it here.",
           ),
-
           const SizedBox(height: 20),
-
           TextField(
             controller: _otpController,
             keyboardType: TextInputType.number,
             maxLength: 6,
+            autofocus: true,
             decoration: const InputDecoration(
               labelText: "OTP",
               border: OutlineInputBorder(),
@@ -98,18 +93,13 @@ class _OTPDialogState extends State<OTPDialog> {
           ),
         ],
       ),
-
       actions: [
-
         TextButton(
           onPressed: loading
               ? null
-              : () {
-                  Navigator.pop(context);
-                },
+              : () => Navigator.pop(context),
           child: const Text("Cancel"),
         ),
-
         ElevatedButton.icon(
           onPressed: loading ? null : verify,
           icon: loading
@@ -122,7 +112,7 @@ class _OTPDialogState extends State<OTPDialog> {
                   ),
                 )
               : const Icon(Icons.check_circle),
-          label: const Text("Verify"),
+          label: const Text("Collect"),
         ),
       ],
     );

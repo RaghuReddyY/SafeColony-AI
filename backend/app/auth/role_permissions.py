@@ -48,6 +48,9 @@ ROLE_PERMISSIONS = {
         Permissions.DELIVERY_VIEW,
         Permissions.DELIVERY_CREATE,
 
+        Permissions.MAINTENANCE_VIEW,
+        Permissions.MAINTENANCE_MANAGE,
+
         Permissions.NOTIFICATION_VIEW,
         Permissions.NOTIFICATION_CREATE,
         Permissions.NOTIFICATION_UPDATE,
@@ -78,6 +81,8 @@ ROLE_PERMISSIONS = {
         Permissions.VEHICLE_VIEW,
 
         Permissions.DELIVERY_VIEW,
+
+        Permissions.MAINTENANCE_VIEW,
 
         Permissions.NOTIFICATION_VIEW,
 
@@ -136,6 +141,7 @@ ROLE_PERMISSIONS = {
         Permissions.GUARD_VISITOR_CHECKOUT,
 
         Permissions.GUARD_DELIVERY_VIEW,
+        Permissions.GUARD_DELIVERY_CREATE,
         Permissions.GUARD_DELIVERY_RECEIVE,
         Permissions.GUARD_DELIVERY_VERIFY,
 
@@ -172,6 +178,10 @@ ROLE_PERMISSIONS = {
         Permissions.VEHICLE_CREATE,
 
         Permissions.DELIVERY_VIEW,
+        Permissions.DELIVERY_CREATE,
+
+        Permissions.MAINTENANCE_VIEW,
+        Permissions.MAINTENANCE_PAYMENT,
 
         Permissions.VACATION_VIEW,
         Permissions.VACATION_CREATE,

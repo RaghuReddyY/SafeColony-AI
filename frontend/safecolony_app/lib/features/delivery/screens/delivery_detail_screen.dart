@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/delivery.dart';
-import '../widgets/otp_dialog.dart';
 
 class DeliveryDetailScreen extends StatelessWidget {
   final Delivery delivery;
@@ -12,16 +11,14 @@ class DeliveryDetailScreen extends StatelessWidget {
   });
 
   Color getStatusColor() {
-    switch (delivery.status) {
+    switch (delivery.status.toUpperCase()) {
       case "COLLECTED":
         return Colors.green;
-
       case "NOTIFIED":
+      case "ARRIVED":
         return Colors.orange;
-
       case "REJECTED":
         return Colors.red;
-
       default:
         return Colors.blue;
     }
@@ -32,10 +29,9 @@ class DeliveryDetailScreen extends StatelessWidget {
     String value,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 120,
@@ -46,9 +42,7 @@ class DeliveryDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -56,141 +50,84 @@ class DeliveryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final otp = delivery.otp;
+    final isCollected =
+        delivery.status.toUpperCase() == "COLLECTED";
+
     return Scaffold(
-      backgroundColor:
-          const Color(0xffF5F7FB),
-
+      backgroundColor: const Color(0xffF5F7FB),
       appBar: AppBar(
-        title: const Text(
-          "Delivery Details",
-        ),
+        title: const Text("Delivery Details"),
       ),
-
       body: ListView(
         padding: const EdgeInsets.all(20),
-
         children: [
-
           Card(
             elevation: 1,
-
             shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16),
             ),
-
             child: Padding(
-              padding:
-                  const EdgeInsets.all(20),
-
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Row(
                     children: [
-
                       Container(
                         height: 60,
                         width: 60,
-
                         decoration: BoxDecoration(
-                          color: Colors.orange
-                              .withValues(alpha: .15),
-
-                          borderRadius:
-                              BorderRadius.circular(
-                            15,
-                          ),
+                          color: Colors.orange.withValues(alpha: .15),
+                          borderRadius: BorderRadius.circular(15),
                         ),
-
                         child: const Icon(
                           Icons.inventory_2,
                           color: Colors.orange,
                           size: 30,
                         ),
                       ),
-
                       const SizedBox(width: 16),
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
-
+                              CrossAxisAlignment.start,
                           children: [
-
                             Text(
                               delivery.courierName,
-                              style:
-                                  const TextStyle(
+                              style: const TextStyle(
                                 fontSize: 22,
-                                fontWeight:
-                                    FontWeight.bold,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-
-                            const SizedBox(
-                                height: 4),
-
-                            Text(
-                              delivery
-                                  .deliveryCategory,
-                            ),
+                            const SizedBox(height: 4),
+                            Text(delivery.deliveryCategory),
                           ],
                         ),
                       ),
                     ],
                   ),
-
-                  const Divider(
-                    height: 35,
-                  ),
-
+                  const Divider(height: 35),
                   infoRow(
                     "Tracking",
-                    delivery.trackingNumber ??
-                        "-",
+                    delivery.trackingNumber ?? "-",
                   ),
-
-                  infoRow(
-                    "Priority",
-                    delivery.priority,
-                  ),
-
-                  infoRow(
-                    "Status",
-                    delivery.status,
-                  ),
-
+                  infoRow("Priority", delivery.priority),
+                  infoRow("Status", delivery.status),
                   infoRow(
                     "Received By",
-                    delivery.receivedBy ??
-                        "-",
+                    delivery.receivedBy ?? "-",
                   ),
-
-                  const SizedBox(
-                    height: 15,
-                  ),
-
+                  const SizedBox(height: 15),
                   Center(
                     child: Chip(
                       backgroundColor:
-                          getStatusColor()
-                              .withValues(alpha: .15),
-
+                          getStatusColor().withValues(alpha: .15),
                       label: Text(
                         delivery.status,
-
                         style: TextStyle(
-                          color:
-                              getStatusColor(),
-
-                          fontWeight:
-                              FontWeight.bold,
+                          color: getStatusColor(),
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -200,72 +137,100 @@ class DeliveryDetailScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(
-            height: 30,
-          ),
+          const SizedBox(height: 24),
 
-          if (delivery.status !=
-              "COLLECTED")
-
-            SizedBox(
-              height: 55,
-
-              child: ElevatedButton.icon(
-
-                icon: const Icon(
-                  Icons.check_circle,
-                ),
-
-                label: const Text(
-                  "Collect Package",
-                ),
-
-                onPressed: () async {
-
-                  final result =
-                      await showDialog<bool>(
-
-                    context: context,
-
-                    barrierDismissible:
-                        false,
-
-                    builder: (_) =>
-                        OTPDialog(
-                      deliveryId:
-                          delivery.id,
+          // =====================================================
+          // Resident OTP
+          // =====================================================
+          if (!isCollected)
+            Card(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.lock_outline,
+                      size: 34,
+                      color: Colors.indigo,
                     ),
-                  );
-
-                  if (result == true &&
-                      context.mounted) {
-
-                    Navigator.pop(
-                      context,
-                      true,
-                    );
-                  }
-                },
+                    const SizedBox(height: 10),
+                    const Text(
+                      "Collection OTP",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Share this OTP with the security guard when collecting your package.",
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.withValues(alpha: .08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          otp?.isNotEmpty == true ? otp! : "------",
+                          style: const TextStyle(
+                            fontSize: 32,
+                            letterSpacing: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (otp == null || otp.isEmpty) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        "OTP is not available in this response. Refresh the delivery list.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             )
-
           else
-
-            SizedBox(
-              height: 55,
-
-              child: ElevatedButton.icon(
-
-                onPressed: null,
-
-                icon: const Icon(
-                  Icons.check,
-                ),
-
-                label: const Text(
-                  "Package Already Collected",
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: const [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Package has already been collected.",
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+
+          const SizedBox(height: 24),
+
+          // A resident must NOT see the guard's "Collect Package"
+          // action. The guard enters the OTP in the guard module.
+          if (!isCollected)
+            const Text(
+              "Give the OTP to the security guard when you collect the package.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
             ),
         ],
       ),

@@ -32,7 +32,7 @@ import '../widgets/sections/visitors_inside_section.dart';
 import '../../../../shared/widgets/dashboard_stat_chip.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
-
+import '../../delivery/screens/guard_delivery_screen.dart';
 class GuardDashboardScreen extends ConsumerStatefulWidget {
   const GuardDashboardScreen({super.key});
 
@@ -274,16 +274,19 @@ class _GuardDashboardScreenState
   // DELIVERY
   // ============================================================
 
-  void _delivery() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Delivery module coming soon",
-        ),
-      ),
-    );
-  }
+ Future<void> _delivery() async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          const GuardDeliveryScreen(),
+    ),
+  );
 
+  if (!mounted) return;
+
+  _refresh();
+}
   // ============================================================
   // EMERGENCY
   // ============================================================

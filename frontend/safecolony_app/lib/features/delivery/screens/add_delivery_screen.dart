@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/delivery.dart';
 import '../services/delivery_service.dart';
 
 class AddDeliveryScreen extends StatefulWidget {
@@ -23,255 +24,353 @@ class _AddDeliveryScreenState
   final DeliveryService _service =
       DeliveryService();
 
-  List<dynamic> residents = [];
+  String? _propertyName;
+  String? _sectionName;
+  String? _unitNumber;
 
-  int? residentId;
+  String _category = "PACKAGE";
+  String _priority = "NORMAL";
 
-  String category = "PACKAGE";
-
-  String priority = "NORMAL";
-
-  bool loading = true;
-
-  bool saving = false;
+  bool _loading = true;
+  bool _saving = false;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
-
-    loadResidents();
+    _loadResidentContext();
   }
 
-  Future<void> loadResidents() async {
+  Future<void> _loadResidentContext() async {
     try {
-      residents =
-          await _service.getResidents();
+      final profile =
+          await _service.getMyResidentProfile();
 
-      if (residents.isNotEmpty) {
-        residentId = residents.first["id"];
-      }
-    } finally {
+      if (!mounted) return;
+
       setState(() {
-        loading = false;
+        _propertyName = profile["property_name"];
+        _sectionName = profile["section_name"];
+        _unitNumber = profile["unit_number"];
+        _loading = false;
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _loading = false;
+        _loadError = e.toString();
       });
     }
   }
 
-  Future<void> registerDelivery() async {
-    if (!_formKey.currentState!
-        .validate()) {
+  Future<void> _registerDelivery() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() {
-      saving = true;
+      _saving = true;
     });
 
     try {
-      await _service.createDelivery(
-        residentId: residentId!,
+      final Delivery delivery =
+          await _service.createDelivery(
         courierName:
             _courierController.text.trim(),
-        deliveryCategory: category,
+        deliveryCategory: _category,
         trackingNumber:
-            _trackingController.text.trim(),
-        priority: priority,
+            _trackingController.text.trim().isEmpty
+                ? null
+                : _trackingController.text.trim(),
+        priority: _priority,
       );
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.green,
           content: Text(
-              "Delivery Registered"),
+            "Delivery registered. OTP: ${delivery.otp ?? 'available in Delivery Details'}",
+          ),
         ),
       );
 
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          content: Text(
+            "Failed to create delivery: $e",
+          ),
         ),
       );
-    }
-
-    if (mounted) {
-      setState(() {
-        saving = false;
-      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: const Text("Register Delivery")),
-      body: loading
+      backgroundColor: const Color(0xffF5F7FB),
+      appBar: AppBar(
+        title: const Text("Register Delivery"),
+      ),
+      body: _loading
           ? const Center(
-              child:
-                  CircularProgressIndicator(),
+              child: CircularProgressIndicator(),
             )
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding:
-                    const EdgeInsets.all(20),
-                children: [
-                  TextFormField(
-                    controller:
-                        _courierController,
-                    decoration:
-                        const InputDecoration(
-                      labelText:
-                          "Courier Name",
-                      border:
-                          OutlineInputBorder(),
+          : _loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          "Unable to load your delivery context.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _loadError!,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadResidentContext,
+                          child: const Text("Retry"),
+                        ),
+                      ],
                     ),
-                    validator: (v) =>
-                        v == null || v.isEmpty
-                            ? "Required"
-                            : null,
                   ),
-                  const SizedBox(
-                      height: 20),
-                  DropdownButtonFormField<int>(
-                    initialValue: residentId,
-                    decoration:
-                        const InputDecoration(
-                      labelText: "Resident",
-                      border:
-                          OutlineInputBorder(),
-                    ),
-                    items: residents
-                        .map<
-                            DropdownMenuItem<
-                                int>>(
-                      (e) =>
-                          DropdownMenuItem<
-                              int>(
-                        value: e["id"],
-                        child: Text(
-                          "${e["name"]} (${e["flat"]})",
+                )
+              : Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      const Text(
+                        "Register Delivery",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    )
-                        .toList(),
-                    onChanged: (v) {
-                      setState(() {
-                        residentId = v;
-                      });
-                    },
-                  ),
-                  const SizedBox(
-                      height: 20),
-                  DropdownButtonFormField<String>(
-                    initialValue: category,
-                    decoration:
-                        const InputDecoration(
-                      labelText:
-                          "Category",
-                      border:
-                          OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: "PACKAGE",
-                        child: Text(
-                            "Package"),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Register a delivery for your residence.",
+                        style: TextStyle(color: Colors.grey),
                       ),
-                      DropdownMenuItem(
-                        value: "FOOD",
-                        child:
-                            Text("Food"),
+                      const SizedBox(height: 24),
+
+                      // The resident is determined from the logged-in
+                      // account. Show the resolved property/section/unit
+                      // as read-only context instead of a resident dropdown.
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.home_outlined),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    "Delivery For",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                [
+                                  if (_propertyName?.isNotEmpty == true)
+                                    _propertyName!,
+                                  if (_sectionName?.isNotEmpty == true)
+                                    _sectionName!,
+                                  if (_unitNumber?.isNotEmpty == true)
+                                    "Unit $_unitNumber",
+                                ].join("  •  "),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      DropdownMenuItem(
-                        value: "MEDICINE",
-                        child: Text(
-                            "Medicine"),
+
+                      const SizedBox(height: 20),
+
+                      TextFormField(
+                        controller: _courierController,
+                        enabled: !_saving,
+                        decoration: const InputDecoration(
+                          labelText: "Courier Name",
+                          hintText: "e.g. Amazon / Zomato",
+                          prefixIcon:
+                              Icon(Icons.delivery_dining),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null ||
+                              value.trim().isEmpty) {
+                            return "Enter courier name.";
+                          }
+                          return null;
+                        },
                       ),
-                      DropdownMenuItem(
-                        value: "OTHER",
-                        child:
-                            Text("Other"),
+
+                      const SizedBox(height: 20),
+
+                      DropdownButtonFormField<String>(
+                        initialValue: _category,
+                        decoration: const InputDecoration(
+                          labelText: "Category",
+                          prefixIcon:
+                              Icon(Icons.inventory_2),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: "PACKAGE",
+                            child: Text("Package"),
+                          ),
+                          DropdownMenuItem(
+                            value: "FOOD",
+                            child: Text("Food"),
+                          ),
+                          DropdownMenuItem(
+                            value: "GROCERY",
+                            child: Text("Grocery"),
+                          ),
+                          DropdownMenuItem(
+                            value: "MEDICINE",
+                            child: Text("Medicine"),
+                          ),
+                          DropdownMenuItem(
+                            value: "OTHER",
+                            child: Text("Other"),
+                          ),
+                        ],
+                        onChanged: _saving
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  _category = value;
+                                });
+                              },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      TextFormField(
+                        controller: _trackingController,
+                        enabled: !_saving,
+                        decoration: const InputDecoration(
+                          labelText: "Tracking Number",
+                          hintText: "Optional",
+                          prefixIcon: Icon(Icons.qr_code),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      DropdownButtonFormField<String>(
+                        initialValue: _priority,
+                        decoration: const InputDecoration(
+                          labelText: "Priority",
+                          prefixIcon:
+                              Icon(Icons.priority_high),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: "NORMAL",
+                            child: Text("Normal"),
+                          ),
+                          DropdownMenuItem(
+                            value: "HIGH",
+                            child: Text("High"),
+                          ),
+                          DropdownMenuItem(
+                            value: "URGENT",
+                            child: Text("Urgent"),
+                          ),
+                          DropdownMenuItem(
+                            value: "MEDICINE",
+                            child: Text("Medicine"),
+                          ),
+                          DropdownMenuItem(
+                            value: "PERISHABLE",
+                            child: Text("Perishable"),
+                          ),
+                        ],
+                        onChanged: _saving
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  _priority = value;
+                                });
+                              },
+                      ),
+
+                      const SizedBox(height: 35),
+
+                      SizedBox(
+                        height: 55,
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              _saving ? null : _registerDelivery,
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child:
+                                      CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.save),
+                          label: Text(
+                            _saving
+                                ? "Registering..."
+                                : "Register Delivery",
+                          ),
+                        ),
                       ),
                     ],
-                    onChanged: (v) {
-                      setState(() {
-                        category = v!;
-                      });
-                    },
                   ),
-                  const SizedBox(
-                      height: 20),
-                  TextFormField(
-                    controller:
-                        _trackingController,
-                    decoration:
-                        const InputDecoration(
-                      labelText:
-                          "Tracking Number",
-                      border:
-                          OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(
-                      height: 20),
-                  DropdownButtonFormField<String>(
-                    initialValue: priority,
-                    decoration:
-                        const InputDecoration(
-                      labelText:
-                          "Priority",
-                      border:
-                          OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: "NORMAL",
-                        child:
-                            Text("Normal"),
-                      ),
-                      DropdownMenuItem(
-                        value: "HIGH",
-                        child:
-                            Text("High"),
-                      ),
-                      DropdownMenuItem(
-                        value: "URGENT",
-                        child:
-                            Text("Urgent"),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      setState(() {
-                        priority = v!;
-                      });
-                    },
-                  ),
-                  const SizedBox(
-                      height: 35),
-                  SizedBox(
-                    height: 55,
-                    child:
-                        ElevatedButton.icon(
-                      onPressed: saving
-                          ? null
-                          : registerDelivery,
-                      icon: const Icon(
-                          Icons.save),
-                      label: saving
-                          ? const CircularProgressIndicator()
-                          : const Text(
-                              "Register Delivery"),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 

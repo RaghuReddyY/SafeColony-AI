@@ -1,3 +1,4 @@
+
 from app.handlers.base_handler import BaseHandler
 
 from app.events.vacation_events import (
@@ -68,7 +69,10 @@ class ResidentNotificationHandler(BaseHandler):
                             user_id=admin.id,
                             title="Resident Vacation",
                             message=(
-                                f"{event.resident_name} enabled Vacation Mode."
+                                f"{event.resident_name} "
+                                f"enabled Vacation Mode "
+                                f"from {event.start_date} "
+                                f"to {event.end_date}."
                             ),
                             notification_type="VACATION",
                         )
@@ -96,7 +100,10 @@ class ResidentNotificationHandler(BaseHandler):
                             user_id=guard.id,
                             title="Vacation Alert",
                             message=(
-                                f"{event.resident_name} is away on vacation."
+                                f"{event.resident_name} "
+                                f"is away on vacation from "
+                                f"{event.start_date} "
+                                f"to {event.end_date}."
                             ),
                             notification_type="VACATION",
                         )

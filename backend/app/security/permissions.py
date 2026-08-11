@@ -84,6 +84,14 @@ class Permissions:
     DELIVERY_VERIFY = "delivery:verify"
 
     # ==========================================================
+    # Maintenance / Money Management
+    # ==========================================================
+
+    MAINTENANCE_VIEW = "maintenance:view"
+    MAINTENANCE_MANAGE = "maintenance:manage"
+    MAINTENANCE_PAYMENT = "maintenance:payment"
+
+    # ==========================================================
     # Notification
     # ==========================================================
 
@@ -125,6 +133,7 @@ class Permissions:
     GUARD_RESIDENT_VIEW = "guard:resident:view"
 
     GUARD_QR_SCAN = "guard:qr:scan"
+    GUARD_DELIVERY_CREATE = "guard:delivery:create"
 
     # ==========================================================
     # Dashboard

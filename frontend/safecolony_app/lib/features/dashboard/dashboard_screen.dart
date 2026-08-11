@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/dashboard_summary.dart';
 import '../auth/providers/auth_provider.dart';
+import '../notifications/widgets/notification_bell.dart';
 import 'providers/dashboard_provider.dart';
 import 'widgets/dashboard_body.dart';
 import 'widgets/dashboard_sidebar.dart';
 import '../visitors/screens/visitor_list_screen.dart';
 import '../delivery/screens/delivery_dashboard_screen.dart';
 import '../profile/screens/profile_screen.dart';
-
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -21,11 +21,12 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState
     extends ConsumerState<DashboardScreen> {
-
   int currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
+    final user = auth.user;
 
     return Scaffold(
       backgroundColor: const Color(0xffF5F7FB),
@@ -36,9 +37,15 @@ class _DashboardScreenState
         elevation: 0,
         backgroundColor: Colors.white,
         title: const Text("SafeColony AI"),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 20),
+        actions: [
+          if (user?.role == "RESIDENT")
+            const NotificationBell(),
+
+          const Padding(
+            padding: EdgeInsets.only(
+              right: 20,
+              left: 4,
+            ),
             child: CircleAvatar(
               child: Icon(Icons.person),
             ),
@@ -46,127 +53,124 @@ class _DashboardScreenState
         ],
       ),
 
-body: IndexedStack(
-  index: currentIndex,
-  children: [
+      body: IndexedStack(
+        index: currentIndex,
+        children: [
+          Builder(
+            builder: (context) {
+              if (user?.role == "SYSTEM_ADMIN") {
+                return const Center(
+                  child: Text(
+                    "Welcome System Administrator",
+                  ),
+                );
+              }
 
-    Builder(
-      builder: (context) {
+              return FutureBuilder<DashboardSummary>(
+                future: ref
+                    .read(dashboardProvider)
+                    .loadDashboard(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                      child:
+                          CircularProgressIndicator(),
+                    );
+                  }
 
-        final auth = ref.watch(authProvider);
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        snapshot.error.toString(),
+                      ),
+                    );
+                  }
 
-        if (auth.user?.role == "SYSTEM_ADMIN") {
-          return const Center(
-            child: Text(
-              "Welcome System Administrator",
-            ),
-          );
-        }
+                  if (!snapshot.hasData) {
+                    return const Center(
+                      child: Text("No data"),
+                    );
+                  }
 
-        return FutureBuilder<DashboardSummary>(
-          future: ref
-              .read(dashboardProvider)
-              .loadDashboard(),
-          builder: (context,snapshot){
-
-            if(snapshot.connectionState==
-                ConnectionState.waiting){
-              return const Center(
-                child:CircularProgressIndicator(),
+                  return DashboardBody(
+                    dashboard: snapshot.data!,
+                  );
+                },
               );
-            }
+            },
+          ),
 
-            if(snapshot.hasError){
-              return Center(
-                child: Text(snapshot.error.toString()),
-              );
-            }
+          const VisitorListScreen(),
 
-            if(!snapshot.hasData){
-              return const Center(
-                child: Text("No data"),
-              );
-            }
+          const DeliveryDashboardScreen(),
 
-            return DashboardBody(
-              dashboard: snapshot.data!,
-            );
-          },
-        );
-      },
-    ),
+          const ProfileScreen(),
+        ],
+      ),
 
-    const VisitorListScreen(),
-
-    const DeliveryDashboardScreen(),
-
-    const ProfileScreen(),
-  ],
-),
-
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar:
+          BottomNavigationBar(
         currentIndex: currentIndex,
-
         onTap: (index) {
-  if (index == currentIndex) return;
+          if (index == currentIndex) return;
 
-  setState(() {
-    currentIndex = index;
-  });
+          setState(() {
+            currentIndex = index;
+          });
 
-  switch (index) {
-    case 0:
-      break; // Already on Dashboard
+          switch (index) {
+            case 0:
+              break;
 
-    case 1:
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const VisitorListScreen(),
-        ),
-      );
-      break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const VisitorListScreen(),
+                ),
+              );
+              break;
 
-    case 2:
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const DeliveryDashboardScreen(),
-        ),
-      );
-      break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const DeliveryDashboardScreen(),
+                ),
+              );
+              break;
 
-    case 3:
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Profile module coming soon"),
-        ),
-      );
-      break;
-  }
-},
-
+            case 3:
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "Profile module coming soon",
+                  ),
+                ),
+              );
+              break;
+          }
+        },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.grey,
-
         items: const [
-
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: "Home",
           ),
-
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: "Visitors",
           ),
-
           BottomNavigationBarItem(
             icon: Icon(Icons.inventory),
             label: "Deliveries",
           ),
-
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: "Profile",

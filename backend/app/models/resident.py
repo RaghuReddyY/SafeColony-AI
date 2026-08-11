@@ -174,6 +174,12 @@ class Resident(Base):
     )
 
    
+    maintenance_bills = relationship(
+        "MaintenanceBill",
+        back_populates="resident",
+        cascade="all, delete-orphan",
+    )
+
     vacation_modes = relationship(
         "VacationMode",
         back_populates="resident",
