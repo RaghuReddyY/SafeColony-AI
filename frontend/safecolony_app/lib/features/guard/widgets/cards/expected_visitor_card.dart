@@ -26,7 +26,7 @@ class ExpectedVisitorCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final desktop = constraints.maxWidth > 320;
+          final desktop = constraints.maxWidth >= 500;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,

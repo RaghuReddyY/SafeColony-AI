@@ -152,67 +152,46 @@ class VisitorService:
         # Vacation Mode
         # --------------------------------------------------
 
-        if vacation and not vacation.allow_visitors:
+        from app.enums.visitor_policy import VisitorPolicy
 
-            notification_repo = NotificationRepository(
-                self.repo.db
+        if vacation:
+            policy = vacation.visitor_policy
+            blocked = policy == VisitorPolicy.REJECT_ALL.value
+            pre_approved_only = (
+                policy == VisitorPolicy.ALLOW_PRE_APPROVED.value
+                and created_by_guard
             )
 
-            resident_repo = (
-                self.resident_repo
-                or ResidentRepository(self.repo.db)
-            )
+            if blocked or pre_approved_only:
+                notification_repo = NotificationRepository(self.repo.db)
+                resident_repo = self.resident_repo or ResidentRepository(self.repo.db)
+                resident = resident_repo.get_by_id(resident_id)
 
-            resident = resident_repo.get_by_id(
-                resident_id
-            )
+                if resident and resident.user_id:
+                    notification_repo.create(Notification(
+                        user_id=resident.user_id,
+                        title="Visitor Attempt Blocked",
+                        message=(
+                            f"Visitor {data.visitor_name} attempted to visit while "
+                            f"Vacation Mode is active ({vacation.start_date} to {vacation.end_date})."
+                        ),
+                        notification_type="SECURITY",
+                    ))
 
-            if resident and resident.user_id:
-
-                notification = Notification(
-                    user_id=resident.user_id,
-                    title="Visitor Attempt Blocked",
+                SecurityAlertRepository(self.repo.db).create(SecurityAlert(
+                    resident_id=resident_id,
+                    title="Visitor Blocked",
                     message=(
-                        f"Visitor {data.visitor_name} "
-                        "attempted to visit while "
-                        "Vacation Mode was active."
+                        f"Visitor {data.visitor_name} was blocked by Vacation Mode "
+                        f"policy {vacation.visitor_policy}."
                     ),
-                    notification_type="SECURITY",
+                    alert_type="VISITOR",
+                    severity="HIGH",
+                ))
+
+                raise ForbiddenException(
+                    "Visitor is not allowed during the resident's current Vacation Mode."
                 )
-
-                notification_repo.create(
-                    notification
-                )
-
-            alert_repo = SecurityAlertRepository(
-                self.repo.db
-            )
-
-            alert = SecurityAlert(
-                resident_id=resident_id,
-                title="Visitor Blocked",
-                message=(
-                    f"Visitor {data.visitor_name} "
-                    "attempted entry while "
-                    "Vacation Mode was active."
-                ),
-                alert_type="VISITOR",
-                severity="HIGH",
-            )
-
-            alert_repo.create(alert)
-
-            logger.warning(
-                "Visitor blocked due to Vacation Mode: "
-                "%s (Resident ID=%s)",
-                data.visitor_name,
-                resident_id,
-            )
-
-            raise ForbiddenException(
-                "Resident is on Vacation Mode. "
-                "Visitors are not allowed."
-            )
 
         # --------------------------------------------------
         # Create Visitor
@@ -290,6 +269,14 @@ class VisitorService:
                 ),
                 notification_type="VISITOR",
             )
+            self._notify_admins(
+                resident_id=resident_id,
+                title="Walk-in Visitor Registered",
+                message=(
+                    f"Guard registered walk-in visitor {saved_visitor.visitor_name} "
+                    f"for resident #{resident_id}. Waiting for resident approval."
+                ),
+            )
 
         logger.info(
             "%s Visitor created: %s (ID=%s)",
@@ -355,11 +342,15 @@ class VisitorService:
             resident_id=resident.id,
             title="New Planned Visitor",
             message=(
-                f"{visitor.visitor_name} "
-                "has been registered by a resident "
+                f"{visitor.visitor_name} has been registered by a resident "
                 "and is approved for entry."
             ),
             notification_type="VISITOR",
+        )
+        self._notify_admins(
+            resident_id=resident.id,
+            title="Planned Visitor Created",
+            message=f"{visitor.visitor_name} was registered by a resident and is approved for entry.",
         )
 
         return visitor
@@ -492,6 +483,11 @@ class VisitorService:
             ),
             notification_type="VISITOR",
         )
+        self._notify_admins(
+            resident_id=visitor.resident_id,
+            title="Visitor Checked In",
+            message=f"{visitor.visitor_name} has entered the colony.",
+        )
 
         return self.repo.save(
             visitor
@@ -545,6 +541,11 @@ class VisitorService:
                 "has exited the colony."
             ),
             notification_type="VISITOR",
+        )
+        self._notify_admins(
+            resident_id=visitor.resident_id,
+            title="Visitor Checked Out",
+            message=f"{visitor.visitor_name} has exited the colony.",
         )
 
         return self.repo.save(
@@ -627,6 +628,11 @@ class VisitorService:
             ),
             notification_type="VISITOR",
         )
+        self._notify_admins(
+            resident_id=visitor.resident_id,
+            title="Visitor Checked In",
+            message=f"{visitor.visitor_name} has entered the colony.",
+        )
 
         logger.info(
             "QR Check-In: %s (ID=%s)",
@@ -684,6 +690,11 @@ class VisitorService:
                 "has exited the colony."
             ),
             notification_type="VISITOR",
+        )
+        self._notify_admins(
+            resident_id=visitor.resident_id,
+            title="Visitor Checked Out",
+            message=f"{visitor.visitor_name} has exited the colony.",
         )
 
         logger.info(
@@ -799,15 +810,19 @@ class VisitorService:
                 )
 
         self._notify_guards(
-                    resident_id=visitor.resident_id,
-                    title="Visitor Approved",
-                    message=(
-                        f"{visitor.visitor_name} "
-                        "has been approved by the resident "
-                        "and is ready for entry."
-                    ),
-                    notification_type="VISITOR",
-                )
+            resident_id=visitor.resident_id,
+            title="Visitor Approved",
+            message=(
+                f"{visitor.visitor_name} has been approved by the resident "
+                "and is ready for entry."
+            ),
+            notification_type="VISITOR",
+        )
+        self._notify_admins(
+            resident_id=visitor.resident_id,
+            title="Visitor Approved",
+            message=f"{visitor.visitor_name} was approved by the resident and is ready for entry.",
+        )
 
         return approved_visitor
 
@@ -873,14 +888,45 @@ class VisitorService:
         self._notify_guards(
             resident_id=visitor.resident_id,
             title="Visitor Rejected",
-            message=(
-                f"{visitor.visitor_name} "
-                "has been rejected by the resident."
-            ),
+            message=f"{visitor.visitor_name} has been rejected by the resident.",
             notification_type="VISITOR",
+        )
+        self._notify_admins(
+            resident_id=visitor.resident_id,
+            title="Visitor Rejected",
+            message=f"{visitor.visitor_name} was rejected by the resident.",
         )
 
         return visitor
+
+    def _notify_admins(
+        self,
+        resident_id: int,
+        title: str,
+        message: str,
+        notification_type: str = "VISITOR",
+    ):
+        resident_repo = self.resident_repo or ResidentRepository(self.repo.db)
+        resident = resident_repo.get_by_id(resident_id)
+        if not resident or not resident.user or not resident.user.organization_id:
+            return
+        admins = (
+            self.repo.db.query(User)
+            .filter(
+                User.organization_id == resident.user.organization_id,
+                User.role == "ORGANIZATION_ADMIN",
+                User.is_active.is_(True),
+            )
+            .all()
+        )
+        notification_repo = NotificationRepository(self.repo.db)
+        for admin in admins:
+            notification_repo.create(Notification(
+                user_id=admin.id,
+                title=title,
+                message=message,
+                notification_type=notification_type,
+            ))
 
     # ==================================================
     # Pending Visitors For Resident

@@ -53,6 +53,78 @@ class MaintenanceService {
     return MaintenanceExpense.fromJson(response.data);
   }
 
+  Future<MaintenanceDashboard> getCommunityFinance() async {
+    final response = await ApiClient.dio.get('/maintenance/community-finance');
+    return MaintenanceDashboard.fromJson(response.data);
+  }
+
+  Future<Map<String, dynamic>> createOnlinePayment(int billId) async {
+    final response = await ApiClient.dio.post('/maintenance/bills/$billId/pay');
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<MaintenancePaymentSettings> getPaymentSettings() async {
+    final response = await ApiClient.dio.get('/maintenance/payment-settings');
+    return MaintenancePaymentSettings.fromJson(
+      Map<String, dynamic>.from(response.data),
+    );
+  }
+
+  Future<MaintenancePaymentSettings> updatePaymentSettings({
+    required String mode,
+    String? upiId,
+    String? displayName,
+    String? paymentPhone,
+  }) async {
+    final response = await ApiClient.dio.put(
+      '/maintenance/payment-settings',
+      data: {
+        'mode': mode,
+        'upi_id': upiId,
+        'display_name': displayName,
+        'payment_phone': paymentPhone,
+      },
+    );
+    return MaintenancePaymentSettings.fromJson(
+      Map<String, dynamic>.from(response.data),
+    );
+  }
+
+  Future<DirectUPIPaymentSubmission> submitDirectUPIPayment({
+    required int billId,
+    required double amount,
+    required String reference,
+  }) async {
+    final response = await ApiClient.dio.post(
+      '/maintenance/bills/$billId/direct-upi-payment',
+      data: {
+        'amount': amount,
+        'reference': reference,
+      },
+    );
+    return DirectUPIPaymentSubmission.fromJson(
+      Map<String, dynamic>.from(response.data),
+    );
+  }
+
+  Future<List<PendingMaintenancePayment>> getPendingPayments() async {
+    final response = await ApiClient.dio.get('/maintenance/payments/pending');
+    return (response.data as List)
+        .map((e) => PendingMaintenancePayment.fromJson(e))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> verifyDirectUPIPayment({
+    required int paymentId,
+    required bool approve,
+  }) async {
+    final response = await ApiClient.dio.post(
+      '/maintenance/payments/$paymentId/verify',
+      queryParameters: {'approve': approve},
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
   Future<ResidentMaintenanceSummary> getMyMaintenance() async {
     final response = await ApiClient.dio.get('/maintenance/me');
     return ResidentMaintenanceSummary.fromJson(response.data);

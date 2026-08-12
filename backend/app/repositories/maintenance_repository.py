@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.maintenance_bill import MaintenanceBill
 from app.models.maintenance_expense import MaintenanceExpense
 from app.models.maintenance_period import MaintenancePeriod
+from app.models.maintenance_payment import MaintenancePayment
 from app.models.resident import Resident
 from app.models.user import User
 
@@ -39,6 +40,27 @@ class MaintenanceRepository:
         self.db.add(period)
         self.db.flush()
         return period
+
+    def outstanding_balance_before(self, organization_id: int, resident_id: int, month: date):
+        """Return all unpaid/partial maintenance carried from earlier periods."""
+        amount = (
+            self.db.query(
+                func.coalesce(
+                    func.sum(MaintenanceBill.total_due - MaintenanceBill.amount_paid),
+                    0,
+                )
+            )
+            .join(MaintenanceBill.period)
+            .filter(
+                MaintenanceBill.resident_id == resident_id,
+                MaintenancePeriod.organization_id == organization_id,
+                MaintenancePeriod.month < month,
+                MaintenanceBill.total_due > MaintenanceBill.amount_paid,
+            )
+            .scalar()
+            or 0
+        )
+        return amount
 
     def create_bill(self, bill: MaintenanceBill):
         self.db.add(bill)
@@ -134,3 +156,36 @@ class MaintenanceRepository:
 
     def rollback(self):
         self.db.rollback()
+
+
+    def get_pending_payments(self, organization_id: int):
+        return (
+            self.db.query(MaintenancePayment)
+            .join(MaintenanceBill, MaintenancePayment.bill_id == MaintenanceBill.id)
+            .join(Resident, MaintenanceBill.resident_id == Resident.id)
+            .join(User, Resident.user_id == User.id)
+            .options(
+                joinedload(MaintenancePayment.bill)
+                .joinedload(MaintenanceBill.resident)
+                .joinedload(Resident.user)
+                ,
+            )
+            .filter(
+                User.organization_id == organization_id,
+                MaintenancePayment.status == "PENDING",
+            )
+            .order_by(MaintenancePayment.paid_at.desc(), MaintenancePayment.id.desc())
+            .all()
+        )
+
+    def get_payment(self, payment_id: int):
+        return (
+            self.db.query(MaintenancePayment)
+            .options(
+                joinedload(MaintenancePayment.bill)
+                .joinedload(MaintenanceBill.resident)
+                .joinedload(Resident.user)
+            )
+            .filter(MaintenancePayment.id == payment_id)
+            .first()
+        )

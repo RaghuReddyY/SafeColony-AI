@@ -24,6 +24,52 @@ class MaintenancePaymentCreate(BaseModel):
     reference: str | None = Field(default=None, max_length=100)
 
 
+class MaintenancePaymentLinkResponse(BaseModel):
+    bill_id: int
+    amount: Decimal
+    mode: str
+    reference_id: str
+    payment_link_id: str | None = None
+    payment_url: str = ""
+    expires_at: int | None = None
+    upi_id: str | None = None
+    display_name: str | None = None
+    payment_phone: str | None = None
+    message: str | None = None
+
+
+class MaintenancePaymentSettings(BaseModel):
+    mode: str
+    upi_id: str | None = None
+    display_name: str | None = None
+    payment_phone: str | None = None
+
+
+class MaintenancePaymentSettingsUpdate(BaseModel):
+    mode: str = Field(default="RAZORPAY", pattern="^(RAZORPAY|DIRECT_UPI)$")
+    upi_id: str | None = Field(default=None, max_length=120)
+    display_name: str | None = Field(default=None, max_length=150)
+    payment_phone: str | None = Field(default=None, max_length=20)
+
+
+class DirectUPIPaymentCreate(BaseModel):
+    amount: Decimal = Field(gt=0)
+    reference: str = Field(min_length=4, max_length=100)
+
+
+class MaintenancePendingPaymentResponse(BaseModel):
+    id: int
+    bill_id: int
+    resident_id: int
+    resident_name: str
+    unit_number: str | None
+    amount: Decimal
+    reference: str | None
+    payment_method: str
+    status: str
+    paid_at: datetime
+
+
 class MaintenanceBillResponse(BaseModel):
     id: int
     period_id: int

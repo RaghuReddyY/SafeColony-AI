@@ -16,6 +16,11 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
   final _expenseCategoryController = TextEditingController();
   final _expenseDescriptionController = TextEditingController();
   final _expenseAmountController = TextEditingController();
+  final _upiController = TextEditingController();
+  final _paymentNameController = TextEditingController();
+  final _paymentPhoneController = TextEditingController();
+  String _paymentMode = 'RAZORPAY';
+  bool _paymentSettingsLoaded = false;
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _dueDate = DateTime(DateTime.now().year, DateTime.now().month, 10);
   DateTime _spentOn = DateTime.now();
@@ -27,6 +32,9 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     _expenseCategoryController.dispose();
     _expenseDescriptionController.dispose();
     _expenseAmountController.dispose();
+    _upiController.dispose();
+    _paymentNameController.dispose();
+    _paymentPhoneController.dispose();
     super.dispose();
   }
 
@@ -157,6 +165,278 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     }
   }
 
+
+  Future<void> _loadPaymentSettings() async {
+    if (_paymentSettingsLoaded) return;
+    try {
+      final settings = await ref
+          .read(maintenanceServiceProvider)
+          .getPaymentSettings();
+      if (!mounted) return;
+      setState(() {
+        _paymentMode = settings.mode;
+        _upiController.text = settings.upiId ?? '';
+        _paymentNameController.text = settings.displayName ?? '';
+        _paymentPhoneController.text = settings.paymentPhone ?? '';
+        _paymentSettingsLoaded = true;
+      });
+    } catch (e) {
+      if (mounted) _snack('Unable to load payment settings: $e');
+    }
+  }
+
+  Future<void> _savePaymentSettings() async {
+    if (_paymentMode == 'DIRECT_UPI' &&
+        (_upiController.text.trim().isEmpty ||
+            !_upiController.text.trim().contains('@') ||
+            _paymentNameController.text.trim().isEmpty)) {
+      _snack('For Direct UPI, enter a valid UPI ID and display name.');
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).updatePaymentSettings(
+            mode: _paymentMode,
+            upiId: _upiController.text.trim().isEmpty
+                ? null
+                : _upiController.text.trim(),
+            displayName: _paymentNameController.text.trim().isEmpty
+                ? null
+                : _paymentNameController.text.trim(),
+            paymentPhone: _paymentPhoneController.text.trim().isEmpty
+                ? null
+                : _paymentPhoneController.text.trim(),
+          );
+      if (!mounted) return;
+      _snack('Payment settings saved.');
+      ref.invalidate(maintenancePaymentSettingsProvider);
+    } catch (e) {
+      _snack('Unable to save payment settings: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _verifyPendingPayment(
+    PendingMaintenancePayment payment,
+    bool approve,
+  ) async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).verifyDirectUPIPayment(
+            paymentId: payment.id,
+            approve: approve,
+          );
+      if (!mounted) return;
+      _snack(
+        approve
+            ? 'Payment verified for ${payment.residentName}.'
+            : 'Payment rejected.',
+      );
+      ref.invalidate(pendingMaintenancePaymentsProvider);
+      ref.invalidate(maintenanceDashboardProvider);
+    } catch (e) {
+      _snack('Unable to process payment: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _paymentSettingsCard() {
+    final settingsAsync = ref.watch(maintenancePaymentSettingsProvider);
+    settingsAsync.whenData((settings) {
+      if (!_paymentSettingsLoaded) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _paymentSettingsLoaded) return;
+          setState(() {
+            _paymentMode = settings.mode;
+            _upiController.text = settings.upiId ?? '';
+            _paymentNameController.text = settings.displayName ?? '';
+            _paymentPhoneController.text = settings.paymentPhone ?? '';
+            _paymentSettingsLoaded = true;
+          });
+        });
+      }
+    });
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Payment Settings',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Choose how residents pay maintenance. Razorpay is automatic; Direct UPI is suitable for communities that collect into a secretary/maintenance person’s PhonePe or Google Pay UPI account.',
+              style: TextStyle(color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _paymentMode,
+              decoration: const InputDecoration(
+                labelText: 'Payment method',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'RAZORPAY',
+                  child: Text('Razorpay / Gateway'),
+                ),
+                DropdownMenuItem(
+                  value: 'DIRECT_UPI',
+                  child: Text('Direct UPI (PhonePe / Google Pay)'),
+                ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) {
+                      if (value != null) setState(() => _paymentMode = value);
+                    },
+            ),
+            if (_paymentMode == 'DIRECT_UPI') ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _upiController,
+                decoration: const InputDecoration(
+                  labelText: 'UPI ID',
+                  hintText: 'maintenance@upi',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _paymentNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Receiver / maintenance person name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _paymentPhoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'UPI-linked phone (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _busy ? null : _savePaymentSettings,
+                icon: const Icon(Icons.save),
+                label: const Text('Save Payment Settings'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pendingPaymentsCard() {
+    final pending = ref.watch(pendingMaintenancePaymentsProvider);
+    return pending.when(
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (e, _) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Text('Unable to load pending UPI payments.\n$e'),
+        ),
+      ),
+      data: (payments) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Direct UPI Verification',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Residents using personal PhonePe/Google Pay accounts submit their UTR here. Verify the transfer before SafeColony marks the bill PAID.',
+                style: TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 12),
+              if (payments.isEmpty)
+                const Text('No pending UPI payments.')
+              else
+                ...payments.map(
+                  (payment) => Card(
+                    color: const Color(0xffF8FAFC),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${payment.residentName} • ${payment.unitNumber ?? '-'}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Amount: ${_money(payment.amount)}\n'
+                            'UTR: ${payment.reference ?? '-'}\n'
+                            'Bill: #${payment.billId}',
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _verifyPendingPayment(
+                                            payment,
+                                            false,
+                                          ),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Reject'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _verifyPendingPayment(
+                                            payment,
+                                            true,
+                                          ),
+                                  icon: const Icon(Icons.verified),
+                                  label: const Text('Verify & Paid'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _snack(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
   String _money(double value) => '₹${value.toStringAsFixed(2)}';
@@ -176,6 +456,10 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              _paymentSettingsCard(),
+              const SizedBox(height: 20),
+              _pendingPaymentsCard(),
+              const SizedBox(height: 20),
               _buildCreatePeriod(),
               const SizedBox(height: 20),
               if (dashboard.period == null)

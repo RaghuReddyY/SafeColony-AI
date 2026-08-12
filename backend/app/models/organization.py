@@ -47,6 +47,31 @@ class Organization(Base):
         unique=True,
     )
 
+    # Maintenance payment configuration.
+    # RAZORPAY uses backend environment credentials.
+    # DIRECT_UPI stores only the public UPI details shown to residents.
+    payment_mode = Column(
+        String(20),
+        nullable=False,
+        default="RAZORPAY",
+        server_default="RAZORPAY",
+    )
+
+    payment_upi_id = Column(
+        String(120),
+        nullable=True,
+    )
+
+    payment_display_name = Column(
+        String(150),
+        nullable=True,
+    )
+
+    payment_phone = Column(
+        String(20),
+        nullable=True,
+    )
+
     address = Column(
         String(255),
     )

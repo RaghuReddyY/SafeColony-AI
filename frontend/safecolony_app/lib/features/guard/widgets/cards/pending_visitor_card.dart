@@ -2,52 +2,64 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_status_chip.dart';
+
 import '../../models/guard_visitor.dart';
 
 class PendingVisitorCard extends StatelessWidget {
   final GuardVisitor visitor;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
 
   const PendingVisitorCard({
     super.key,
     required this.visitor,
-    required this.onApprove,
-    required this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool residentCreated =
+        visitor.isResidentCreated;
+
     return AppCard(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
 
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+
+        children: [
           Row(
             children: [
-
               const CircleAvatar(
                 child: Icon(Icons.person),
               ),
 
-              const SizedBox(width: 12),
+              const SizedBox(
+                width: 12,
+              ),
 
               Expanded(
                 child: Column(
                   crossAxisAlignment:
                       CrossAxisAlignment.start,
                   children: [
-
                     Text(
                       visitor.visitorName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(
+                        fontWeight:
+                            FontWeight.bold,
                         fontSize: 18,
                       ),
                     ),
 
-                    Text(visitor.phone),
+                    Text(
+                      visitor.phone,
+                      maxLines: 1,
+                      overflow:
+                          TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -58,44 +70,77 @@ class PendingVisitorCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 16),
-
-          Text(
-            "Purpose : ${visitor.purpose}",
+          const SizedBox(
+            height: 16,
           ),
 
-          if (visitor.vehicleNumber != null)
+          Text(
+            'Purpose : ${visitor.purpose}',
+          ),
+
+          if (visitor.vehicleNumber
+              .isNotEmpty)
             Padding(
               padding:
-                  const EdgeInsets.only(top: 8),
+                  const EdgeInsets.only(
+                top: 8,
+              ),
               child: Text(
-                "Vehicle : ${visitor.vehicleNumber}",
+                'Vehicle : ${visitor.vehicleNumber}',
               ),
             ),
 
-          const Spacer(),
+          const SizedBox(
+            height: 16,
+          ),
 
-          Row(
-            children: [
+          Container(
+            width: double.infinity,
 
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onApprove,
-                  icon: const Icon(Icons.check),
-                  label: const Text("Approve"),
+            padding:
+                const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color: residentCreated
+                  ? Colors.green.withValues(
+                      alpha: .10,
+                    )
+                  : Colors.orange.withValues(
+                      alpha: .10,
+                    ),
+              borderRadius:
+                  BorderRadius.circular(12),
+            ),
+
+            child: Row(
+              children: [
+                Icon(
+                  residentCreated
+                      ? Icons.verified
+                      : Icons.hourglass_top,
+
+                  color: residentCreated
+                      ? Colors.green
+                      : Colors.orange,
                 ),
-              ),
 
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onReject,
-                  icon: const Icon(Icons.close),
-                  label: const Text("Reject"),
+                const SizedBox(
+                  width: 8,
                 ),
-              ),
-            ],
+
+                Expanded(
+                  child: Text(
+                    residentCreated
+                        ? 'Visitor created by resident. Please complete the authorized entry process.'
+                        : 'Waiting for resident approval. Guard cannot approve a walk-in visitor.',
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -5,93 +5,70 @@ import '../../providers/guard_visitor_provider.dart';
 import '../cards/pending_visitor_card.dart';
 
 class PendingVisitorsSection
-    extends ConsumerStatefulWidget {
+    extends ConsumerWidget {
   const PendingVisitorsSection({
     super.key,
   });
 
   @override
-  ConsumerState<PendingVisitorsSection>
-      createState() =>
-          _PendingVisitorsSectionState();
-}
-
-class _PendingVisitorsSectionState
-    extends ConsumerState<PendingVisitorsSection> {
-  @override
-  void initState() {
-    super.initState();
-
-    Future.microtask(() {
-      ref
-          .read(
-            guardVisitorProvider.notifier,
-          )
-          .loadAll();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+    WidgetRef ref,
+  ) {
     final state =
         ref.watch(guardVisitorProvider);
 
-    if (state.loading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (state.error != null) {
-      return Center(
-        child: Text(state.error!),
-      );
-    }
-
     if (state.pendingVisitors.isEmpty) {
-      return const Center(
-        child: Text(
-          "No Pending Visitors",
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics:
-          const NeverScrollableScrollPhysics(),
-      itemCount:
-          state.pendingVisitors.length,
-      gridDelegate:
-          const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 18,
-        mainAxisSpacing: 18,
-        childAspectRatio: 1.2,
-      ),
-      itemBuilder: (_, index) {
-        final visitor =
-            state.pendingVisitors[index];
+    final width =
+        MediaQuery.of(context).size.width;
 
-        return PendingVisitorCard(
-          visitor: visitor,
+    final crossAxisCount =
+        width >= 1200
+            ? 3
+            : width >= 700
+                ? 2
+                : 1;
 
-          onApprove: () async {
-            await ref
-                .read(
-                  guardVisitorProvider
-                      .notifier,
-                )
-                .checkIn(
-                  visitor.id,
-                );
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Pending Visitors",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        GridView.builder(
+          shrinkWrap: true,
+          physics:
+              const NeverScrollableScrollPhysics(),
+          itemCount:
+              state.pendingVisitors.length,
+          gridDelegate:
+              SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount:
+                crossAxisCount,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            mainAxisExtent: 200,
+          ),
+          itemBuilder: (_, index) {
+            return PendingVisitorCard(
+              visitor:
+                  state.pendingVisitors[index],
+            );
           },
-
-          onReject: () {
-            // We'll implement Reject later
-          },
-        );
-      },
+        ),
+      ],
     );
   }
 }

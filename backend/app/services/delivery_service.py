@@ -1,20 +1,15 @@
 import random
 from datetime import datetime
 
-from app.core.exceptions import (
-    BadRequestException,
-    NotFoundException,
-)
+from app.core.exceptions import BadRequestException, NotFoundException, ForbiddenException
 from app.core.logger import logger
-
 from app.enums.delivery_status import DeliveryStatus
+from app.enums.delivery_policy import DeliveryPolicy
 from app.enums.user_role import UserRole
-
 from app.models.delivery import Delivery
 from app.models.notification import Notification
 from app.models.security_alert import SecurityAlert
 from app.models.user import User
-
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.notification_repository import NotificationRepository
 from app.repositories.security_alert_repository import SecurityAlertRepository
@@ -23,73 +18,72 @@ from app.repositories.resident_repository import ResidentRepository
 
 
 class DeliveryService:
-
-    def __init__(
-        self,
-        repo: DeliveryRepository,
-    ):
+    def __init__(self, repo: DeliveryRepository):
         self.repo = repo
 
-    # ==================================================
-    # Create Delivery - Admin / Guard selected resident
-    # ==================================================
-
     def create(self, data):
-        return self._create_for_resident(
-            resident_id=data.resident_id,
-            data=data,
-        )
+        return self._create_for_resident(data.resident_id, data)
 
-    # ==================================================
-    # Create Delivery - Logged-in Resident
-    # ==================================================
-
-    def create_for_resident(
-        self,
-        data,
-        current_user: User,
-    ):
-        resident_repo = ResidentRepository(self.repo.db)
-
-        resident = resident_repo.get_by_user_id(
-            current_user.id,
-        )
-
+    def create_for_resident(self, data, current_user: User):
+        resident = ResidentRepository(self.repo.db).get_by_user_id(current_user.id)
         if resident is None:
             raise NotFoundException("Resident")
+        return self._create_for_resident(resident.id, data)
 
-        return self._create_for_resident(
-            resident_id=resident.id,
-            data=data,
+    def _resident_context(self, resident_id: int):
+        resident = ResidentRepository(self.repo.db).get_by_id(resident_id)
+        if resident is None:
+            raise NotFoundException("Resident")
+        if resident.user_id is None or resident.user is None:
+            raise BadRequestException("Resident does not have a user account.")
+        return resident
+
+    def _notify_org(self, organization_id: int, roles: list[str], title: str, message: str):
+        repo = NotificationRepository(self.repo.db)
+        users = (
+            self.repo.db.query(User)
+            .filter(
+                User.organization_id == organization_id,
+                User.role.in_(roles),
+                User.is_active.is_(True),
+            )
+            .all()
         )
+        for user in users:
+            repo.create(Notification(
+                user_id=user.id,
+                title=title,
+                message=message,
+                notification_type="DELIVERY",
+            ))
 
-    # ==================================================
-    # Common Creation Logic
-    # ==================================================
-
-    def _create_for_resident(
-        self,
-        resident_id: int,
-        data,
-    ):
-        vacation_repo = VacationRepository(self.repo.db)
+    def _create_for_resident(self, resident_id: int, data):
+        resident = self._resident_context(resident_id)
+        vacation = VacationRepository(self.repo.db).is_resident_on_vacation(resident_id)
         notification_repo = NotificationRepository(self.repo.db)
         alert_repo = SecurityAlertRepository(self.repo.db)
-        resident_repo = ResidentRepository(self.repo.db)
 
-        resident = resident_repo.get_by_id(resident_id)
-
-        if resident is None:
-            raise NotFoundException("Resident")
-
-        if resident.user_id is None:
-            raise BadRequestException(
-                "Resident does not have a user account."
+        policy = vacation.delivery_policy if vacation else DeliveryPolicy.ALLOW.value
+        if vacation and policy == DeliveryPolicy.REJECT.value:
+            message = (
+                f"Courier {data.courier_name} attempted delivery while Vacation Mode is active "
+                f"({vacation.start_date} to {vacation.end_date}); the delivery was rejected."
             )
-
-        vacation = vacation_repo.is_resident_on_vacation(
-            resident_id
-        )
+            notification_repo.create(Notification(
+                user_id=resident.user_id,
+                title="Delivery Rejected",
+                message=message,
+                notification_type="DELIVERY",
+            ))
+            self._notify_org(resident.user.organization_id, [UserRole.ORGANIZATION_ADMIN.value, UserRole.SECURITY_GUARD.value], "Delivery Rejected", message)
+            alert_repo.create(SecurityAlert(
+                resident_id=resident_id,
+                title="Delivery Rejected",
+                message=message,
+                alert_type="DELIVERY",
+                severity="MEDIUM",
+            ))
+            raise ForbiddenException("Delivery is not allowed during Vacation Mode.")
 
         delivery = Delivery(
             resident_id=resident_id,
@@ -99,146 +93,41 @@ class DeliveryService:
             package_photo=data.package_photo,
             priority=data.priority,
             otp=self._generate_otp(),
-            status=DeliveryStatus.ARRIVED.value,
+            status=DeliveryStatus.NOTIFIED.value,
         )
+        saved = self.repo.create(delivery)
 
-        saved_delivery = self.repo.create(delivery)
-
-        # --------------------------------------------------
-        # Vacation Mode
-        # --------------------------------------------------
-
-        if vacation:
-            if vacation.allow_deliveries:
-                saved_delivery.status = (
-                    DeliveryStatus.ARRIVED.value
-                )
-
-                notification_repo.create(
-                    Notification(
-                        user_id=resident.user_id,
-                        title="Package Received",
-                        message=(
-                            f"Package from "
-                            f"{saved_delivery.courier_name} "
-                            "received at security gate."
-                        ),
-                        notification_type="DELIVERY",
-                    )
-                )
-            else:
-                saved_delivery.status = (
-                    DeliveryStatus.REJECTED.value
-                )
-
-                notification_repo.create(
-                    Notification(
-                        user_id=resident.user_id,
-                        title="Package Rejected",
-                        message=(
-                            f"Package from "
-                            f"{saved_delivery.courier_name} "
-                            "was rejected because Vacation Mode "
-                            "does not allow deliveries."
-                        ),
-                        notification_type="DELIVERY",
-                    )
-                )
-
-                alert_repo.create(
-                    SecurityAlert(
-                        resident_id=resident_id,
-                        title="Delivery Rejected",
-                        message=(
-                            f"Courier "
-                            f"{saved_delivery.courier_name} "
-                            "attempted delivery during Vacation Mode."
-                        ),
-                        alert_type="DELIVERY",
-                        severity="MEDIUM",
-                    )
-                )
-
-        # --------------------------------------------------
-        # Normal Delivery
-        # --------------------------------------------------
-
+        if vacation and policy == DeliveryPolicy.KEEP_AT_GATE.value:
+            title = "Delivery Kept At Gate"
+            message = (
+                f"Package from {saved.courier_name} is at the security gate and will be kept there "
+                f"because Vacation Mode is active until {vacation.end_date}."
+            )
         else:
-            saved_delivery.status = (
-                DeliveryStatus.NOTIFIED.value
-            )
+            title = "Delivery Arrived"
+            message = f"Package from {saved.courier_name} has arrived at the security gate."
 
-            # --------------------------------------------------
-            # Notify Security Guards
-            # --------------------------------------------------
-            #
-            # The resident creates the delivery, but the
-            # Security Guard is the intended recipient of the
-            # delivery notification.
-            #
-            # Find the resident's user first so that we can
-            # identify the organization.
-            # --------------------------------------------------
-
-            resident_user = (
-                self.repo.db.query(User)
-                .filter(
-                    User.id == resident.user_id,
-                )
-                .first()
-            )
-
-            if resident_user is not None:
-                guards = (
-                    self.repo.db.query(User)
-                    .filter(
-                        User.organization_id
-                        == resident_user.organization_id,
-                        User.role
-                        == UserRole.SECURITY_GUARD.value,
-                        User.is_active.is_(True),
-                    )
-                    .all()
-                )
-
-                for guard in guards:
-                    notification_repo.create(
-                        Notification(
-                            user_id=guard.id,
-                            title="Delivery Arrived",
-                            message=(
-                                f"Courier "
-                                f"{saved_delivery.courier_name} "
-                                "has arrived."
-                            ),
-                            notification_type="DELIVERY",
-                        )
-                    )
-
-                logger.info(
-                    "Delivery notification sent to %s guard(s) "
-                    "for organization=%s",
-                    len(guards),
-                    resident_user.organization_id,
-                )
-            else:
-                logger.warning(
-                    "Could not find User for Resident=%s. "
-                    "Guard notification was not created.",
-                    resident_id,
-                )
-
-        logger.info(
-            "Delivery Created: %s for Resident=%s",
-            saved_delivery.courier_name,
-            saved_delivery.resident_id,
+        # Resident confirmation + guard/admin operational visibility.
+        notification_repo.create(Notification(
+            user_id=resident.user_id,
+            title=title,
+            message=message,
+            notification_type="DELIVERY",
+        ))
+        self._notify_org(
+            resident.user.organization_id,
+            [UserRole.SECURITY_GUARD.value],
+            title,
+            message,
         )
-
-        return self.repo.save(saved_delivery)
-
-    # ==================================================
-    # Queries
-    # ==================================================
+        self._notify_org(
+            resident.user.organization_id,
+            [UserRole.ORGANIZATION_ADMIN.value],
+            title,
+            message,
+        )
+        logger.info("Delivery Created: %s for Resident=%s", saved.courier_name, saved.resident_id)
+        return self.repo.save(saved)
 
     def get_all(self):
         return self.repo.get_all()
@@ -250,95 +139,61 @@ class DeliveryService:
         return self.repo.get_by_resident(resident_id)
 
     def get_my_deliveries(self, current_user: User):
-        resident_repo = ResidentRepository(self.repo.db)
-
-        resident = resident_repo.get_by_user_id(
-            current_user.id,
-        )
-
+        resident = ResidentRepository(self.repo.db).get_by_user_id(current_user.id)
         if resident is None:
             raise NotFoundException("Resident")
-
         return self.repo.get_by_resident(resident.id)
 
-    # ==================================================
-    # Guard Receives Delivery
-    # ==================================================
-
-    def receive(
-        self,
-        delivery_id: int,
-        security_guard: str,
-    ):
+    def receive(self, delivery_id: int, security_guard: str):
         delivery = self.repo.get_by_id(delivery_id)
-
         if delivery is None:
             raise NotFoundException("Delivery")
-
-        if delivery.status == DeliveryStatus.COLLECTED.value:
-            raise BadRequestException(
-                "Delivery is already collected."
-            )
-
+        if delivery.status in (DeliveryStatus.COLLECTED.value, DeliveryStatus.REJECTED.value):
+            raise BadRequestException("Delivery cannot be received in its current state.")
         delivery.received_by = security_guard
-
-        logger.info(
-            "Delivery Received: ID=%s Guard=%s",
-            delivery.id,
-            security_guard,
-        )
-
+        resident = ResidentRepository(self.repo.db).get_by_id(delivery.resident_id)
+        if resident and resident.user_id:
+            NotificationRepository(self.repo.db).create(Notification(
+                user_id=resident.user_id,
+                title="Package Received By Guard",
+                message=f"Package from {delivery.courier_name} was received by security guard {security_guard}.",
+                notification_type="DELIVERY",
+            ))
+            self._notify_org(
+                resident.user.organization_id,
+                [UserRole.ORGANIZATION_ADMIN.value],
+                "Package Received",
+                f"Package from {delivery.courier_name} was received by guard {security_guard}.",
+            )
         return self.repo.save(delivery)
 
-    # ==================================================
-    # OTP Verification / Collection
-    # ==================================================
-
-    def verify_otp(
-        self,
-        delivery_id: int,
-        otp: str,
-    ):
+    def verify_otp(self, delivery_id: int, otp: str):
         delivery = self.repo.get_by_id(delivery_id)
-
         if delivery is None:
-            logger.warning(
-                "Delivery not found: ID=%s",
-                delivery_id,
-            )
             raise NotFoundException("Delivery")
-
         if delivery.status == DeliveryStatus.COLLECTED.value:
-            raise BadRequestException(
-                "Delivery already collected."
-            )
-
+            raise BadRequestException("Delivery already collected.")
         if delivery.status == DeliveryStatus.REJECTED.value:
-            raise BadRequestException(
-                "Rejected delivery cannot be collected."
-            )
-
+            raise BadRequestException("Rejected delivery cannot be collected.")
         if delivery.otp != otp:
-            logger.warning(
-                "Invalid OTP for Delivery=%s",
-                delivery_id,
-            )
             raise BadRequestException("Invalid OTP.")
-
         delivery.status = DeliveryStatus.COLLECTED.value
         delivery.collected_at = datetime.utcnow()
-
-        logger.info(
-            "Delivery Collected: ID=%s Resident=%s",
-            delivery.id,
-            delivery.resident_id,
-        )
-
+        resident = ResidentRepository(self.repo.db).get_by_id(delivery.resident_id)
+        if resident and resident.user_id:
+            NotificationRepository(self.repo.db).create(Notification(
+                user_id=resident.user_id,
+                title="Package Collected",
+                message=f"Your package from {delivery.courier_name} has been collected.",
+                notification_type="DELIVERY",
+            ))
+            self._notify_org(
+                resident.user.organization_id,
+                [UserRole.ORGANIZATION_ADMIN.value],
+                "Package Collected",
+                f"Package from {delivery.courier_name} was collected by the resident.",
+            )
         return self.repo.save(delivery)
-
-    # ==================================================
-    # Helpers
-    # ==================================================
 
     def _generate_otp(self):
         return str(random.randint(100000, 999999))

@@ -188,3 +188,94 @@ class ResidentMaintenanceSummary {
 }
 
 double _double(dynamic value) => double.tryParse(value?.toString() ?? '0') ?? 0;
+
+
+class MaintenancePaymentSettings {
+  final String mode;
+  final String? upiId;
+  final String? displayName;
+  final String? paymentPhone;
+
+  const MaintenancePaymentSettings({
+    required this.mode,
+    this.upiId,
+    this.displayName,
+    this.paymentPhone,
+  });
+
+  factory MaintenancePaymentSettings.fromJson(Map<String, dynamic> json) {
+    return MaintenancePaymentSettings(
+      mode: json['mode']?.toString() ?? 'RAZORPAY',
+      upiId: json['upi_id']?.toString(),
+      displayName: json['display_name']?.toString(),
+      paymentPhone: json['payment_phone']?.toString(),
+    );
+  }
+}
+
+class DirectUPIPaymentSubmission {
+  final int paymentId;
+  final int billId;
+  final String status;
+  final String? reference;
+  final String message;
+
+  const DirectUPIPaymentSubmission({
+    required this.paymentId,
+    required this.billId,
+    required this.status,
+    required this.reference,
+    required this.message,
+  });
+
+  factory DirectUPIPaymentSubmission.fromJson(Map<String, dynamic> json) {
+    return DirectUPIPaymentSubmission(
+      paymentId: json['payment_id'] ?? 0,
+      billId: json['bill_id'] ?? 0,
+      status: json['status']?.toString() ?? 'PENDING',
+      reference: json['reference']?.toString(),
+      message: json['message']?.toString() ?? '',
+    );
+  }
+}
+
+class PendingMaintenancePayment {
+  final int id;
+  final int billId;
+  final int residentId;
+  final String residentName;
+  final String? unitNumber;
+  final double amount;
+  final String? reference;
+  final String paymentMethod;
+  final String status;
+  final DateTime paidAt;
+
+  const PendingMaintenancePayment({
+    required this.id,
+    required this.billId,
+    required this.residentId,
+    required this.residentName,
+    this.unitNumber,
+    required this.amount,
+    this.reference,
+    required this.paymentMethod,
+    required this.status,
+    required this.paidAt,
+  });
+
+  factory PendingMaintenancePayment.fromJson(Map<String, dynamic> json) {
+    return PendingMaintenancePayment(
+      id: json['id'],
+      billId: json['bill_id'],
+      residentId: json['resident_id'],
+      residentName: json['resident_name'] ?? 'Resident',
+      unitNumber: json['unit_number'],
+      amount: _double(json['amount']),
+      reference: json['reference']?.toString(),
+      paymentMethod: json['payment_method']?.toString() ?? 'DIRECT_UPI',
+      status: json['status']?.toString() ?? 'PENDING',
+      paidAt: DateTime.parse(json['paid_at']),
+    );
+  }
+}

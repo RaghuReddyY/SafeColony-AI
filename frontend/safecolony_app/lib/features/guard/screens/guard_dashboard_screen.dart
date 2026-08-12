@@ -17,10 +17,8 @@ import '../providers/guard_dashboard_provider.dart';
 import '../providers/guard_visitor_provider.dart';
 
 import '../screens/qr_scanner_screen.dart';
-import '../screens/visitor_detail_screen.dart';
 
 import '../widgets/cards/ai_insight_card.dart';
-import '../widgets/cards/expected_visitor_card.dart';
 import '../widgets/cards/recent_activity_card.dart';
 
 import '../widgets/hero_banner.dart';
@@ -33,7 +31,9 @@ import '../widgets/sections/visitors_inside_section.dart';
 import '../../../../shared/widgets/dashboard_stat_chip.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
+
 import '../../delivery/screens/guard_delivery_screen.dart';
+
 class GuardDashboardScreen extends ConsumerStatefulWidget {
   const GuardDashboardScreen({super.key});
 
@@ -57,21 +57,18 @@ class _GuardDashboardScreenState
     Future.microtask(() async {
       if (!mounted) return;
 
-      // Initial dashboard load
       await ref
           .read(guardDashboardProvider.notifier)
           .load();
 
       if (!mounted) return;
 
-      // Initial visitor load
       await ref
           .read(guardVisitorProvider.notifier)
           .loadAll();
 
       if (!mounted) return;
 
-      // Initial notification load
       final user = ref.read(authProvider).user;
 
       if (user != null) {
@@ -82,7 +79,7 @@ class _GuardDashboardScreenState
     });
 
     // ============================================================
-    // BACKGROUND AUTO REFRESH
+    // AUTO REFRESH
     // ============================================================
 
     _timer = Timer.periodic(
@@ -90,32 +87,22 @@ class _GuardDashboardScreenState
       (_) async {
         if (!mounted) return;
 
-        // --------------------------------------------------------
-        // Dashboard
-        // --------------------------------------------------------
-
+        // Dashboard statistics
         ref
             .read(guardDashboardProvider.notifier)
             .refresh();
 
-        // --------------------------------------------------------
-        // Visitors
+        // Visitor data
         //
-        // IMPORTANT:
-        // Do not show loading spinner during background refresh.
-        // Existing visitor data remains visible.
-        // --------------------------------------------------------
-
+        // This is now the ONLY visitor list used by the
+        // visitor sections on this screen.
         ref
             .read(guardVisitorProvider.notifier)
             .loadAll(
               showLoading: false,
             );
 
-        // --------------------------------------------------------
         // Notifications
-        // --------------------------------------------------------
-
         final user = ref.read(authProvider).user;
 
         if (user != null) {
@@ -138,7 +125,7 @@ class _GuardDashboardScreenState
   }
 
   // ============================================================
-  // MANUAL REFRESH
+  // REFRESH
   // ============================================================
 
   Future<void> _refresh() async {
@@ -204,21 +191,7 @@ class _GuardDashboardScreenState
   }
 
   // ============================================================
-  // VISITOR GRID
-  // ============================================================
-
-  int visitorGridCount(double width) {
-    if (width > 1500) return 4;
-
-    if (width > 1100) return 3;
-
-    if (width > 700) return 2;
-
-    return 1;
-  }
-
-  // ============================================================
-  // ACTION GRID
+  // GRID COUNTS
   // ============================================================
 
   int actionGridCount(double width) {
@@ -226,10 +199,6 @@ class _GuardDashboardScreenState
 
     return 2;
   }
-
-  // ============================================================
-  // STAT GRID
-  // ============================================================
 
   int statGridCount(double width) {
     if (width > 900) return 4;
@@ -255,7 +224,7 @@ class _GuardDashboardScreenState
   }
 
   // ============================================================
-  // WALK-IN VISITOR
+  // WALK-IN
   // ============================================================
 
   Future<void> _walkIn() async {
@@ -275,19 +244,19 @@ class _GuardDashboardScreenState
   // DELIVERY
   // ============================================================
 
- Future<void> _delivery() async {
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) =>
-          const GuardDeliveryScreen(),
-    ),
-  );
+  Future<void> _delivery() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const GuardDeliveryScreen(),
+      ),
+    );
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  _refresh();
-}
+    await _refresh();
+  }
+
   // ============================================================
   // EMERGENCY
   // ============================================================
@@ -328,52 +297,37 @@ class _GuardDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
-    // ----------------------------------------------------------
-    // Dashboard state
-    // ----------------------------------------------------------
-
     final dashboardState =
         ref.watch(guardDashboardProvider);
 
     final dashboard =
         dashboardState.dashboard;
 
-    // ----------------------------------------------------------
-    // Notification state
-    // ----------------------------------------------------------
-
     final notificationState =
         ref.watch(notificationProvider);
 
-    // ----------------------------------------------------------
-    // Initial loading
-    //
-    // Only show full-screen loading if there is no existing
-    // dashboard data.
-    //
-    // During background refresh, dashboard remains visible.
-    // ----------------------------------------------------------
+    // ============================================================
+    // LOADING
+    // ============================================================
 
     if (dashboardState.loading &&
         dashboard == null) {
       return const Scaffold(
-        backgroundColor:
-            Color(0xffF5F7FB),
+        backgroundColor: Color(0xffF5F7FB),
         body: Center(
           child: CircularProgressIndicator(),
         ),
       );
     }
 
-    // ----------------------------------------------------------
-    // Initial error
-    // ----------------------------------------------------------
+    // ============================================================
+    // ERROR
+    // ============================================================
 
     if (dashboardState.error != null &&
         dashboard == null) {
       return Scaffold(
-        backgroundColor:
-            const Color(0xffF5F7FB),
+        backgroundColor: const Color(0xffF5F7FB),
         body: ErrorStateWidget(
           title: "Unable to load dashboard",
           message: "Please try again.",
@@ -388,14 +342,13 @@ class _GuardDashboardScreenState
       );
     }
 
-    // ----------------------------------------------------------
-    // No dashboard data
-    // ----------------------------------------------------------
+    // ============================================================
+    // NO DATA
+    // ============================================================
 
     if (dashboard == null) {
       return Scaffold(
-        backgroundColor:
-            const Color(0xffF5F7FB),
+        backgroundColor: const Color(0xffF5F7FB),
         body: Center(
           child: ElevatedButton(
             onPressed: () {
@@ -413,17 +366,16 @@ class _GuardDashboardScreenState
       );
     }
 
-    // ==========================================================
-    // MAIN SCAFFOLD
-    // ==========================================================
+    // ============================================================
+    // MAIN SCREEN
+    // ============================================================
 
     return Scaffold(
-      backgroundColor:
-          const Color(0xffF5F7FB),
+      backgroundColor: const Color(0xffF5F7FB),
 
-      // ========================================================
+      // ==========================================================
       // APP BAR
-      // ========================================================
+      // ==========================================================
 
       appBar: AppBar(
         title: const Text(
@@ -431,10 +383,6 @@ class _GuardDashboardScreenState
         ),
 
         actions: [
-          // ----------------------------------------------------
-          // Notification
-          // ----------------------------------------------------
-
           Stack(
             children: [
               IconButton(
@@ -452,8 +400,6 @@ class _GuardDashboardScreenState
 
                   if (!mounted) return;
 
-                  // Refresh notification count when
-                  // returning from notification screen.
                   final user =
                       ref.read(authProvider).user;
 
@@ -493,10 +439,6 @@ class _GuardDashboardScreenState
             ],
           ),
 
-          // ----------------------------------------------------
-          // Logout
-          // ----------------------------------------------------
-
           IconButton(
             icon: const Icon(
               Icons.logout,
@@ -506,24 +448,35 @@ class _GuardDashboardScreenState
         ],
       ),
 
-      floatingActionButton: FloatingActionButton.extended(
+      // ==========================================================
+      // AI
+      // ==========================================================
+
+      floatingActionButton:
+          FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const AIAssistantScreen(),
+              builder: (_) =>
+                  const AIAssistantScreen(),
             ),
           );
         },
-        icon: const Icon(Icons.auto_awesome_rounded),
-        label: const Text("AI Assistant"),
-        backgroundColor: const Color(0xff4F46E5),
+        icon: const Icon(
+          Icons.auto_awesome_rounded,
+        ),
+        label: const Text(
+          "AI Assistant",
+        ),
+        backgroundColor:
+            const Color(0xff4F46E5),
         foregroundColor: Colors.white,
       ),
 
-      // ========================================================
+      // ==========================================================
       // BODY
-      // ========================================================
+      // ==========================================================
 
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -533,31 +486,23 @@ class _GuardDashboardScreenState
               const EdgeInsets.all(24),
 
           children: [
-            // ==================================================
+            // ====================================================
             // HERO
-            // ==================================================
+            // ====================================================
 
             GuardHeroBanner(
               greeting: greeting(),
-
-              guardName:
-                  "Security Guard",
-
+              guardName: "Security Guard",
               colonyStatus:
-                  colonyStatus(
-                dashboard,
-              ),
-
+                  colonyStatus(dashboard),
               expectedVisitors:
                   dashboard
                       .summary
                       .pendingVisitors,
-
               checkedInVisitors:
                   dashboard
                       .summary
                       .insideVisitors,
-
               deliveries:
                   dashboard
                       .summary
@@ -568,9 +513,9 @@ class _GuardDashboardScreenState
               height: 30,
             ),
 
-            // ==================================================
+            // ====================================================
             // AI INSIGHT
-            // ==================================================
+            // ====================================================
 
             AIInsightCard(
               message:
@@ -581,9 +526,9 @@ class _GuardDashboardScreenState
               height: 30,
             ),
 
-            // ==================================================
+            // ====================================================
             // QUICK ACTIONS
-            // ==================================================
+            // ====================================================
 
             QuickActionsSection(
               crossAxisCount:
@@ -592,26 +537,19 @@ class _GuardDashboardScreenState
                     .size
                     .width,
               ),
-
               onScanQR: _scanQR,
-
-              onDelivery:
-                  _delivery,
-
-              onWalkIn:
-                  _walkIn,
-
-              onEmergency:
-                  _emergency,
+              onDelivery: _delivery,
+              onWalkIn: _walkIn,
+              onEmergency: _emergency,
             ),
 
             const SizedBox(
               height: 30,
             ),
 
-            // ==================================================
+            // ====================================================
             // LIVE STATUS
-            // ==================================================
+            // ====================================================
 
             const Text(
               "Live Status",
@@ -628,7 +566,6 @@ class _GuardDashboardScreenState
 
             GridView.count(
               shrinkWrap: true,
-
               physics:
                   const NeverScrollableScrollPhysics(),
 
@@ -640,7 +577,6 @@ class _GuardDashboardScreenState
               ),
 
               crossAxisSpacing: 16,
-
               mainAxisSpacing: 16,
 
               childAspectRatio: 1.8,
@@ -649,55 +585,36 @@ class _GuardDashboardScreenState
                 DashboardStatChip(
                   icon:
                       Icons.hourglass_top,
-
                   value:
                       "${dashboard.summary.pendingVisitors}",
-
-                  label:
-                      "Pending",
-
-                  color:
-                      Colors.orange,
+                  label: "Pending",
+                  color: Colors.orange,
                 ),
 
                 DashboardStatChip(
                   icon:
                       Icons.verified,
-
                   value:
                       "${dashboard.summary.approvedVisitors}",
-
-                  label:
-                      "Approved",
-
-                  color:
-                      Colors.blue,
+                  label: "Approved",
+                  color: Colors.blue,
                 ),
 
                 DashboardStatChip(
                   icon:
                       Icons.login,
-
                   value:
                       "${dashboard.summary.insideVisitors}",
-
-                  label:
-                      "Inside",
-
-                  color:
-                      Colors.green,
+                  label: "Inside",
+                  color: Colors.green,
                 ),
 
                 DashboardStatChip(
                   icon:
                       Icons.inventory_2,
-
                   value:
                       "${dashboard.summary.deliveries}",
-
-                  label:
-                      "Deliveries",
-
+                  label: "Deliveries",
                   color:
                       Colors.deepPurple,
                 ),
@@ -705,15 +622,23 @@ class _GuardDashboardScreenState
             ),
 
             const SizedBox(
-              height: 30,
+              height: 36,
             ),
 
-            // ==================================================
-            // TODAY'S EXPECTED VISITORS
-            // ==================================================
+            // ====================================================
+            // IMPORTANT
+            //
+            // DO NOT render dashboard.expectedVisitors here.
+            //
+            // The old implementation rendered the same visitor
+            // again through ExpectedVisitorCard.
+            //
+            // Visitor sections below are now the single UI source
+            // for visitor workflow.
+            // ====================================================
 
             const Text(
-              "Today's Expected Visitors",
+              "Visitor Management",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight:
@@ -725,97 +650,11 @@ class _GuardDashboardScreenState
               height: 18,
             ),
 
-            if (dashboard
-                .expectedVisitors
-                .isEmpty)
-              const EmptyStateWidget(
-                icon:
-                    Icons.people_outline,
-
-                color:
-                    Colors.green,
-
-                title:
-                    "No Visitors Today",
-
-                message:
-                    "Enjoy your peaceful shift.",
-              )
-            else
-              GridView.builder(
-                shrinkWrap: true,
-
-                physics:
-                    const NeverScrollableScrollPhysics(),
-
-                itemCount:
-                    dashboard
-                        .expectedVisitors
-                        .length,
-
-                gridDelegate:
-                    SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount:
-                      visitorGridCount(
-                    MediaQuery.of(context)
-                        .size
-                        .width,
-                  ),
-
-                  crossAxisSpacing:
-                      18,
-
-                  mainAxisSpacing:
-                      18,
-
-                  // ------------------------------------------------
-                  // FIX:
-                  // Use fixed card height instead of childAspectRatio.
-                  //
-                  // This prevents huge cards on wide screens.
-                  // ------------------------------------------------
-
-                  mainAxisExtent:
-                      220,
-                ),
-
-                itemBuilder:
-                    (_, index) {
-                  final visitor =
-                      dashboard
-                              .expectedVisitors[
-                          index];
-
-                  return ExpectedVisitorCard(
-                    visitor:
-                        visitor,
-
-                    onDetails: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              GuardVisitorDetailScreen(
-                            visitor:
-                                visitor,
-                          ),
-                        ),
-                      );
-                    },
-
-                    onScan:
-                        _scanQR,
-                  );
-                },
-              ),
-
-            const SizedBox(
-              height: 36,
-            ),
-
-            // ==================================================
-            // PENDING VISITORS
-            // ==================================================
+            // ====================================================
+            // PENDING
+            //
+            // Walk-in visitors waiting for resident approval.
+            // ====================================================
 
             const PendingVisitorsSection(),
 
@@ -823,9 +662,12 @@ class _GuardDashboardScreenState
               height: 36,
             ),
 
-            // ==================================================
-            // APPROVED VISITORS
-            // ==================================================
+            // ====================================================
+            // APPROVED
+            //
+            // Includes resident-created visitors.
+            // Guard can check them in.
+            // ====================================================
 
             const ApprovedVisitorsSection(),
 
@@ -833,9 +675,11 @@ class _GuardDashboardScreenState
               height: 36,
             ),
 
-            // ==================================================
-            // VISITORS INSIDE
-            // ==================================================
+            // ====================================================
+            // INSIDE
+            //
+            // Checked-in visitors waiting for checkout.
+            // ====================================================
 
             const VisitorsInsideSection(),
 
@@ -843,9 +687,9 @@ class _GuardDashboardScreenState
               height: 36,
             ),
 
-            // ==================================================
+            // ====================================================
             // RECENT ACTIVITY
-            // ==================================================
+            // ====================================================
 
             const Text(
               "Recent Activity",
@@ -864,15 +708,9 @@ class _GuardDashboardScreenState
                 .recentActivities
                 .isEmpty)
               const EmptyStateWidget(
-                icon:
-                    Icons.history,
-
-                color:
-                    Colors.grey,
-
-                title:
-                    "No Activity",
-
+                icon: Icons.history,
+                color: Colors.grey,
+                title: "No Activity",
                 message:
                     "Everything is quiet.",
               )
@@ -880,21 +718,17 @@ class _GuardDashboardScreenState
               ...dashboard
                   .recentActivities
                   .map(
-                (activity) =>
-                    Padding(
+                (activity) => Padding(
                   padding:
                       const EdgeInsets.only(
                     bottom: 12,
                   ),
-
                   child:
                       RecentActivityCard(
                     icon:
                         activity.icon,
-
                     title:
                         activity.title,
-
                     time:
                         activity.time,
                   ),
@@ -902,7 +736,7 @@ class _GuardDashboardScreenState
               ),
 
             const SizedBox(
-              height: 40,
+              height: 100,
             ),
           ],
         ),

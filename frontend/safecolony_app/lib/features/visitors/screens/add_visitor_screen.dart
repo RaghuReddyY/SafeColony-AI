@@ -35,7 +35,7 @@ class _AddVisitorScreenState
 
 try {
   final request = VisitorCreateRequest(
-    residentId: 2,
+    residentId: 0, // The backend derives the resident from the authenticated JWT.
     visitorName: nameController.text,
     phone: phoneController.text,
     visitorType: visitorType,

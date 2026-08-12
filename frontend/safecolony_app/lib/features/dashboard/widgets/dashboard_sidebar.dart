@@ -12,6 +12,7 @@ import '../../guard/screens/guard_visitors_screen.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../../maintenance/screens/maintenance_resident_screen.dart';
+import '../../maintenance/screens/community_finance_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
@@ -111,6 +112,17 @@ class DashboardSidebar extends ConsumerWidget {
                   role: user?.role ?? "",
                   icon: Icons.account_balance_wallet,
                   title: "Maintenance",
+                ),
+
+              if (user?.role == "ORGANIZATION_ADMIN" ||
+                  user?.role == "PROPERTY_MANAGER" ||
+                  user?.role == "RESIDENT")
+                _menu(
+                  context,
+                  ref,
+                  role: user?.role ?? "",
+                  icon: Icons.account_balance,
+                  title: "Community Finance",
                 ),
 
               _menu(
@@ -254,6 +266,15 @@ case "Visitors":
                   builder: (_) => role == "RESIDENT"
                       ? const MaintenanceResidentScreen()
                       : const MaintenanceAdminScreen(),
+                ),
+              );
+              break;
+
+            case "Community Finance":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CommunityFinanceScreen(),
                 ),
               );
               break;
