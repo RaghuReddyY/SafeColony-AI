@@ -7,25 +7,42 @@ final maintenanceServiceProvider = Provider<MaintenanceService>(
   (ref) => MaintenanceService(),
 );
 
-final maintenanceDashboardProvider = FutureProvider<MaintenanceDashboard>(
-  (ref) => ref.read(maintenanceServiceProvider).getDashboard(),
+final maintenanceDashboardProvider =
+    FutureProvider.autoDispose<MaintenanceDashboard>(
+  (ref) {
+    return ref.read(maintenanceServiceProvider).getDashboard();
+  },
 );
 
-final residentMaintenanceProvider = FutureProvider<ResidentMaintenanceSummary>(
-  (ref) => ref.read(maintenanceServiceProvider).getMyMaintenance(),
+/// Resident-specific maintenance data.
+///
+/// autoDispose is important here because this data belongs to the
+/// currently authenticated resident. We must not keep the previous
+/// resident's maintenance data after logout/login.
+final residentMaintenanceProvider =
+    FutureProvider.autoDispose<ResidentMaintenanceSummary>(
+  (ref) {
+    return ref.read(maintenanceServiceProvider).getMyMaintenance();
+  },
 );
 
-final communityFinanceProvider = FutureProvider<MaintenanceDashboard>(
-  (ref) => ref.read(maintenanceServiceProvider).getCommunityFinance(),
+final communityFinanceProvider =
+    FutureProvider.autoDispose<MaintenanceDashboard>(
+  (ref) {
+    return ref.read(maintenanceServiceProvider).getCommunityFinance();
+  },
 );
-
 
 final maintenancePaymentSettingsProvider =
-    FutureProvider<MaintenancePaymentSettings>(
-  (ref) => ref.read(maintenanceServiceProvider).getPaymentSettings(),
+    FutureProvider.autoDispose<MaintenancePaymentSettings>(
+  (ref) {
+    return ref.read(maintenanceServiceProvider).getPaymentSettings();
+  },
 );
 
 final pendingMaintenancePaymentsProvider =
-    FutureProvider<List<PendingMaintenancePayment>>(
-  (ref) => ref.read(maintenanceServiceProvider).getPendingPayments(),
+    FutureProvider.autoDispose<List<PendingMaintenancePayment>>(
+  (ref) {
+    return ref.read(maintenanceServiceProvider).getPendingPayments();
+  },
 );

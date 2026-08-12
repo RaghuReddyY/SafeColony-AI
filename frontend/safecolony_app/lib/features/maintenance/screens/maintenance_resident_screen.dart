@@ -7,9 +7,16 @@ import '../models/maintenance.dart';
 import '../providers/maintenance_provider.dart';
 import 'community_finance_screen.dart';
 
-class MaintenanceResidentScreen extends ConsumerWidget {
+class MaintenanceResidentScreen extends ConsumerStatefulWidget {
   const MaintenanceResidentScreen({super.key});
 
+  @override
+  ConsumerState<MaintenanceResidentScreen> createState() =>
+      _MaintenanceResidentScreenState();
+}
+
+class _MaintenanceResidentScreenState
+    extends ConsumerState<MaintenanceResidentScreen> {
   String _money(double value) => '₹${value.toStringAsFixed(2)}';
 
   String _date(DateTime date) {
@@ -19,14 +26,35 @@ class MaintenanceResidentScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+
+    // IMPORTANT:
+    // Maintenance data is resident-specific.
+    //
+    // If another resident was previously logged in using the same
+    // ProviderContainer, make sure we don't display that resident's
+    // cached maintenance data.
+    Future.microtask(() {
+      if (mounted) {
+        ref.invalidate(residentMaintenanceProvider);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(residentMaintenanceProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xffF5F7FB),
-      appBar: AppBar(title: const Text('Maintenance')),
+      appBar: AppBar(
+        title: const Text('Maintenance'),
+      ),
       body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
+        ),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -53,7 +81,9 @@ class MaintenanceResidentScreen extends ConsumerWidget {
                   ),
                   title: const Text(
                     'Community Finance',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   subtitle: const Text(
                     'View the community balance, maintenance collections and expenses.',
@@ -69,6 +99,7 @@ class MaintenanceResidentScreen extends ConsumerWidget {
                   },
                 ),
               ),
+
               if (data.bill == null)
                 const Card(
                   child: Padding(
@@ -79,18 +110,31 @@ class MaintenanceResidentScreen extends ConsumerWidget {
                   ),
                 )
               else
-                _currentBill(context, ref, data.bill!),
+                _currentBill(
+                  context,
+                  ref,
+                  data.bill!,
+                ),
+
               const SizedBox(height: 24),
+
               const Text(
                 'Payment History',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+
               const SizedBox(height: 12),
+
               if (data.history.isEmpty)
                 const Card(
                   child: Padding(
                     padding: EdgeInsets.all(20),
-                    child: Text('No payment history available.'),
+                    child: Text(
+                      'No payment history available.',
+                    ),
                   ),
                 )
               else
@@ -121,6 +165,7 @@ class MaintenanceResidentScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+
               const SizedBox(height: 30),
             ],
           ),
@@ -144,30 +189,76 @@ class MaintenanceResidentScreen extends ConsumerWidget {
           children: [
             const Text(
               'Current Maintenance Bill',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             const SizedBox(height: 12),
+
             Text(
               '${bill.propertyName ?? ''} ${bill.sectionName ?? ''} '
               '• Unit ${bill.unitNumber ?? ''}',
-              style: const TextStyle(fontSize: 15, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.grey,
+              ),
             ),
+
             const SizedBox(height: 20),
-            _row('Maintenance', _money(bill.amount)),
-            _row('Carry Forward', _money(bill.carriedForward)),
-            _row('Late Fee', _money(bill.lateFee)),
+
+            _row(
+              'Maintenance',
+              _money(bill.amount),
+            ),
+
+            _row(
+              'Carry Forward',
+              _money(bill.carriedForward),
+            ),
+
+            _row(
+              'Late Fee',
+              _money(bill.lateFee),
+            ),
+
             const Divider(height: 24),
-            _row('Total Due', _money(bill.totalDue), bold: true),
-            _row('Paid', _money(bill.amountPaid)),
-            _row('Outstanding', _money(bill.balance), bold: true),
+
+            _row(
+              'Total Due',
+              _money(bill.totalDue),
+              bold: true,
+            ),
+
+            _row(
+              'Paid',
+              _money(bill.amountPaid),
+            ),
+
+            _row(
+              'Outstanding',
+              _money(bill.balance),
+              bold: true,
+            ),
+
             const SizedBox(height: 12),
-            Text('Due date: ${_date(bill.dueDate)}'),
+
+            Text(
+              'Due date: ${_date(bill.dueDate)}',
+            ),
+
             const SizedBox(height: 20),
+
             if (!paid)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _startPayment(context, ref, bill),
+                  onPressed: () => _startPayment(
+                    context,
+                    ref,
+                    bill,
+                  ),
                   icon: const Icon(Icons.payment),
                   label: const Text('Make Payment'),
                 ),
@@ -175,7 +266,10 @@ class MaintenanceResidentScreen extends ConsumerWidget {
             else
               const Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green),
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'PAID',
@@ -192,9 +286,15 @@ class MaintenanceResidentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _row(String label, String value, {bool bold = false}) {
+  Widget _row(
+    String label,
+    String value, {
+    bool bold = false,
+  }) {
     final style = bold
-        ? const TextStyle(fontWeight: FontWeight.bold)
+        ? const TextStyle(
+            fontWeight: FontWeight.bold,
+          )
         : null;
 
     return Padding(
@@ -202,8 +302,14 @@ class MaintenanceResidentScreen extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: style),
-          Text(value, style: style),
+          Text(
+            label,
+            style: style,
+          ),
+          Text(
+            value,
+            style: style,
+          ),
         ],
       ),
     );
@@ -222,13 +328,21 @@ class MaintenanceResidentScreen extends ConsumerWidget {
       final mode = result['mode']?.toString() ?? 'RAZORPAY';
 
       if (mode == 'DIRECT_UPI') {
-        await _showDirectUPIPayment(context, ref, bill, result);
+        await _showDirectUPIPayment(
+          context,
+          ref,
+          bill,
+          result,
+        );
         return;
       }
 
       final url = result['payment_url']?.toString();
+
       if (url == null || url.isEmpty) {
-        throw Exception('Payment link was not returned by the server.');
+        throw Exception(
+          'Payment link was not returned by the server.',
+        );
       }
 
       final launched = await launchUrl(
@@ -237,7 +351,9 @@ class MaintenanceResidentScreen extends ConsumerWidget {
       );
 
       if (!launched) {
-        throw Exception('Unable to open the payment page.');
+        throw Exception(
+          'Unable to open the payment page.',
+        );
       }
 
       if (context.mounted) {
@@ -251,10 +367,13 @@ class MaintenanceResidentScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: Colors.red,
-          content: Text('Payment failed: $e'),
+          content: Text(
+            'Payment failed: $e',
+          ),
         ),
       );
     }
@@ -267,20 +386,27 @@ class MaintenanceResidentScreen extends ConsumerWidget {
     Map<String, dynamic> result,
   ) async {
     final upiId = result['upi_id']?.toString() ?? '';
-    final displayName = result['display_name']?.toString() ?? 'Maintenance';
-    final paymentPhone = result['payment_phone']?.toString();
-    final upiUrl = result['payment_url']?.toString() ?? '';
+    final displayName =
+        result['display_name']?.toString() ?? 'Maintenance';
+    final paymentPhone =
+        result['payment_phone']?.toString();
+    final upiUrl =
+        result['payment_url']?.toString() ?? '';
+
     final controller = TextEditingController();
 
     try {
       final action = await showDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Pay using UPI'),
+          title: const Text(
+            'Pay using UPI',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   'Amount: ${_money(bill.balance)}',
@@ -289,61 +415,105 @@ class MaintenanceResidentScreen extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 14),
-                Text('Pay to: $displayName'),
+
+                Text(
+                  'Pay to: $displayName',
+                ),
+
                 const SizedBox(height: 4),
+
                 SelectableText(
                   upiId,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                if (paymentPhone != null && paymentPhone.isNotEmpty) ...[
+
+                if (paymentPhone != null &&
+                    paymentPhone.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text('Phone: $paymentPhone'),
+                  Text(
+                    'Phone: $paymentPhone',
+                  ),
                 ],
+
                 const SizedBox(height: 16),
+
                 const Text(
                   'Tap Open UPI App. After completing the transfer, enter the UPI transaction reference/UTR below and submit it for administrator verification.',
-                  style: TextStyle(color: Colors.black54),
+                  style: TextStyle(
+                    color: Colors.black54,
+                  ),
                 ),
+
                 const SizedBox(height: 14),
+
                 TextField(
                   controller: controller,
                   decoration: const InputDecoration(
-                    labelText: 'UPI transaction reference / UTR',
+                    labelText:
+                        'UPI transaction reference / UTR',
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 const SizedBox(height: 10),
+
                 OutlinedButton.icon(
                   onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: upiId));
+                    await Clipboard.setData(
+                      ClipboardData(
+                        text: upiId,
+                      ),
+                    );
+
                     if (dialogContext.mounted) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(content: Text('UPI ID copied.')),
+                      ScaffoldMessenger.of(
+                        dialogContext,
+                      ).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'UPI ID copied.',
+                          ),
+                        ),
                       );
                     }
                   },
                   icon: const Icon(Icons.copy),
-                  label: const Text('Copy UPI ID'),
+                  label: const Text(
+                    'Copy UPI ID',
+                  ),
                 ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              onPressed: () =>
+                  Navigator.pop(dialogContext),
+              child: const Text(
+                'Cancel',
+              ),
             ),
+
             OutlinedButton.icon(
               onPressed: upiUrl.isEmpty
                   ? null
                   : () async {
-                      final launched = await launchUrl(
+                      final launched =
+                          await launchUrl(
                         Uri.parse(upiUrl),
-                        mode: LaunchMode.externalApplication,
+                        mode: LaunchMode
+                            .externalApplication,
                       );
-                      if (!launched && dialogContext.mounted) {
-                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+
+                      if (!launched &&
+                          dialogContext.mounted) {
+                        ScaffoldMessenger.of(
+                          dialogContext,
+                        ).showSnackBar(
                           const SnackBar(
                             content: Text(
                               'No UPI app could be opened. Copy the UPI ID and pay manually.',
@@ -352,31 +522,47 @@ class MaintenanceResidentScreen extends ConsumerWidget {
                         );
                       }
                     },
-              icon: const Icon(Icons.account_balance_wallet),
-              label: const Text('Open UPI App'),
+              icon: const Icon(
+                Icons.account_balance_wallet,
+              ),
+              label: const Text(
+                'Open UPI App',
+              ),
             ),
+
             FilledButton(
               onPressed: () {
                 if (controller.text.trim().length < 4) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  ScaffoldMessenger.of(
+                    dialogContext,
+                  ).showSnackBar(
                     const SnackBar(
-                      content: Text('Enter the UPI transaction reference/UTR.'),
+                      content: Text(
+                        'Enter the UPI transaction reference/UTR.',
+                      ),
                     ),
                   );
                   return;
                 }
+
                 Navigator.pop(
                   dialogContext,
                   controller.text.trim(),
                 );
               },
-              child: const Text('Submit Payment'),
+              child: const Text(
+                'Submit Payment',
+              ),
             ),
           ],
         ),
       );
 
-      if (action == null || action.isEmpty || !context.mounted) return;
+      if (action == null ||
+          action.isEmpty ||
+          !context.mounted) {
+        return;
+      }
 
       final submission = await ref
           .read(maintenanceServiceProvider)
@@ -386,12 +572,18 @@ class MaintenanceResidentScreen extends ConsumerWidget {
             reference: action,
           );
 
-      ref.invalidate(residentMaintenanceProvider);
+      // Refresh resident-specific data only.
+      ref.invalidate(
+        residentMaintenanceProvider,
+      );
 
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(submission.message),
+          content: Text(
+            submission.message,
+          ),
         ),
       );
     } finally {
