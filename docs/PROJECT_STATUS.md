@@ -124,6 +124,22 @@ Implement Patrol Schedule end-to-end.
 
 ---
 
+## Emergency SOS
+
+| Task | Status |
+|------|--------|
+| Database fields | ✅ |
+| Backend API | ✅ |
+| Repository | ✅ |
+| Service / validation | ✅ |
+| RBAC | ✅ |
+| Admin notifications | ✅ |
+| Resident SOS UI | ✅ |
+| Guard SOS UI | ✅ |
+| Admin active-alert UI | ✅ |
+
+**Status:** ✅ COMPLETE
+
 # Backlog
 
 ### High Priority

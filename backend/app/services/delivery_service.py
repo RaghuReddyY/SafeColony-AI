@@ -77,7 +77,10 @@ class DeliveryService:
             ))
             self._notify_org(resident.user.organization_id, [UserRole.ORGANIZATION_ADMIN.value, UserRole.SECURITY_GUARD.value], "Delivery Rejected", message)
             alert_repo.create(SecurityAlert(
+                organization_id=resident.user.organization_id,
                 resident_id=resident_id,
+                raised_by_user_id=resident.user_id,
+                source_role="RESIDENT",
                 title="Delivery Rejected",
                 message=message,
                 alert_type="DELIVERY",

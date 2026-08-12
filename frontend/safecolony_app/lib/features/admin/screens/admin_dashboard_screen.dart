@@ -6,6 +6,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../../ai/screens/ai_assistant_screen.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../notifications/screens/notification_screen.dart';
+import '../../emergency/providers/emergency_provider.dart';
+import '../../emergency/screens/emergency_alerts_screen.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../guard/screens/guard_list_screen.dart';
@@ -82,8 +84,12 @@ class _AdminDashboardScreenState
     final adminState = ref.watch(adminProvider);
     final maintenanceAsync =
         ref.watch(maintenanceDashboardProvider);
+    final emergencyAsync =
+        ref.watch(unresolvedEmergencyProvider);
 
     final pendingResidents = adminState.residents.length;
+    final activeEmergencyCount =
+        emergencyAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
       backgroundColor: const Color(0xffF5F7FB),
@@ -155,6 +161,9 @@ class _AdminDashboardScreenState
 
             ref.invalidate(
               maintenanceDashboardProvider,
+            );
+            ref.invalidate(
+              unresolvedEmergencyProvider,
             );
           },
 
@@ -315,6 +324,19 @@ class _AdminDashboardScreenState
                           const NotificationScreen(),
                         );
                       },
+                    ),
+
+                    _ActionData(
+                      'Emergency Alerts',
+                      'View and resolve active SOS alerts',
+                      Icons.sos_rounded,
+                      const Color(0xffDC2626),
+                      () {
+                        _open(
+                          const EmergencyAlertsScreen(),
+                        );
+                      },
+                      badge: activeEmergencyCount,
                     ),
 
                     _ActionData(

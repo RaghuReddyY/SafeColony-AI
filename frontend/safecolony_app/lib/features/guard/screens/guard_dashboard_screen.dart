@@ -33,6 +33,7 @@ import '../../../../shared/widgets/empty_state_widget.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 
 import '../../delivery/screens/guard_delivery_screen.dart';
+import '../../emergency/screens/emergency_sos_screen.dart';
 
 class GuardDashboardScreen extends ConsumerStatefulWidget {
   const GuardDashboardScreen({super.key});
@@ -261,14 +262,17 @@ class _GuardDashboardScreenState
   // EMERGENCY
   // ============================================================
 
-  void _emergency() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Emergency module coming soon",
-        ),
+  Future<void> _emergency() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EmergencySOSScreen(),
       ),
     );
+
+    if (!mounted) return;
+
+    await _refresh();
   }
 
   // ============================================================
@@ -540,7 +544,7 @@ class _GuardDashboardScreenState
               onScanQR: _scanQR,
               onDelivery: _delivery,
               onWalkIn: _walkIn,
-              onEmergency: _emergency,
+              onEmergency: () => _emergency(),
             ),
 
             const SizedBox(

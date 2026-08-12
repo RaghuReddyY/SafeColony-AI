@@ -179,7 +179,10 @@ class VisitorService:
                     ))
 
                 SecurityAlertRepository(self.repo.db).create(SecurityAlert(
+                    organization_id=(resident.user.organization_id if resident and resident.user else None),
                     resident_id=resident_id,
+                    raised_by_user_id=(resident.user_id if resident else None),
+                    source_role="RESIDENT",
                     title="Visitor Blocked",
                     message=(
                         f"Visitor {data.visitor_name} was blocked by Vacation Mode "

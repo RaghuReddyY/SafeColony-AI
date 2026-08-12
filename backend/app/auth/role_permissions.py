@@ -55,6 +55,9 @@ ROLE_PERMISSIONS = {
         Permissions.NOTIFICATION_CREATE,
         Permissions.NOTIFICATION_UPDATE,
 
+        Permissions.EMERGENCY_VIEW,
+        Permissions.EMERGENCY_RESOLVE,
+
         Permissions.VACATION_VIEW,
         Permissions.VACATION_CREATE,
 
@@ -85,6 +88,9 @@ ROLE_PERMISSIONS = {
         Permissions.MAINTENANCE_VIEW,
 
         Permissions.NOTIFICATION_VIEW,
+
+        Permissions.EMERGENCY_VIEW,
+        Permissions.EMERGENCY_RESOLVE,
 
         Permissions.DASHBOARD_VIEW,
     },
@@ -126,6 +132,10 @@ ROLE_PERMISSIONS = {
 
         Permissions.NOTIFICATION_VIEW,
 
+        Permissions.EMERGENCY_VIEW,
+        Permissions.EMERGENCY_RAISE,
+        Permissions.EMERGENCY_RESOLVE,
+
         Permissions.DASHBOARD_VIEW,
     },
 
@@ -160,6 +170,10 @@ ROLE_PERMISSIONS = {
         # Notifications
         Permissions.NOTIFICATION_VIEW,
         Permissions.NOTIFICATION_UPDATE,
+
+        Permissions.EMERGENCY_VIEW,
+        Permissions.EMERGENCY_RAISE,
+        Permissions.EMERGENCY_RESOLVE,
     },
 
     # ==========================================================
@@ -190,6 +204,8 @@ ROLE_PERMISSIONS = {
         # Notifications
         Permissions.NOTIFICATION_VIEW,
         Permissions.NOTIFICATION_UPDATE,
+
+        Permissions.EMERGENCY_RAISE,
 
         Permissions.DASHBOARD_VIEW,
 

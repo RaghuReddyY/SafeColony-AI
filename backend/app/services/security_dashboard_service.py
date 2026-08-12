@@ -1,24 +1,15 @@
 from app.ai.security_summary import SecuritySummaryEngine
 
-from app.repositories.security_dashboard_repository import (
-    SecurityDashboardRepository,
-)
+from app.repositories.security_dashboard_repository import SecurityDashboardRepository
 
 
 class SecurityDashboardService:
-
-    def __init__(
-        self,
-        repo: SecurityDashboardRepository,
-    ):
+    def __init__(self, repo: SecurityDashboardRepository):
         self.repo = repo
-
         self.ai = SecuritySummaryEngine()
 
-    def get_dashboard(self):
-
-        dashboard = self.repo.get_dashboard()
-
+    def get_dashboard(self, organization_id: int):
+        dashboard = self.repo.get_dashboard(organization_id)
         ai_result = self.ai.generate(dashboard)
 
         return {
@@ -29,7 +20,6 @@ class SecurityDashboardService:
             "vehicles_inside": dashboard["vehicles_inside"],
             "unread_notifications": dashboard["unread_notifications"],
             "latest_alerts": dashboard["latest_alerts"],
-
             "community_status": ai_result["community_status"],
             "risk_score": ai_result["risk_score"],
             "ai_summary": ai_result["ai_summary"],

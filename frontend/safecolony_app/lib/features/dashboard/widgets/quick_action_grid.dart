@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'quick_action_card.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
 import '../../delivery/screens/delivery_dashboard_screen.dart';
+import '../../emergency/screens/emergency_sos_screen.dart';
 
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key});
@@ -60,12 +61,13 @@ class QuickActionGrid extends StatelessWidget {
           icon: Icons.warning_amber,
           title: "Emergency",
           onTap: () {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text("Emergency module coming soon"),
-    ),
-  );
-}
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EmergencySOSScreen(),
+              ),
+            );
+          },
         ),
       ],
     );

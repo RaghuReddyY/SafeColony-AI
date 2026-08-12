@@ -100,6 +100,14 @@ class Permissions:
     NOTIFICATION_UPDATE = "notification:update"
 
     # ==========================================================
+    # Emergency SOS
+    # ==========================================================
+
+    EMERGENCY_VIEW = "emergency:view"
+    EMERGENCY_RAISE = "emergency:raise"
+    EMERGENCY_RESOLVE = "emergency:resolve"
+
+    # ==========================================================
     # Vacation
     # ==========================================================
 

@@ -784,7 +784,7 @@ AI Digital Twin (Future)
 | Notifications | ⏳ Pending |
 | Security Alerts | ⏳ Pending |
 | Incident Management | ⏳ Pending |
-| Emergency SOS | ⏳ Pending |
+| Emergency SOS | ✅ Completed |
 | Maintenance | ⏳ Pending |
 | Complaint Management | ⏳ Pending |
 | Amenities | ⏳ Pending |
