@@ -195,12 +195,18 @@ class MaintenancePaymentSettings {
   final String? upiId;
   final String? displayName;
   final String? paymentPhone;
+  final String lateFeeType;
+  final double lateFeeValue;
+  final int lateFeeGraceDays;
 
   const MaintenancePaymentSettings({
     required this.mode,
     this.upiId,
     this.displayName,
     this.paymentPhone,
+    this.lateFeeType = 'NONE',
+    this.lateFeeValue = 0,
+    this.lateFeeGraceDays = 0,
   });
 
   factory MaintenancePaymentSettings.fromJson(Map<String, dynamic> json) {
@@ -209,6 +215,9 @@ class MaintenancePaymentSettings {
       upiId: json['upi_id']?.toString(),
       displayName: json['display_name']?.toString(),
       paymentPhone: json['payment_phone']?.toString(),
+      lateFeeType: json['late_fee_type']?.toString() ?? 'NONE',
+      lateFeeValue: (json['late_fee_value'] as num?)?.toDouble() ?? 0,
+      lateFeeGraceDays: (json['late_fee_grace_days'] as num?)?.toInt() ?? 0,
     );
   }
 }

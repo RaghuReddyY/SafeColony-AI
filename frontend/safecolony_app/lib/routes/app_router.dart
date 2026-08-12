@@ -22,4 +22,7 @@ class AppRoutes {
   static const guardScanner = "/guard-scanner";
 
   static const emergency = "/emergency";
+  static const complaints = "/complaints";
+  static const amenities = "/amenities";
+  static const incidents = "/incidents";
 }

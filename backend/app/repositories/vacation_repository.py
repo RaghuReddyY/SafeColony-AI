@@ -1,6 +1,8 @@
 from datetime import date
 
 from sqlalchemy.orm import Session
+from app.models.resident import Resident
+from app.models.user import User
 
 from app.enums.vacation_status import VacationStatus
 from app.models.vacation_mode import VacationMode
@@ -117,22 +119,23 @@ class VacationRepository:
     # Active Vacations
     # =====================================================
 
-    def get_active_vacations(self) -> list[VacationMode]:
+    def get_active_vacations(self, organization_id: int | None = None) -> list[VacationMode]:
 
         today = date.today()
 
-        return (
+        q = (
             self.db.query(VacationMode)
+            .join(VacationMode.resident)
+            .join(Resident.user)
             .filter(
                 VacationMode.status == VacationStatus.ACTIVE.value,
                 VacationMode.start_date <= today,
                 VacationMode.end_date >= today,
             )
-            .order_by(
-                VacationMode.end_date.asc()
-            )
-            .all()
         )
+        if organization_id is not None:
+            q = q.filter(User.organization_id == organization_id)
+        return q.order_by(VacationMode.end_date.asc()).all()
 
     # =====================================================
     # Overlapping Vacation

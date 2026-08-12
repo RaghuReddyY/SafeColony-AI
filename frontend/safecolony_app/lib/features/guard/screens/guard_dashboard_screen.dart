@@ -34,6 +34,9 @@ import '../../../../shared/widgets/error_state_widget.dart';
 
 import '../../delivery/screens/guard_delivery_screen.dart';
 import '../../emergency/screens/emergency_sos_screen.dart';
+import '../../emergency/screens/emergency_alerts_screen.dart';
+import '../../emergency/providers/emergency_provider.dart';
+import '../../incidents/screens/incident_screen.dart';
 
 class GuardDashboardScreen extends ConsumerStatefulWidget {
   const GuardDashboardScreen({super.key});
@@ -75,7 +78,7 @@ class _GuardDashboardScreenState
       if (user != null) {
         await ref
             .read(notificationProvider.notifier)
-            .load(user.id);
+            .load();
       }
     });
 
@@ -109,7 +112,7 @@ class _GuardDashboardScreenState
         if (user != null) {
           ref
               .read(notificationProvider.notifier)
-              .load(user.id);
+              .load();
         }
       },
     );
@@ -148,7 +151,7 @@ class _GuardDashboardScreenState
       futures.add(
         ref
             .read(notificationProvider.notifier)
-            .load(user.id),
+            .load(),
       );
     }
 
@@ -275,6 +278,32 @@ class _GuardDashboardScreenState
     await _refresh();
   }
 
+  Future<void> _incident() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const IncidentScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    await _refresh();
+  }
+
+  Future<void> _emergencyAlerts() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EmergencyAlertsScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    await _refresh();
+  }
+
   // ============================================================
   // LOGOUT
   // ============================================================
@@ -309,6 +338,8 @@ class _GuardDashboardScreenState
 
     final notificationState =
         ref.watch(notificationProvider);
+    final emergencyState = ref.watch(unresolvedEmergencyProvider);
+    final activeEmergencyCount = emergencyState.valueOrNull?.length ?? 0;
 
     // ============================================================
     // LOADING
@@ -413,7 +444,7 @@ class _GuardDashboardScreenState
                           notificationProvider
                               .notifier,
                         )
-                        .load(user.id);
+                        .load();
                   }
                 },
               ),
@@ -545,6 +576,40 @@ class _GuardDashboardScreenState
               onDelivery: _delivery,
               onWalkIn: _walkIn,
               onEmergency: () => _emergency(),
+              onIncident: () => _incident(),
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            // Active emergency alerts are visible to security guards
+            // so they can respond immediately.
+            Card(
+              color: activeEmergencyCount > 0
+                  ? Colors.red.shade50
+                  : Colors.white,
+              child: ListTile(
+                leading: Icon(
+                  activeEmergencyCount > 0
+                      ? Icons.sos_rounded
+                      : Icons.check_circle_outline,
+                  color: activeEmergencyCount > 0
+                      ? Colors.red
+                      : Colors.green,
+                ),
+                title: Text(
+                  activeEmergencyCount > 0
+                      ? '$activeEmergencyCount active emergency alert${activeEmergencyCount == 1 ? '' : 's'}'
+                      : 'No active emergency alerts',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'View emergency alerts and take action',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _emergencyAlerts,
+              ),
             ),
 
             const SizedBox(

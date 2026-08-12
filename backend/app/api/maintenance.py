@@ -20,6 +20,8 @@ from app.schemas.maintenance import (
     MaintenancePaymentSettingsUpdate,
     DirectUPIPaymentCreate,
     MaintenancePendingPaymentResponse,
+    MaintenanceInvoiceResponse,
+    MaintenanceReceiptResponse,
 )
 from app.security.permissions import Permissions
 from app.services.maintenance_service import MaintenanceService
@@ -176,6 +178,32 @@ def create_online_payment(
     service: MaintenanceService = Depends(get_service),
 ):
     return service.create_payment_link(current_user, bill_id)
+
+
+@router.get(
+    "/bills/{bill_id}/invoice",
+    response_model=MaintenanceInvoiceResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_VIEW))],
+)
+def get_invoice(
+    bill_id: int,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.invoice(current_user, bill_id)
+
+
+@router.get(
+    "/payments/{payment_id}/receipt",
+    response_model=MaintenanceReceiptResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_VIEW))],
+)
+def get_receipt(
+    payment_id: int,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.receipt(current_user, payment_id)
 
 
 @router.post("/payments/razorpay/webhook")

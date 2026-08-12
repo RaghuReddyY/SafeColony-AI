@@ -4,6 +4,10 @@ import 'quick_action_card.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
 import '../../delivery/screens/delivery_dashboard_screen.dart';
 import '../../emergency/screens/emergency_sos_screen.dart';
+import '../../vacation/screens/vacation_screen.dart';
+import '../../complaints/screens/complaint_screen.dart';
+import '../../incidents/screens/incident_screen.dart';
+import '../../amenities/screens/amenity_screen.dart';
 
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key});
@@ -49,12 +53,44 @@ class QuickActionGrid extends StatelessWidget {
           icon: Icons.beach_access,
           title: "Vacation",
           onTap: () {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text("Vacation module coming soon"),
-    ),
-  );
-}
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VacationScreen()),
+            );
+          }
+        ),
+
+        QuickActionCard(
+          icon: Icons.support_agent,
+          title: "Complaint",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ComplaintScreen()),
+            );
+          },
+        ),
+
+        QuickActionCard(
+          icon: Icons.report_problem_outlined,
+          title: "Incidents",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const IncidentScreen()),
+            );
+          },
+        ),
+
+        QuickActionCard(
+          icon: Icons.pool,
+          title: "Amenities",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AmenityScreen()),
+            );
+          },
         ),
 
         QuickActionCard(

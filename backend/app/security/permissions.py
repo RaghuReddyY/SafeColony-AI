@@ -106,6 +106,7 @@ class Permissions:
     EMERGENCY_VIEW = "emergency:view"
     EMERGENCY_RAISE = "emergency:raise"
     EMERGENCY_RESOLVE = "emergency:resolve"
+    SECURITY_ALERT_RAISE = "security_alert:raise"
 
     # ==========================================================
     # Vacation
@@ -142,6 +143,35 @@ class Permissions:
 
     GUARD_QR_SCAN = "guard:qr:scan"
     GUARD_DELIVERY_CREATE = "guard:delivery:create"
+
+
+
+    # ==========================================================
+    # Incident Management
+    # ==========================================================
+
+    INCIDENT_VIEW = "incident:view"
+    INCIDENT_CREATE = "incident:create"
+    INCIDENT_MANAGE = "incident:manage"
+    INCIDENT_EVIDENCE = "incident:evidence"
+
+    # ==========================================================
+    # Complaint Management
+    # ==========================================================
+
+    COMPLAINT_VIEW = "complaint:view"
+    COMPLAINT_CREATE = "complaint:create"
+    COMPLAINT_MANAGE = "complaint:manage"
+    COMPLAINT_ESCALATE = "complaint:escalate"
+
+    # ==========================================================
+    # Amenities
+    # ==========================================================
+
+    AMENITY_VIEW = "amenity:view"
+    AMENITY_MANAGE = "amenity:manage"
+    AMENITY_BOOK = "amenity:book"
+    AMENITY_APPROVE = "amenity:approve"
 
     # ==========================================================
     # Dashboard

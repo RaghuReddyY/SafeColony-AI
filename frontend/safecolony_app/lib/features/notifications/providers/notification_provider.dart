@@ -97,9 +97,7 @@ class NotificationNotifier
   // LOAD NOTIFICATIONS
   // ==========================================================
 
-  Future<void> load(
-    int residentId,
-  ) async {
+  Future<void> load() async {
     try {
       state = state.copyWith(
         loading: true,
@@ -107,9 +105,7 @@ class NotificationNotifier
       );
 
       final notifications =
-          await _service.loadNotifications(
-        residentId,
-      );
+          await _service.loadNotifications();
 
       final visibleNotifications =
           await _applyNotificationPreferences(
@@ -140,7 +136,6 @@ class NotificationNotifier
   // ==========================================================
 
   Future<void> markRead(
-    int residentId,
     int notificationId,
   ) async {
     try {
@@ -180,7 +175,7 @@ class NotificationNotifier
       );
 
       // Optional backend synchronization.
-      await load(residentId);
+      await load();
     } catch (e) {
       state = state.copyWith(
         error: e.toString(),
@@ -192,14 +187,10 @@ class NotificationNotifier
   // MARK ALL AS READ
   // ==========================================================
 
-  Future<void> markAllRead(
-    int residentId,
-  ) async {
+  Future<void> markAllRead() async {
     try {
       // Update backend.
-      await _service.markAllRead(
-        residentId,
-      );
+      await _service.markAllRead();
 
       // Immediately update UI.
       final updatedNotifications =
@@ -219,7 +210,7 @@ class NotificationNotifier
       );
 
       // Synchronize with backend.
-      await load(residentId);
+      await load();
     } catch (e) {
       state = state.copyWith(
         error: e.toString(),

@@ -39,6 +39,9 @@ class MaintenancePaymentLinkResponse(BaseModel):
 
 
 class MaintenancePaymentSettings(BaseModel):
+    late_fee_type: str = "NONE"
+    late_fee_value: Decimal = Decimal("0.00")
+    late_fee_grace_days: int = 0
     mode: str
     upi_id: str | None = None
     display_name: str | None = None
@@ -50,6 +53,9 @@ class MaintenancePaymentSettingsUpdate(BaseModel):
     upi_id: str | None = Field(default=None, max_length=120)
     display_name: str | None = Field(default=None, max_length=150)
     payment_phone: str | None = Field(default=None, max_length=20)
+    late_fee_type: str = Field(default="NONE", pattern="^(NONE|FLAT|PERCENT_PER_MONTH|PER_DAY)$")
+    late_fee_value: Decimal = Field(default=Decimal("0.00"), ge=0)
+    late_fee_grace_days: int = Field(default=0, ge=0, le=365)
 
 
 class DirectUPIPaymentCreate(BaseModel):
@@ -127,3 +133,32 @@ class MaintenanceDashboardResponse(BaseModel):
 class ResidentMaintenanceSummary(BaseModel):
     bill: MaintenanceBillResponse | None
     history: list[MaintenanceBillResponse]
+
+
+class MaintenanceInvoiceResponse(BaseModel):
+    bill_id: int
+    invoice_number: str
+    resident_name: str
+    unit_number: str | None
+    billing_month: date
+    issue_date: date
+    due_date: date
+    maintenance_amount: Decimal
+    carried_forward: Decimal
+    late_fee: Decimal
+    total_due: Decimal
+    amount_paid: Decimal
+    balance: Decimal
+
+
+class MaintenanceReceiptResponse(BaseModel):
+    receipt_number: str
+    payment_id: int
+    bill_id: int
+    resident_name: str
+    unit_number: str | None
+    amount: Decimal
+    payment_method: str
+    reference: str | None
+    paid_at: datetime
+    status: str

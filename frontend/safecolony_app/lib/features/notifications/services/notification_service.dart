@@ -4,84 +4,33 @@ import '../../../core/api/api_client.dart';
 import '../models/notification.dart';
 
 class NotificationService {
-  // ==========================================================
-  // LOAD ALL NOTIFICATIONS
-  // ==========================================================
-
-  Future<List<AppNotification>> loadNotifications(
-    int residentId,
-  ) async {
-    final Response response =
-        await ApiClient.dio.get(
-      "/notifications/resident/$residentId",
-    );
-
+  /// Notifications belong to the authenticated user, not to a resident id.
+  /// Always use the /me endpoints so residents, guards and administrators
+  /// see their own notification inbox.
+  Future<List<AppNotification>> loadNotifications() async {
+    final Response response = await ApiClient.dio.get('/notifications/me');
     return (response.data as List)
-        .map(
-          (e) => AppNotification.fromJson(
-            e as Map<String, dynamic>,
-          ),
-        )
+        .map((e) => AppNotification.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 
-  // ==========================================================
-  // LOAD UNREAD NOTIFICATIONS
-  // ==========================================================
-
-  Future<List<AppNotification>> loadUnread(
-    int residentId,
-  ) async {
-    final Response response =
-        await ApiClient.dio.get(
-      "/notifications/resident/$residentId/unread",
-    );
-
+  Future<List<AppNotification>> loadUnread() async {
+    final Response response = await ApiClient.dio.get('/notifications/me/unread');
     return (response.data as List)
-        .map(
-          (e) => AppNotification.fromJson(
-            e as Map<String, dynamic>,
-          ),
-        )
+        .map((e) => AppNotification.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 
-  // ==========================================================
-  // GET UNREAD COUNT
-  // ==========================================================
-
-  Future<int> unreadCount(
-    int residentId,
-  ) async {
-    final Response response =
-        await ApiClient.dio.get(
-      "/notifications/resident/$residentId/unread-count",
-    );
-
-    return (response.data["count"] as num).toInt();
+  Future<int> unreadCount() async {
+    final Response response = await ApiClient.dio.get('/notifications/me/unread-count');
+    return (response.data['count'] as num).toInt();
   }
 
-  // ==========================================================
-  // MARK SINGLE NOTIFICATION AS READ
-  // ==========================================================
-
-  Future<void> markRead(
-    int notificationId,
-  ) async {
-    await ApiClient.dio.put(
-      "/notifications/$notificationId/read",
-    );
+  Future<void> markRead(int notificationId) async {
+    await ApiClient.dio.put('/notifications/$notificationId/read');
   }
 
-  // ==========================================================
-  // MARK ALL NOTIFICATIONS AS READ
-  // ==========================================================
-
-  Future<void> markAllRead(
-    int residentId,
-  ) async {
-    await ApiClient.dio.put(
-      "/notifications/resident/$residentId/read-all",
-    );
+  Future<void> markAllRead() async {
+    await ApiClient.dio.put('/notifications/me/read-all');
   }
 }

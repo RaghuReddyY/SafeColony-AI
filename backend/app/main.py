@@ -27,6 +27,9 @@ from app.api.join import router as join_router
 from app.api.maintenance import router as maintenance_router
 from app.api.setup import router as setup_router
 from app.api.public import router as public_router
+from app.api.incident import router as incident_router
+from app.api.complaint import router as complaint_router
+from app.api.amenity import router as amenity_router
 
 
 # Core
@@ -122,6 +125,9 @@ app.include_router(guard_dashboard_router)
 app.include_router(join_router)
 app.include_router(maintenance_router)
 app.include_router(public_router)
+app.include_router(incident_router)
+app.include_router(complaint_router)
+app.include_router(amenity_router)
 
 
 
@@ -130,6 +136,12 @@ app.mount(
     "/uploads/qr",
     StaticFiles(directory="uploads/qr"),
     name="visitor_qr",
+)
+
+app.mount(
+    "/uploads/incidents",
+    StaticFiles(directory="uploads/incidents"),
+    name="incident_uploads",
 )
 
 

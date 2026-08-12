@@ -1,5 +1,5 @@
 from app.handlers.base_handler import BaseHandler
-from app.events.vacation_events import VacationStartedEvent, VacationCancelledEvent
+from app.events.vacation_events import VacationStartedEvent, VacationCancelledEvent, VacationCompletedEvent
 from app.models.notification import Notification
 from app.models.user import User
 from app.enums import UserRole
@@ -49,6 +49,28 @@ class ResidentNotificationHandler(BaseHandler):
                     message=(f"{event.resident_name} is away from {event.start_date} to {event.end_date}. "
                              f"Visitor policy: {event.visitor_policy}; Delivery policy: {event.delivery_policy}."),
                     notification_type="VACATION"
+                ))
+
+        elif isinstance(event, VacationCompletedEvent):
+            self.db.add(Notification(
+                user_id=resident_user.id,
+                title="Vacation Mode Completed",
+                message="Your Vacation Mode has completed.",
+                notification_type="VACATION",
+            ))
+            for admin in admins:
+                self.db.add(Notification(
+                    user_id=admin.id,
+                    title="Vacation Completed",
+                    message=f"{event.resident_name}'s Vacation Mode has completed.",
+                    notification_type="VACATION",
+                ))
+            for guard in guards:
+                self.db.add(Notification(
+                    user_id=guard.id,
+                    title="Vacation Completed",
+                    message=f"{event.resident_name}'s Vacation Mode has completed.",
+                    notification_type="VACATION",
                 ))
 
         elif isinstance(event, VacationCancelledEvent):

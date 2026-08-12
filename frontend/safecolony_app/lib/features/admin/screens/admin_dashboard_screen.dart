@@ -10,6 +10,9 @@ import '../../emergency/providers/emergency_provider.dart';
 import '../../emergency/screens/emergency_alerts_screen.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
+import '../../incidents/screens/incident_screen.dart';
+import '../../complaints/screens/complaint_screen.dart';
+import '../../amenities/screens/amenity_screen.dart';
 import '../guard/screens/guard_list_screen.dart';
 import '../property/screens/property_list_screen.dart';
 import '../section/screens/section_list_screen.dart';
@@ -361,6 +364,30 @@ class _AdminDashboardScreenState
                           const MaintenanceAdminScreen(),
                         );
                       },
+                    ),
+
+                    _ActionData(
+                      'Incidents',
+                      'Investigate and resolve incidents',
+                      Icons.report_problem_rounded,
+                      const Color(0xffB91C1C),
+                      () => _open(const IncidentScreen()),
+                    ),
+
+                    _ActionData(
+                      'Complaints',
+                      'Assign and resolve resident complaints',
+                      Icons.support_agent_rounded,
+                      const Color(0xff7C3AED),
+                      () => _open(const ComplaintScreen()),
+                    ),
+
+                    _ActionData(
+                      'Amenities',
+                      'Manage facilities and bookings',
+                      Icons.pool_rounded,
+                      const Color(0xff0891B2),
+                      () => _open(const AmenityScreen()),
                     ),
                   ],
                 ),

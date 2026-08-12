@@ -10,6 +10,7 @@ from app.enums.vacation_status import VacationStatus
 from app.events.vacation_events import (
     VacationCancelledEvent,
     VacationStartedEvent,
+    VacationCompletedEvent,
 )
 from app.models.vacation_mode import VacationMode
 
@@ -139,9 +140,9 @@ class VacationService:
     # Guard Dashboard
     # =====================================================
 
-    def get_active_vacations(self):
+    def get_active_vacations(self, organization_id: int | None = None):
 
-        vacations = self.vacation_repo.get_active_vacations()
+        vacations = self.vacation_repo.get_active_vacations(organization_id)
 
         today = datetime.utcnow().date()
 
@@ -220,5 +221,12 @@ class VacationService:
             vacation.updated_at = datetime.utcnow()
 
             self.vacation_repo.save(vacation)
+
+            resident = vacation.resident
+            event_bus.publish(VacationCompletedEvent(
+                user_id=resident.user.id,
+                resident_id=resident.id,
+                resident_name=resident.user.full_name,
+            ))
 
         return len(vacations)

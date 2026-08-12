@@ -5,12 +5,15 @@ from app.models.notification import Notification
 from app.models.security_alert import SecurityAlert
 from app.models.user import User
 from app.models.resident import Resident
+from app.core.event_bus import event_bus
+from app.events.security_alert_events import SecurityAlertRaisedEvent
 
 
 class SecurityAlertService:
     """Business logic for security alerts and Emergency SOS."""
 
     ALLOWED_EMERGENCY_TYPES = {"MEDICAL", "FIRE", "POLICE", "GENERAL"}
+    ALLOWED_SECURITY_TYPES = {"PANIC", "TAILGATING", "FORCED_ENTRY", "SUSPICIOUS_ACTIVITY", "GUARD_ALERT", "RESIDENT_ALERT"}
     ALLOWED_SEVERITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
     NOTIFY_ROLES = {
         "ORGANIZATION_ADMIN",
@@ -138,9 +141,61 @@ class SecurityAlertService:
         self.repo.create(alert)
         self.db.flush()
 
+        event_bus.publish(SecurityAlertRaisedEvent(
+            alert_id=alert.id,
+            organization_id=alert.organization_id,
+            alert_type=alert.alert_type,
+            severity=alert.severity,
+            raised_by_user_id=current_user.id,
+        ))
+
         self._notify_security_team(current_user, alert)
         self.repo.commit()
 
+        return self._response(alert)
+
+    def raise_security_alert(self, current_user: User, data) -> dict:
+        if not current_user.organization_id:
+            raise ForbiddenException("Your account is not associated with an organization.")
+        alert_type = data.alert_type.strip().upper()
+        severity = data.severity.strip().upper()
+        if alert_type not in self.ALLOWED_SECURITY_TYPES:
+            raise BadRequestException(
+                "Alert type must be PANIC, TAILGATING, FORCED_ENTRY, "
+                "SUSPICIOUS_ACTIVITY, GUARD_ALERT or RESIDENT_ALERT."
+            )
+        if severity not in self.ALLOWED_SEVERITIES:
+            raise BadRequestException("Severity must be LOW, MEDIUM, HIGH or CRITICAL.")
+
+        resident = None
+        if current_user.role == "RESIDENT":
+            resident = self._resident_for_user(current_user)
+            if not resident:
+                raise NotFoundException("Resident")
+
+        message = (data.message or "").strip() or f"{alert_type.replace('_', ' ').title()} reported."
+        alert = SecurityAlert(
+            organization_id=current_user.organization_id,
+            resident_id=resident.id if resident else None,
+            raised_by_user_id=current_user.id,
+            title=f"Security Alert - {alert_type.replace('_', ' ').title()}",
+            message=message,
+            alert_type=alert_type,
+            severity=severity,
+            source_role=current_user.role,
+            is_resolved=False,
+        )
+        self.repo.create(alert)
+        self.db.flush()
+        event_bus.publish(SecurityAlertRaisedEvent(
+            alert_id=alert.id,
+            organization_id=alert.organization_id,
+            alert_type=alert.alert_type,
+            severity=alert.severity,
+            raised_by_user_id=current_user.id,
+        ))
+        self._notify_security_team(current_user, alert)
+        self.repo.commit()
         return self._response(alert)
 
     def get_all(self, current_user: User) -> list[dict]:

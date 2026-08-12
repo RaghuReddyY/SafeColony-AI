@@ -1,5 +1,6 @@
 from app.scheduler.jobs.vacation_job import VacationJob
 from app.scheduler.jobs.maintenance_job import MaintenanceJob
+from app.scheduler.jobs.notification_job import NotificationJob
 from app.scheduler.manager import SchedulerManager
 from app.scheduler.registry import JobRegistry
 
@@ -9,5 +10,6 @@ def create_scheduler() -> SchedulerManager:
 
     registry.register(VacationJob())
     registry.register(MaintenanceJob())
+    registry.register(NotificationJob())
 
     return SchedulerManager(registry)

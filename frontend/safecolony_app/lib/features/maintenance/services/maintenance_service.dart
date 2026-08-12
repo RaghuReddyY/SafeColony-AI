@@ -75,6 +75,9 @@ class MaintenanceService {
     String? upiId,
     String? displayName,
     String? paymentPhone,
+    String lateFeeType = 'NONE',
+    double lateFeeValue = 0,
+    int lateFeeGraceDays = 0,
   }) async {
     final response = await ApiClient.dio.put(
       '/maintenance/payment-settings',
@@ -83,6 +86,9 @@ class MaintenanceService {
         'upi_id': upiId,
         'display_name': displayName,
         'payment_phone': paymentPhone,
+        'late_fee_type': lateFeeType,
+        'late_fee_value': lateFeeValue,
+        'late_fee_grace_days': lateFeeGraceDays,
       },
     );
     return MaintenancePaymentSettings.fromJson(

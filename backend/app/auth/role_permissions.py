@@ -51,12 +51,30 @@ ROLE_PERMISSIONS = {
         Permissions.MAINTENANCE_VIEW,
         Permissions.MAINTENANCE_MANAGE,
 
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+        Permissions.INCIDENT_MANAGE,
+        Permissions.INCIDENT_EVIDENCE,
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+
+        Permissions.COMPLAINT_VIEW,
+        Permissions.COMPLAINT_CREATE,
+        Permissions.COMPLAINT_MANAGE,
+        Permissions.COMPLAINT_ESCALATE,
+        Permissions.AMENITY_VIEW,
+        Permissions.AMENITY_MANAGE,
+        Permissions.AMENITY_BOOK,
+        Permissions.AMENITY_APPROVE,
+
         Permissions.NOTIFICATION_VIEW,
         Permissions.NOTIFICATION_CREATE,
         Permissions.NOTIFICATION_UPDATE,
 
         Permissions.EMERGENCY_VIEW,
         Permissions.EMERGENCY_RESOLVE,
+        Permissions.SECURITY_ALERT_RAISE,
+        Permissions.SECURITY_ALERT_RAISE,
 
         Permissions.VACATION_VIEW,
         Permissions.VACATION_CREATE,
@@ -87,7 +105,24 @@ ROLE_PERMISSIONS = {
 
         Permissions.MAINTENANCE_VIEW,
 
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+        Permissions.INCIDENT_MANAGE,
+        Permissions.INCIDENT_EVIDENCE,
+        Permissions.COMPLAINT_VIEW,
+        Permissions.COMPLAINT_MANAGE,
+        Permissions.COMPLAINT_ESCALATE,
+        Permissions.AMENITY_VIEW,
+        Permissions.AMENITY_MANAGE,
+        Permissions.AMENITY_BOOK,
+        Permissions.AMENITY_APPROVE,
+
         Permissions.NOTIFICATION_VIEW,
+
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+        Permissions.INCIDENT_MANAGE,
+        Permissions.INCIDENT_EVIDENCE,
 
         Permissions.EMERGENCY_VIEW,
         Permissions.EMERGENCY_RESOLVE,
@@ -135,6 +170,7 @@ ROLE_PERMISSIONS = {
         Permissions.EMERGENCY_VIEW,
         Permissions.EMERGENCY_RAISE,
         Permissions.EMERGENCY_RESOLVE,
+        Permissions.SECURITY_ALERT_RAISE,
 
         Permissions.DASHBOARD_VIEW,
     },
@@ -174,6 +210,11 @@ ROLE_PERMISSIONS = {
         Permissions.EMERGENCY_VIEW,
         Permissions.EMERGENCY_RAISE,
         Permissions.EMERGENCY_RESOLVE,
+        Permissions.SECURITY_ALERT_RAISE,
+
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+        Permissions.INCIDENT_EVIDENCE,
     },
 
     # ==========================================================
@@ -206,6 +247,19 @@ ROLE_PERMISSIONS = {
         Permissions.NOTIFICATION_UPDATE,
 
         Permissions.EMERGENCY_RAISE,
+        Permissions.SECURITY_ALERT_RAISE,
+
+        Permissions.COMPLAINT_VIEW,
+        Permissions.COMPLAINT_CREATE,
+
+        # Incident management: residents can report incidents and
+        # view incidents for their community. Management actions
+        # remain restricted to administrators/security managers.
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+
+        Permissions.AMENITY_VIEW,
+        Permissions.AMENITY_BOOK,
 
         Permissions.DASHBOARD_VIEW,
 

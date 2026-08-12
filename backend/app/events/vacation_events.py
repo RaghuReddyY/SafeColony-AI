@@ -45,3 +45,11 @@ class VacationCancelledEvent(BaseEvent):
         self.user_id = user_id
         self.resident_id = resident_id
         self.resident_name = resident_name
+
+class VacationCompletedEvent(BaseEvent):
+    """Published when an active vacation reaches its end date."""
+    def __init__(self, user_id: int, resident_id: int, resident_name: str):
+        super().__init__()
+        self.user_id = user_id
+        self.resident_id = resident_id
+        self.resident_name = resident_name

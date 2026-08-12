@@ -44,12 +44,9 @@ class _NotificationBellState
     if (!mounted) return;
 
     final user = ref.read(authProvider).user;
-
     if (user == null) return;
 
-    await ref
-        .read(notificationProvider.notifier)
-        .load(user.id);
+    await ref.read(notificationProvider.notifier).load();
   }
 
   Future<void> _openNotifications() async {

@@ -18,3 +18,10 @@ from app.models.maintenance_period import MaintenancePeriod
 from app.models.maintenance_bill import MaintenanceBill
 from app.models.maintenance_payment import MaintenancePayment
 from app.models.maintenance_expense import MaintenanceExpense
+
+from app.models.notification_template import NotificationTemplate, NotificationDelivery
+from app.models.incident import Incident, IncidentEvidence
+from app.models.complaint import Complaint
+from app.models.amenity import Amenity, AmenityBooking
+
+from app.models.notification_device import NotificationDevice

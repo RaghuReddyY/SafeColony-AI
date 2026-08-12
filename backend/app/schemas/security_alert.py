@@ -9,6 +9,12 @@ class EmergencySOSCreate(BaseModel):
     severity: str = Field(default="CRITICAL", min_length=4, max_length=20)
 
 
+class SecurityAlertCreate(BaseModel):
+    alert_type: str = Field(min_length=3, max_length=50)
+    message: str | None = Field(default=None, max_length=500)
+    severity: str = Field(default="MEDIUM", min_length=3, max_length=20)
+
+
 class SecurityAlertResponse(BaseModel):
     id: int
     organization_id: int | None

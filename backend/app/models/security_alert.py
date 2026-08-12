@@ -84,6 +84,13 @@ class SecurityAlert(Base):
         nullable=False,
     )
 
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
     resident = relationship("Resident")
 
     raised_by = relationship(

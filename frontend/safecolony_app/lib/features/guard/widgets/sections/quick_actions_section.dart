@@ -8,6 +8,7 @@ class QuickActionsSection extends StatelessWidget {
   final VoidCallback onDelivery;
   final VoidCallback onWalkIn;
   final VoidCallback onEmergency;
+  final VoidCallback onIncident;
 
   /// Responsive columns passed from dashboard
   final int crossAxisCount;
@@ -18,6 +19,7 @@ class QuickActionsSection extends StatelessWidget {
     required this.onDelivery,
     required this.onWalkIn,
     required this.onEmergency,
+    required this.onIncident,
     this.crossAxisCount = 4,
   });
 
@@ -36,7 +38,7 @@ class QuickActionsSection extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
 
-          itemCount: 4,
+          itemCount: 5,
 
           gridDelegate:
               SliverGridDelegateWithFixedCrossAxisCount(
@@ -81,13 +83,22 @@ class QuickActionsSection extends StatelessWidget {
                   onTap: onDelivery,
                 );
 
-              default:
+              case 3:
                 return ActionTile(
                   icon: Icons.warning_amber_rounded,
                   title: "Emergency",
                   subtitle: "Raise SOS",
                   color: Colors.red,
                   onTap: onEmergency,
+                );
+
+              default:
+                return ActionTile(
+                  icon: Icons.report_problem_outlined,
+                  title: "Incident",
+                  subtitle: "Report Incident",
+                  color: Colors.deepOrange,
+                  onTap: onIncident,
                 );
             }
           },

@@ -6,7 +6,7 @@ from app.auth.permissions import require_permission
 from app.database.dependency import get_db
 from app.models.user import User
 from app.repositories.security_alert_repository import SecurityAlertRepository
-from app.schemas.security_alert import EmergencySOSCreate, SecurityAlertResponse
+from app.schemas.security_alert import EmergencySOSCreate, SecurityAlertCreate, SecurityAlertResponse
 from app.security.permissions import Permissions
 from app.services.security_alert_service import SecurityAlertService
 
@@ -31,6 +31,19 @@ def raise_emergency(
     service: SecurityAlertService = Depends(get_service),
 ):
     return service.raise_sos(current_user, data)
+
+
+@router.post(
+    "",
+    response_model=SecurityAlertResponse,
+    dependencies=[Depends(require_permission(Permissions.SECURITY_ALERT_RAISE))],
+)
+def raise_security_alert(
+    data: SecurityAlertCreate,
+    current_user: User = Depends(get_current_user),
+    service: SecurityAlertService = Depends(get_service),
+):
+    return service.raise_security_alert(current_user, data)
 
 
 @router.get(

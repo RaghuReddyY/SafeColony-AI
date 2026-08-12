@@ -3,7 +3,7 @@
 
 Version: 1.0
 Status: Active
-Last Updated:
+Last Updated: 2026-08-12
 Owner: Raghu
 
 ---
@@ -448,7 +448,7 @@ Future
 
 ## Vacation Mode
 
-Status: In Progress
+Status: Completed
 
 Features
 
@@ -471,7 +471,7 @@ Future
 
 ## Notifications
 
-Status: Pending
+Status: Completed
 
 Features
 
@@ -484,14 +484,16 @@ Features
 
 Future
 
-- Retry Engine
+- Provider-specific retry backoff
 - Scheduling
+
+Implementation note: in-app delivery is fully implemented; PUSH/EMAIL/SMS/WHATSAPP use a persistent outbox and require provider credentials/configuration before external delivery.
 
 ---
 
 ## Security Alerts
 
-Status: Pending
+Status: Completed
 
 Features
 
@@ -510,7 +512,7 @@ Future
 
 ## Incident Management
 
-Status: Pending
+Status: Completed
 
 Features
 
@@ -524,7 +526,7 @@ Features
 
 ## Emergency SOS
 
-Status: Pending
+Status: Completed
 
 Features
 
@@ -542,7 +544,7 @@ Future
 
 ## Maintenance
 
-Status: Pending
+Status: Completed
 
 Features
 
@@ -554,14 +556,15 @@ Features
 
 Future
 
-- Razorpay
 - Stripe
+
+Implementation note: Razorpay payment links/webhooks and Direct UPI verification are implemented; organization-configurable late fees, invoices and receipts are implemented.
 
 ---
 
 ## Complaint Management
 
-Status: Pending
+Status: Completed
 
 Features
 
@@ -574,7 +577,7 @@ Features
 
 ## Amenities
 
-Status: Pending
+Status: Completed
 
 Features
 

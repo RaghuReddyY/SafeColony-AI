@@ -6,6 +6,7 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import relationship
+import sqlalchemy as sa
 from sqlalchemy.sql import func
 
 from app.database.base_class import Base
@@ -70,6 +71,26 @@ class Organization(Base):
     payment_phone = Column(
         String(20),
         nullable=True,
+    )
+
+    # Maintenance late-fee policy.
+    late_fee_type = Column(
+        String(20),
+        nullable=False,
+        default="NONE",
+        server_default="NONE",
+    )
+    late_fee_value = Column(
+        sa.Numeric(12, 2),
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    late_fee_grace_days = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
     )
 
     address = Column(

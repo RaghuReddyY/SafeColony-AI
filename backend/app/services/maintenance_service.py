@@ -15,6 +15,8 @@ from app.models.maintenance_payment import MaintenancePayment
 from app.models.maintenance_period import MaintenancePeriod
 from app.models.notification import Notification
 from app.models.organization import Organization
+from app.core.event_bus import event_bus
+from app.events.maintenance_events import MaintenancePaidEvent
 from app.models.user import User
 
 from app.repositories.maintenance_repository import MaintenanceRepository
@@ -133,6 +135,33 @@ class MaintenanceService:
                 str(bill.amount_paid)
             ),
         )
+
+    def _apply_late_fee(self, bill: MaintenanceBill, organization: Organization) -> None:
+        """Calculate late fee according to the organization's configured policy."""
+        if bill.status == "PAID":
+            return
+        today = date.today()
+        days_late = (today - bill.due_date).days - int(
+            getattr(organization, "late_fee_grace_days", 0) or 0
+        )
+        if days_late <= 0:
+            return
+        fee_type = (getattr(organization, "late_fee_type", "NONE") or "NONE").upper()
+        value = Decimal(str(getattr(organization, "late_fee_value", 0) or 0))
+        base = Decimal(str(bill.amount))
+        if fee_type == "FLAT":
+            fee = value
+        elif fee_type == "PERCENT_PER_MONTH":
+            months = max(1, (days_late + 29) // 30)
+            fee = base * value / Decimal("100") * Decimal(str(months))
+        elif fee_type == "PER_DAY":
+            fee = value * Decimal(str(days_late))
+        else:
+            fee = Decimal("0.00")
+        fee = fee.quantize(Decimal("0.01"))
+        if fee != Decimal(str(bill.late_fee)):
+            bill.late_fee = fee
+            bill.total_due = base + Decimal(str(bill.carried_forward)) + fee
 
     # ==========================================================
     # Maintenance Period
@@ -419,15 +448,22 @@ class MaintenanceService:
                 "expenses": [],
             }
 
+        bills = self.repo.get_bills_for_period(period.id)
+        organization = self.db.query(Organization).filter(
+            Organization.id == current_user.organization_id
+        ).first()
+        if organization:
+            for bill in bills:
+                self._apply_late_fee(bill, organization)
+            self.repo.commit()
+
         return {
             "period": self._period_response(
                 period
             ),
             "bills": [
                 self._bill_response(bill)
-                for bill in self.repo.get_bills_for_period(
-                    period.id
-                )
+                for bill in bills
             ],
             "expenses": self.repo.get_expenses_for_period(
                 period.id
@@ -456,6 +492,14 @@ class MaintenanceService:
         bills = self.repo.get_bills_for_resident(
             resident.id
         )
+
+        organization = self.db.query(Organization).filter(
+            Organization.id == current_user.organization_id
+        ).first()
+        if organization:
+            for bill in bills:
+                self._apply_late_fee(bill, organization)
+            self.repo.commit()
 
         return {
             "bill": (
@@ -537,6 +581,9 @@ class MaintenanceService:
             "upi_id": organization.payment_upi_id,
             "display_name": organization.payment_display_name,
             "payment_phone": organization.payment_phone,
+            "late_fee_type": organization.late_fee_type or "NONE",
+            "late_fee_value": organization.late_fee_value or Decimal("0.00"),
+            "late_fee_grace_days": organization.late_fee_grace_days or 0,
         }
 
     def update_payment_settings(
@@ -610,6 +657,9 @@ class MaintenanceService:
             if data.payment_phone
             else None
         )
+        organization.late_fee_type = data.late_fee_type.upper()
+        organization.late_fee_value = data.late_fee_value
+        organization.late_fee_grace_days = data.late_fee_grace_days
 
         self.repo.commit()
 
@@ -1157,6 +1207,14 @@ class MaintenanceService:
 
             bill.status = "PARTIAL"
 
+        event_bus.publish(MaintenancePaidEvent(
+            bill_id=bill.id,
+            organization_id=current_user.organization_id,
+            resident_id=bill.resident_id,
+            amount=str(payment_amount),
+            payment_method=payment.payment_method,
+        ))
+
         self.db.add(
             Notification(
                 user_id=bill.resident.user_id,
@@ -1388,6 +1446,14 @@ class MaintenanceService:
 
                 bill.status = "PARTIAL"
 
+            event_bus.publish(MaintenancePaidEvent(
+                bill_id=bill.id,
+                organization_id=bill.resident.user.organization_id,
+                resident_id=bill.resident_id,
+                amount=str(payment_amount),
+                payment_method="RAZORPAY",
+            ))
+
             self.db.add(
                 Notification(
                     user_id=bill.resident.user_id,
@@ -1436,6 +1502,118 @@ class MaintenanceService:
             "processed": True,
             "bill_id": bill.id,
             "status": bill.status,
+        }
+
+    # ==========================================================
+    # Manual Payment / Invoice / Receipt
+    # ==========================================================
+
+    def record_payment(self, current_user: User, bill_id: int, data):
+        if current_user.role not in {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER"}:
+            raise ForbiddenException("Only administrators can record manual maintenance payments.")
+        bill = self.repo.get_bill(bill_id)
+        if not bill:
+            raise NotFoundException("Maintenance bill")
+        if not bill.resident.user or bill.resident.user.organization_id != current_user.organization_id:
+            raise ForbiddenException("Bill does not belong to your organization.")
+
+        organization = self.db.query(Organization).filter(
+            Organization.id == current_user.organization_id
+        ).first()
+        if organization:
+            self._apply_late_fee(bill, organization)
+
+        remaining = self._payment_balance(bill)
+        if data.amount > remaining:
+            raise BadRequestException("Payment amount cannot exceed the outstanding balance.")
+
+        payment = MaintenancePayment(
+            bill_id=bill.id,
+            amount=data.amount,
+            payment_method=data.payment_method.upper(),
+            reference=data.reference,
+            status="VERIFIED",
+            verified_at=datetime.utcnow(),
+            verified_by=current_user.id,
+            recorded_by=current_user.id,
+        )
+        self.db.add(payment)
+        bill.amount_paid = Decimal(str(bill.amount_paid)) + data.amount
+        if bill.amount_paid >= bill.total_due:
+            bill.amount_paid = bill.total_due
+            bill.status = "PAID"
+            bill.paid_at = datetime.utcnow()
+        else:
+            bill.status = "PARTIAL"
+
+        event_bus.publish(MaintenancePaidEvent(
+            bill_id=bill.id,
+            organization_id=current_user.organization_id,
+            resident_id=bill.resident_id,
+            amount=str(data.amount),
+            payment_method=data.payment_method.upper(),
+        ))
+        self.db.add(Notification(
+            user_id=bill.resident.user_id,
+            title="Maintenance Payment Recorded",
+            message=f"Payment of ₹{data.amount:.2f} was recorded. Outstanding: ₹{self._payment_balance(bill):.2f}.",
+            notification_type="MAINTENANCE_PAYMENT",
+        ))
+        self.repo.commit()
+        return self._bill_response(bill)
+
+    def invoice(self, current_user: User, bill_id: int):
+        bill = (
+            self._get_current_resident_bill(current_user, bill_id)
+            if current_user.role == "RESIDENT"
+            else self.repo.get_bill(bill_id)
+        )
+        if not bill:
+            raise NotFoundException("Maintenance bill")
+        if bill.resident.user.organization_id != current_user.organization_id:
+            raise ForbiddenException("Bill does not belong to your organization.")
+        organization = self.db.query(Organization).filter(
+            Organization.id == current_user.organization_id
+        ).first()
+        if organization:
+            self._apply_late_fee(bill, organization)
+            self.repo.commit()
+        return {
+            "bill_id": bill.id,
+            "invoice_number": f"INV-MAINT-{bill.id}",
+            "resident_name": bill.resident.full_name or "Resident",
+            "unit_number": bill.resident.unit_number,
+            "billing_month": bill.period.month,
+            "issue_date": bill.period.month,
+            "due_date": bill.due_date,
+            "maintenance_amount": bill.amount,
+            "carried_forward": bill.carried_forward,
+            "late_fee": bill.late_fee,
+            "total_due": bill.total_due,
+            "amount_paid": bill.amount_paid,
+            "balance": self._payment_balance(bill),
+        }
+
+    def receipt(self, current_user: User, payment_id: int):
+        payment = self.repo.get_payment(payment_id)
+        if not payment:
+            raise NotFoundException("Payment")
+        bill = payment.bill
+        if bill.resident.user.organization_id != current_user.organization_id:
+            raise ForbiddenException("Payment does not belong to your organization.")
+        if current_user.role == "RESIDENT" and bill.resident.user_id != current_user.id:
+            raise ForbiddenException("You can only view your own receipt.")
+        return {
+            "receipt_number": f"RCT-MAINT-{payment.id}",
+            "payment_id": payment.id,
+            "bill_id": bill.id,
+            "resident_name": bill.resident.full_name or "Resident",
+            "unit_number": bill.resident.unit_number,
+            "amount": payment.amount,
+            "payment_method": payment.payment_method,
+            "reference": payment.reference,
+            "paid_at": payment.paid_at,
+            "status": payment.status,
         }
 
     # ==========================================================

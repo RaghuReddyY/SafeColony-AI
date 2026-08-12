@@ -19,7 +19,10 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
   final _upiController = TextEditingController();
   final _paymentNameController = TextEditingController();
   final _paymentPhoneController = TextEditingController();
+  final _lateFeeValueController = TextEditingController();
   String _paymentMode = 'RAZORPAY';
+  String _lateFeeType = 'NONE';
+  int _lateFeeGraceDays = 0;
   bool _paymentSettingsLoaded = false;
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _dueDate = DateTime(DateTime.now().year, DateTime.now().month, 10);
@@ -35,6 +38,7 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     _upiController.dispose();
     _paymentNameController.dispose();
     _paymentPhoneController.dispose();
+    _lateFeeValueController.dispose();
     super.dispose();
   }
 
@@ -178,6 +182,9 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
         _upiController.text = settings.upiId ?? '';
         _paymentNameController.text = settings.displayName ?? '';
         _paymentPhoneController.text = settings.paymentPhone ?? '';
+        _lateFeeType = settings.lateFeeType;
+        _lateFeeValueController.text = settings.lateFeeValue.toStringAsFixed(2);
+        _lateFeeGraceDays = settings.lateFeeGraceDays;
         _paymentSettingsLoaded = true;
       });
     } catch (e) {
@@ -194,6 +201,11 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
       return;
     }
 
+    final lateFeeValue = double.tryParse(_lateFeeValueController.text.trim()) ?? 0;
+    if (lateFeeValue < 0) {
+      _snack('Enter a valid late fee value.');
+      return;
+    }
     setState(() => _busy = true);
     try {
       await ref.read(maintenanceServiceProvider).updatePaymentSettings(
@@ -207,6 +219,9 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
             paymentPhone: _paymentPhoneController.text.trim().isEmpty
                 ? null
                 : _paymentPhoneController.text.trim(),
+            lateFeeType: _lateFeeType,
+            lateFeeValue: lateFeeValue,
+            lateFeeGraceDays: _lateFeeGraceDays,
           );
       if (!mounted) return;
       _snack('Payment settings saved.');
@@ -254,6 +269,9 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
             _upiController.text = settings.upiId ?? '';
             _paymentNameController.text = settings.displayName ?? '';
             _paymentPhoneController.text = settings.paymentPhone ?? '';
+            _lateFeeType = settings.lateFeeType;
+            _lateFeeValueController.text = settings.lateFeeValue.toStringAsFixed(2);
+            _lateFeeGraceDays = settings.lateFeeGraceDays;
             _paymentSettingsLoaded = true;
           });
         });
@@ -326,6 +344,46 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
                 ),
               ),
             ],
+            const SizedBox(height: 18),
+            const Text('Late Fee Policy', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _lateFeeType,
+              decoration: const InputDecoration(
+                labelText: 'Late fee type',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'NONE', child: Text('No late fee')),
+                DropdownMenuItem(value: 'FLAT', child: Text('Flat amount')),
+                DropdownMenuItem(value: 'PERCENT_PER_MONTH', child: Text('Percentage per month')),
+                DropdownMenuItem(value: 'PER_DAY', child: Text('Amount per late day')),
+              ],
+              onChanged: _busy ? null : (v) { if (v != null) setState(() => _lateFeeType = v); },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _lateFeeValueController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: _lateFeeType == 'PERCENT_PER_MONTH' ? 'Percentage' : 'Late fee value',
+                prefixText: _lateFeeType == 'PERCENT_PER_MONTH' ? '' : '₹ ',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              value: _lateFeeGraceDays,
+              decoration: const InputDecoration(
+                labelText: 'Grace period (days)',
+                border: OutlineInputBorder(),
+              ),
+              items: List.generate(
+                31,
+                (i) => DropdownMenuItem(value: i, child: Text('$i days')),
+              ),
+              onChanged: _busy ? null : (v) { if (v != null) setState(() => _lateFeeGraceDays = v); },
+            ),
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,

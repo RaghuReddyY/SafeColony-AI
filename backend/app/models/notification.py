@@ -58,6 +58,13 @@ class Notification(Base):
         nullable=False,
     )
 
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
     # ---------------------------------------
     # Relationships
     # ---------------------------------------
@@ -65,4 +72,10 @@ class Notification(Base):
     user = relationship(
         "User",
         back_populates="notifications",
+    )
+
+    deliveries = relationship(
+        "NotificationDelivery",
+        back_populates="notification",
+        cascade="all, delete-orphan",
     )
