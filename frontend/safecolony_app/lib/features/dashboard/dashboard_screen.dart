@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/dashboard_summary.dart';
 import '../auth/providers/auth_provider.dart';
-import '../ai/screens/ai_assistant_screen.dart';
+import '../../shared/widgets/dashboard_quick_access_fabs.dart';
 import '../notifications/widgets/notification_bell.dart';
 import 'providers/dashboard_provider.dart';
 import 'widgets/dashboard_body.dart';
@@ -54,22 +54,7 @@ class _DashboardScreenState
         ],
       ),
 
-      floatingActionButton: user?.role == "RESIDENT"
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AIAssistantScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.auto_awesome_rounded),
-              label: const Text("AI Assistant"),
-              backgroundColor: const Color(0xff4F46E5),
-              foregroundColor: Colors.white,
-            )
-          : null,
+      floatingActionButton: const DashboardQuickAccessFabs(),
 
       body: IndexedStack(
         index: currentIndex,

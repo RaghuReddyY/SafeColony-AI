@@ -590,9 +590,22 @@ Features
 
 ---
 
+## Community Chat
+
+Status: 🚧 In Progress
+
+Features
+
+- Community-wide chat
+- Direct resident/admin/guard chat
+- Organization-scoped user directory
+- Read state and unread counts
+- Conversation history
+- Role-based access
+
 ## AI Module
 
-Status: Planned
+Status: 🚧 In Progress
 
 Features
 
@@ -615,6 +628,26 @@ AI Suspicious Activity Detection
 AI Reports
 
 AI Daily Digest
+
+AI Security Copilot
+
+AI Resident Assistant
+
+AI Visitor Risk Prediction
+
+AI Suspicious Behavior Detection
+
+AI Incident Investigation
+
+AI Smart Notifications
+
+AI Parking Prediction
+
+AI Community Analytics
+
+AI Report Generator
+
+Current implementation uses live dashboard data and role-aware decision-support rules. Gemini remains the conversational generation layer.
 
 Future
 
@@ -791,7 +824,7 @@ AI Digital Twin (Future)
 | Maintenance | ⏳ Pending |
 | Complaint Management | ⏳ Pending |
 | Amenities | ⏳ Pending |
-| AI Module | 📅 Planned |
+| AI Module | 🚧 In Progress |
 
 ---
 

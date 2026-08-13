@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../ai/screens/ai_assistant_screen.dart';
+import '../../../shared/widgets/dashboard_quick_access_fabs.dart';
+import '../../chat/screens/community_chat_screen.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../notifications/screens/notification_screen.dart';
 import '../../emergency/providers/emergency_provider.dart';
@@ -150,6 +152,8 @@ class _AdminDashboardScreenState
           const SizedBox(width: 8),
         ],
       ),
+
+      floatingActionButton: const DashboardQuickAccessFabs(),
 
       // ============================================================
       // BODY
@@ -340,6 +344,14 @@ class _AdminDashboardScreenState
                         );
                       },
                       badge: activeEmergencyCount,
+                    ),
+
+                    _ActionData(
+                      'Community Chat',
+                      'Chat with residents, guards and administrators',
+                      Icons.forum_rounded,
+                      const Color(0xff0F766E),
+                      () => _open(const CommunityChatScreen()),
                     ),
 
                     _ActionData(
@@ -956,7 +968,7 @@ class _AdminDashboardScreenState
                 // IMPORTANT:
                 // Explicit finite height prevents
                 // unbounded RenderFlex errors inside Wrap.
-                height: 150,
+                height: 165,
 
                 child:
                     _actionCard(
@@ -973,164 +985,141 @@ class _AdminDashboardScreenState
   // ================================================================
   // ACTION CARD
   // ================================================================
+// ================================================================
+// ACTION CARD
+// ================================================================
 
-  Widget _actionCard(
-    _ActionData action,
-  ) {
-    return Material(
-      color: Colors.white,
+Widget _actionCard(
+  _ActionData action,
+) {
+  return Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
 
-      borderRadius:
-          BorderRadius.circular(20),
+    child: InkWell(
+      onTap: action.onTap,
+      borderRadius: BorderRadius.circular(20),
 
-      child: InkWell(
-        onTap: action.onTap,
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
 
-        borderRadius:
-            BorderRadius.circular(20),
+        padding: const EdgeInsets.all(16),
 
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
 
-          padding:
-              const EdgeInsets.all(18),
-
-          decoration:
-              BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(
-              20,
-            ),
-
-            border: Border.all(
-              color:
-                  const Color(
-                0xffE2E8F0,
-              ),
-            ),
+          border: Border.all(
+            color: const Color(0xffE2E8F0),
           ),
+        ),
 
-          child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
 
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
+          children: [
+            // ------------------------------------------------------
+            // ICON + BADGE
+            // ------------------------------------------------------
 
-                    decoration:
-                        BoxDecoration(
-                      color:
-                          action.color
-                              .withValues(
-                        alpha: .10,
-                      ),
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
 
-                      borderRadius:
-                          BorderRadius
-                              .circular(
-                        14,
-                      ),
+                  decoration: BoxDecoration(
+                    color: action.color.withValues(
+                      alpha: .10,
                     ),
 
-                    child: Icon(
-                      action.icon,
-                      color:
-                          action.color,
-                    ),
+                    borderRadius:
+                        BorderRadius.circular(14),
                   ),
 
-                  const Spacer(),
+                  child: Icon(
+                    action.icon,
+                    color: action.color,
+                  ),
+                ),
 
-                  if (action.badge != null &&
-                      action.badge! > 0)
-                    Container(
-                      padding:
-                          const EdgeInsets
-                              .symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                const Spacer(),
 
-                      decoration:
-                          BoxDecoration(
-                        color:
-                            const Color(
-                          0xffFEF2F2,
-                        ),
+                if (action.badge != null &&
+                    action.badge! > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
 
-                        borderRadius:
-                            BorderRadius
-                                .circular(
-                          20,
-                        ),
-                      ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xffFEF2F2),
 
-                      child: Text(
-                        '${action.badge}',
+                      borderRadius:
+                          BorderRadius.circular(20),
+                    ),
 
-                        style:
-                            const TextStyle(
-                          color:
-                              Color(
-                            0xffDC2626,
-                          ),
-                          fontSize: 11,
-                          fontWeight:
-                              FontWeight
-                                  .w800,
-                        ),
+                    child: Text(
+                      '${action.badge}',
+
+                      style: const TextStyle(
+                        color: Color(0xffDC2626),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                ],
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // ------------------------------------------------------
+            // TITLE
+            // ------------------------------------------------------
+
+            Text(
+              action.title,
+
+              maxLines: 1,
+
+              overflow: TextOverflow.ellipsis,
+
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Color(0xff0F172A),
               ),
+            ),
 
-              const SizedBox(
-                height: 14,
-              ),
+            const SizedBox(height: 4),
 
-              Text(
-                action.title,
+            // ------------------------------------------------------
+            // DESCRIPTION
+            // ------------------------------------------------------
 
-                style:
-                    const TextStyle(
-                  fontSize: 15,
-                  fontWeight:
-                      FontWeight.w800,
-                  color:
-                      Color(0xff0F172A),
-                ),
-              ),
-
-              const SizedBox(
-                height: 4,
-              ),
-
-              Text(
+            Expanded(
+              child: Text(
                 action.subtitle,
 
                 maxLines: 2,
 
-                overflow:
-                    TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
 
-                style:
-                    const TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
-                  color:
-                      Color(0xff64748B),
+                  color: Color(0xff64748B),
+                  height: 1.25,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ================================================================
   // MONEY CARD

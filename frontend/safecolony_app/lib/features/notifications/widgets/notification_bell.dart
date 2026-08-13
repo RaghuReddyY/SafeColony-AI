@@ -14,7 +14,7 @@ import '../screens/notification_screen.dart';
 class NotificationBell extends ConsumerStatefulWidget {
   const NotificationBell({
     super.key,
-    this.refreshInterval = const Duration(seconds: 30),
+    this.refreshInterval = const Duration(seconds: 10),
   });
 
   final Duration refreshInterval;

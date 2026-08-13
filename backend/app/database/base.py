@@ -25,3 +25,5 @@ from app.models.complaint import Complaint
 from app.models.amenity import Amenity, AmenityBooking
 
 from app.models.notification_device import NotificationDevice
+
+from app.models.chat import ChatConversation, ChatParticipant, ChatMessage

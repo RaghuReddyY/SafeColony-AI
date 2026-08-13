@@ -82,16 +82,23 @@ class IncidentService:
         logger.warning("Incident created id=%s org=%s severity=%s", incident.id, incident.organization_id, incident.severity)
         return self._response(incident)
 
-    def _notify_roles(self, organization_id, roles, title, message):
+    def _notify(self, user_id, title, message):
+        if user_id is None:
+            return
+        self.db.add(Notification(
+            user_id=user_id, title=title, message=message, notification_type="INCIDENT"
+        ))
+
+    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None):
         users = self.db.query(User).filter(
             User.organization_id == organization_id,
             User.role.in_(list(roles)),
             User.is_active.is_(True),
         ).all()
         for user in users:
-            self.db.add(Notification(
-                user_id=user.id, title=title, message=message, notification_type="INCIDENT"
-            ))
+            if exclude_user_id is not None and user.id == exclude_user_id:
+                continue
+            self._notify(user.id, title, message)
 
     def list(self, current_user, status=None):
         return [self._response(x) for x in self.repo.list(current_user.organization_id, status)]
@@ -113,9 +120,38 @@ class IncidentService:
             status = data.status.upper()
             if status == "RESOLVED":
                 incident.resolved_at = datetime.utcnow()
-            elif status in {"OPEN", "INVESTIGATING"}:
+            elif status in {"OPEN", "INVESTIGATING", "IN_PROGRESS"}:
                 incident.resolved_at = None
             incident.status = status
+
+        # Keep the reporter and assignee informed of lifecycle changes.
+        # A resolved incident also creates an operational notification for the
+        # rest of the organization's security/administration team.
+        if data.status or data.investigation_notes is not None or data.resolution_notes is not None or data.assigned_to_user_id is not None:
+            status_text = incident.status.replace("_", " ")
+            detail = f"{incident.title} is now {status_text}."
+            if incident.status == "RESOLVED" and incident.resolution_notes:
+                detail += f" Resolution: {incident.resolution_notes}"
+            self._notify(
+                incident.created_by_user_id,
+                f"Incident #{incident.id} Updated",
+                detail,
+            )
+            if incident.assigned_to_user_id and incident.assigned_to_user_id != current_user.id:
+                self._notify(
+                    incident.assigned_to_user_id,
+                    f"Incident #{incident.id} Updated",
+                    detail,
+                )
+            if incident.status == "RESOLVED":
+                self._notify_roles(
+                    incident.organization_id,
+                    {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER", "SECURITY_GUARD"},
+                    f"Incident #{incident.id} Resolved",
+                    f"{incident.title} has been resolved.",
+                    exclude_user_id=current_user.id,
+                )
+
         incident.updated_at = datetime.utcnow()
         self.repo.commit()
         logger.info("Incident updated id=%s status=%s", incident.id, incident.status)

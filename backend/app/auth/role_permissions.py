@@ -80,6 +80,9 @@ ROLE_PERMISSIONS = {
         Permissions.VACATION_CREATE,
 
         Permissions.DASHBOARD_VIEW,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
     },
 
     # ==========================================================
@@ -128,6 +131,9 @@ ROLE_PERMISSIONS = {
         Permissions.EMERGENCY_RESOLVE,
 
         Permissions.DASHBOARD_VIEW,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
     },
 
     # ==========================================================
@@ -173,6 +179,9 @@ ROLE_PERMISSIONS = {
         Permissions.SECURITY_ALERT_RAISE,
 
         Permissions.DASHBOARD_VIEW,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
     },
 
     # ==========================================================
@@ -215,6 +224,9 @@ ROLE_PERMISSIONS = {
         Permissions.INCIDENT_VIEW,
         Permissions.INCIDENT_CREATE,
         Permissions.INCIDENT_EVIDENCE,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
     },
 
     # ==========================================================
@@ -262,6 +274,9 @@ ROLE_PERMISSIONS = {
         Permissions.AMENITY_BOOK,
 
         Permissions.DASHBOARD_VIEW,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
 
         Permissions.JOIN_REQUEST_VIEW,
         Permissions.JOIN_REQUEST_APPROVE,

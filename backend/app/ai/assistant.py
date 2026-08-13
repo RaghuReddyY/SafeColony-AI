@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy import func
 
 from app.config import settings
+from app.ai.insights import AIInsightsEngine
 from app.core.exceptions import BadRequestException
 from app.core.logger import logger
 from app.models.delivery import Delivery
@@ -153,7 +154,16 @@ operational workflows. Do not expose secrets, tokens or API keys.
             "Do not reveal API keys, passwords, tokens, internal security secrets, "
             "or private data belonging to other users. If a request needs an action "
             "that the current app does not support, say so clearly instead of pretending "
-            "that you performed it.\n\n"
+            "that you performed it.\n"
+            "The LIVE SAFEColony CONTEXT below is authoritative database data. "
+            "For factual questions about counts, notifications, incidents, alerts, "
+            "maintenance, complaints, visitors or deliveries, use those values exactly. "
+            "Do not substitute estimates, old conversation values or general knowledge. "
+            "If a count is 0, explicitly say 0. If a requested detail is present in the "
+            "detail lists, give the actual ID/title/status/severity/location/amount. "
+            "Only say that specific details are unavailable when the corresponding field "
+            "is actually absent from the supplied context. Distinguish unread notifications "
+            "for the CURRENT USER from community security alerts and open incidents.\n\n"
             + role_guidance.strip()
             + "\n\nLIVE SAFEColony CONTEXT:\n"
             + context
@@ -358,6 +368,41 @@ operational workflows. Do not expose secrets, tokens or API keys.
                     f"active_vacations={active_vacations}",
                 ]
             )
+
+        # Feed the same live dashboard intelligence into the chat assistant so
+        # answers are based on what the user can currently see in SafeColony.
+        try:
+            overview = AIInsightsEngine(self.db).build(user)
+            metrics = overview.get("metrics", {})
+            finance = metrics.get("maintenance", {}) or {}
+            lines.extend([
+                "AUTHORITATIVE_CURRENT_USER_UNREAD_NOTIFICATIONS=" + str(metrics.get("current_user_unread_notifications", 0)),
+                "AUTHORITATIVE_ACTIVE_SECURITY_ALERTS=" + str(metrics.get("active_security_alerts", 0)),
+                "AUTHORITATIVE_HIGH_PRIORITY_SECURITY_ALERTS=" + str(metrics.get("high_priority_alerts", 0)),
+                "AUTHORITATIVE_OPEN_INCIDENTS=" + str(metrics.get("open_incidents", 0)),
+                "AUTHORITATIVE_INCIDENTS_TODAY=" + str(metrics.get("incidents_today", 0)),
+                "AUTHORITATIVE_OPEN_COMPLAINTS=" + str(metrics.get("open_complaints", 0)),
+                "AUTHORITATIVE_MAINTENANCE_MONTH=" + str(finance.get("month")),
+                "AUTHORITATIVE_MAINTENANCE_COLLECTED=" + str(finance.get("collected", 0)),
+                "AUTHORITATIVE_MAINTENANCE_EXPENSES=" + str(finance.get("expenses", 0)),
+                "AUTHORITATIVE_MAINTENANCE_OUTSTANDING=" + str(finance.get("outstanding", 0)),
+                "AUTHORITATIVE_MAINTENANCE_UNPAID_BILLS=" + str(finance.get("unpaid_bills", 0)),
+            ])
+            if user.role in {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SYSTEM_ADMIN"}:
+                period = (
+                    self.db.query(MaintenancePeriod)
+                    .filter(MaintenancePeriod.organization_id == organization_id)
+                    .order_by(MaintenancePeriod.month.desc())
+                    .first()
+                )
+                if period:
+                    lines.append(f"AUTHORITATIVE_MAINTENANCE_MONTHLY_AMOUNT={period.monthly_amount}")
+            lines.append("AUTHORITATIVE_ACTIVE_INCIDENT_DETAILS=" + json.dumps(metrics.get("active_incident_details", []), default=str))
+            lines.append("AUTHORITATIVE_ACTIVE_SECURITY_ALERT_DETAILS=" + json.dumps(metrics.get("active_security_alert_details", []), default=str))
+            lines.append("AUTHORITATIVE_CURRENT_USER_NOTIFICATION_DETAILS=" + json.dumps(metrics.get("current_user_notifications", []), default=str))
+            lines.append("AUTHORITATIVE_LIVE_AI_DASHBOARD_JSON=" + json.dumps(overview, default=str))
+        except Exception as exc:
+            logger.warning("Unable to build extended AI dashboard context: %s", exc)
 
         return "\n".join(lines)
 

@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 # Routers
 from app.api.auth import router as auth_router
 from app.api.ai_assistant import router as ai_assistant_router
+from app.api.chat import router as chat_router
 from app.api.dashboard import router as dashboard_router
 from app.api.delivery import router as delivery_router
 from app.api.guard import router as guard_router
@@ -107,6 +108,7 @@ app.add_middleware(
 app.include_router(setup_router)
 app.include_router(auth_router)
 app.include_router(ai_assistant_router)
+app.include_router(chat_router)
 app.include_router(organization_router)
 app.include_router(property_router)
 app.include_router(section_router)

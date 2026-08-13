@@ -16,6 +16,7 @@ class AppRoutes {
   static const notifications = "/notifications";
 
   static const aiAssistant = "/ai";
+  static const chat = "/chat";
 
   static const settings = "/settings";
 

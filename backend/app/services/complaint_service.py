@@ -37,9 +37,26 @@ class ComplaintService:
         return user
 
     def _notify(self, user_id, title, message):
+        if user_id is None:
+            return
         self.db.add(Notification(
             user_id=user_id, title=title, message=message, notification_type="COMPLAINT"
         ))
+
+    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None):
+        users = (
+            self.db.query(User)
+            .filter(
+                User.organization_id == organization_id,
+                User.role.in_(list(roles)),
+                User.is_active.is_(True),
+            )
+            .all()
+        )
+        for user in users:
+            if exclude_user_id is not None and user.id == exclude_user_id:
+                continue
+            self._notify(user.id, title, message)
 
     def create(self, current_user, data):
         resident = self._resident(current_user)
@@ -53,6 +70,24 @@ class ComplaintService:
             created_by_user_id=current_user.id,
         )
         self.repo.create(complaint)
+        self.db.flush()
+
+        # A new complaint is operational work. Notify the administrators and
+        # security team so it is visible without requiring them to poll the
+        # complaints screen. The resident who created it is not notified about
+        # their own submission.
+        self._notify_roles(
+            complaint.organization_id,
+            {
+                "ORGANIZATION_ADMIN",
+                "PROPERTY_MANAGER",
+                "SECURITY_MANAGER",
+                "SECURITY_GUARD",
+            },
+            f"New Complaint #{complaint.id}",
+            f"{complaint.priority} complaint: {complaint.title}.",
+            exclude_user_id=current_user.id,
+        )
         self.repo.commit()
         logger.info("Complaint created id=%s resident=%s", complaint.id, resident.id)
         return complaint
@@ -69,33 +104,62 @@ class ComplaintService:
         complaint = self.repo.get_by_id(current_user.organization_id, complaint_id)
         if not complaint:
             raise NotFoundException("Complaint")
+
+        previous_status = complaint.status.upper() if complaint.status else "OPEN"
+
         if data.assigned_to_user_id is not None:
-            self._org_user(current_user, data.assigned_to_user_id)
-            complaint.assigned_to_user_id = data.assigned_to_user_id
+            assigned_user = self._org_user(current_user, data.assigned_to_user_id)
+            complaint.assigned_to_user_id = assigned_user.id
             complaint.status = "ASSIGNED" if not data.status else data.status
             self._notify(
                 complaint.created_by_user_id,
                 "Complaint Assigned",
-                f"Complaint #{complaint.id} was assigned for action.",
+                f"Complaint #{complaint.id} was assigned to {assigned_user.full_name}.",
             )
+            if assigned_user.id != current_user.id:
+                self._notify(
+                    assigned_user.id,
+                    "Complaint Assigned To You",
+                    f"Complaint #{complaint.id}: {complaint.title} requires action.",
+                )
         if data.status:
             complaint.status = data.status.upper()
         if data.resolution is not None:
             complaint.resolution = data.resolution.strip()
-        if complaint.status == "RESOLVED":
-            if not complaint.resolution:
-                raise BadRequestException("Resolution details are required.")
-            complaint.resolved_at = datetime.utcnow()
-            event_bus.publish(ComplaintResolvedEvent(
-                complaint_id=complaint.id,
-                organization_id=complaint.organization_id,
-                resident_id=complaint.resident_id,
-            ))
-            self._notify(
-                complaint.created_by_user_id,
-                "Complaint Resolved",
-                f"Complaint #{complaint.id} has been resolved.",
-            )
+        if complaint.status in {"RESOLVED", "CLOSED"}:
+            # RESOLVED requires resolution details. CLOSED remains compatible
+            # with the existing UI/API, where the admin may close a complaint
+            # without entering a separate resolution note.
+            if complaint.status == "RESOLVED" and not complaint.resolution:
+                raise BadRequestException("Resolution details are required when resolving a complaint.")
+
+            # Notify only when the complaint actually enters a terminal state.
+            # This prevents duplicate notifications when an admin edits an already
+            # resolved complaint later.
+            transitioned_to_terminal = previous_status not in {"RESOLVED", "CLOSED"}
+            complaint.resolved_at = complaint.resolved_at or datetime.utcnow()
+
+            if transitioned_to_terminal:
+                event_bus.publish(ComplaintResolvedEvent(
+                    complaint_id=complaint.id,
+                    organization_id=complaint.organization_id,
+                    resident_id=complaint.resident_id,
+                ))
+
+                status_label = "resolved" if complaint.status == "RESOLVED" else "closed"
+                self._notify(
+                    complaint.created_by_user_id,
+                    f"Complaint {status_label.title()}",
+                    f"Complaint #{complaint.id} has been {status_label}."
+                    + (f" {complaint.resolution}" if complaint.resolution else ""),
+                )
+
+                if complaint.assigned_to_user_id and complaint.assigned_to_user_id != current_user.id:
+                    self._notify(
+                        complaint.assigned_to_user_id,
+                        f"Complaint {status_label.title()}",
+                        f"Complaint #{complaint.id} has been {status_label}.",
+                    )
         elif complaint.status in {"OPEN", "ASSIGNED", "IN_PROGRESS"}:
             complaint.resolved_at = None
         self.repo.commit()
@@ -115,6 +179,13 @@ class ComplaintService:
             complaint.created_by_user_id,
             "Complaint Escalated",
             f"Complaint #{complaint.id} has been escalated: {complaint.escalation_reason}",
+        )
+        self._notify_roles(
+            complaint.organization_id,
+            {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER"},
+            f"Complaint #{complaint.id} Escalated",
+            complaint.escalation_reason or "Complaint requires escalation.",
+            exclude_user_id=current_user.id,
         )
         self.repo.commit()
         return complaint

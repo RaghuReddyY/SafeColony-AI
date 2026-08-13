@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../../ai/screens/ai_assistant_screen.dart';
+import '../../chat/screens/community_chat_screen.dart';
 import '../../delivery/screens/delivery_dashboard_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../guard/screens/guard_dashboard_screen.dart';
@@ -146,6 +147,14 @@ class DashboardSidebar extends ConsumerWidget {
                 context,
                 ref,
                 role: user?.role ?? "",
+                icon: Icons.forum_rounded,
+                title: "Community Chat",
+              ),
+
+              _menu(
+                context,
+                ref,
+                role: user?.role ?? "",
                 icon: Icons.auto_awesome,
                 title: "AI Assistant",
               ),
@@ -275,6 +284,15 @@ case "Visitors":
                 context,
                 MaterialPageRoute(
                   builder: (_) => const CommunityFinanceScreen(),
+                ),
+              );
+              break;
+
+            case "Community Chat":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CommunityChatScreen(),
                 ),
               );
               break;

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/login_screen.dart';
-import '../../ai/screens/ai_assistant_screen.dart';
+import '../../../shared/widgets/dashboard_quick_access_fabs.dart';
+import '../../chat/screens/community_chat_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 
 import '../../notifications/providers/notification_provider.dart';
@@ -475,6 +476,19 @@ class _GuardDashboardScreenState
           ),
 
           IconButton(
+            tooltip: 'Community Chat',
+            icon: const Icon(Icons.forum_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CommunityChatScreen(),
+                ),
+              );
+            },
+          ),
+
+          IconButton(
             icon: const Icon(
               Icons.logout,
             ),
@@ -487,27 +501,7 @@ class _GuardDashboardScreenState
       // AI
       // ==========================================================
 
-      floatingActionButton:
-          FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  const AIAssistantScreen(),
-            ),
-          );
-        },
-        icon: const Icon(
-          Icons.auto_awesome_rounded,
-        ),
-        label: const Text(
-          "AI Assistant",
-        ),
-        backgroundColor:
-            const Color(0xff4F46E5),
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButton: const DashboardQuickAccessFabs(),
 
       // ==========================================================
       // BODY
