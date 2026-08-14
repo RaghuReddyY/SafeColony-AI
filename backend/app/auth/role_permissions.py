@@ -83,6 +83,11 @@ ROLE_PERMISSIONS = {
         Permissions.CHAT_VIEW,
         Permissions.CHAT_SEND,
         Permissions.AI_ASSISTANT,
+        Permissions.BLOCK_ADMIN_VIEW,
+        Permissions.BLOCK_ADMIN_MANAGE,
+        Permissions.COMMUNITY_FINANCE_VIEW,
+        Permissions.COMMUNITY_FINANCE_MANAGE,
+        Permissions.COMMUNITY_FINANCE_PAYMENT,
     },
 
     # ==========================================================
@@ -229,6 +234,65 @@ ROLE_PERMISSIONS = {
         Permissions.AI_ASSISTANT,
     },
 
+
+    # ==========================================================
+    # Block Admin
+    # ==========================================================
+    UserRole.BLOCK_ADMIN: {
+        Permissions.BLOCK_ADMIN_VIEW,
+        Permissions.SECTION_VIEW,
+        Permissions.UNIT_VIEW,
+        Permissions.UNIT_CREATE,
+        Permissions.RESIDENT_VIEW,
+        Permissions.RESIDENT_CREATE,
+        Permissions.RESIDENT_UPDATE,
+        Permissions.RESIDENT_APPROVE,
+        Permissions.RESIDENT_REJECT,
+        Permissions.MAINTENANCE_VIEW,
+        Permissions.MAINTENANCE_MANAGE,
+        Permissions.INCIDENT_VIEW,
+        Permissions.INCIDENT_CREATE,
+        Permissions.INCIDENT_MANAGE,
+        Permissions.INCIDENT_EVIDENCE,
+        Permissions.COMPLAINT_VIEW,
+        Permissions.COMPLAINT_CREATE,
+        Permissions.COMPLAINT_MANAGE,
+        Permissions.COMPLAINT_ESCALATE,
+        Permissions.AMENITY_VIEW,
+        Permissions.AMENITY_MANAGE,
+        Permissions.AMENITY_BOOK,
+        Permissions.AMENITY_APPROVE,
+        Permissions.NOTIFICATION_VIEW,
+        Permissions.NOTIFICATION_UPDATE,
+        Permissions.EMERGENCY_VIEW,
+        Permissions.EMERGENCY_RESOLVE,
+        Permissions.SECURITY_ALERT_RAISE,
+        Permissions.VACATION_VIEW,
+        Permissions.VACATION_CREATE,
+        Permissions.DASHBOARD_VIEW,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
+    },
+
+    # ==========================================================
+    # Community Finance Collector
+    # ==========================================================
+    UserRole.COMMUNITY_FINANCE_ADMIN: {
+        Permissions.COMMUNITY_FINANCE_VIEW,
+        Permissions.COMMUNITY_FINANCE_MANAGE,
+        Permissions.COMMUNITY_FINANCE_PAYMENT,
+        # Finance admins manage organization-wide collections (festivals, CCTV,
+        # events, etc.). They do not create or collect monthly maintenance.
+        Permissions.NOTIFICATION_VIEW,
+        Permissions.NOTIFICATION_CREATE,
+        Permissions.NOTIFICATION_UPDATE,
+        Permissions.DASHBOARD_VIEW,
+        Permissions.CHAT_VIEW,
+        Permissions.CHAT_SEND,
+        Permissions.AI_ASSISTANT,
+    },
+
     # ==========================================================
     # Resident
     # ==========================================================
@@ -249,6 +313,11 @@ ROLE_PERMISSIONS = {
 
         Permissions.MAINTENANCE_VIEW,
         Permissions.MAINTENANCE_PAYMENT,
+
+        # Residents can view organization-wide community funds and expenses.
+        # Collection management remains restricted to finance/organization admins.
+        Permissions.COMMUNITY_FINANCE_VIEW,
+        Permissions.COMMUNITY_FINANCE_PAYMENT,
 
         Permissions.VACATION_VIEW,
         Permissions.VACATION_CREATE,

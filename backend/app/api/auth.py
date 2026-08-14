@@ -6,6 +6,7 @@ from app.auth.dependencies import get_current_user
 from app.database.dependency import get_db
 from app.models.user import User
 from app.schemas.token import Token
+from app.schemas.otp import OTPRequest, OTPRequestResponse, OTPVerifyRequest
 from app.schemas.user import (
     ChangePasswordRequest,
     RegisterResponse,
@@ -53,6 +54,30 @@ def login(
     )
 
 
+@router.post(
+    "/otp/request",
+    response_model=OTPRequestResponse,
+    summary="Request mobile login OTP",
+)
+def request_otp(
+    data: OTPRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    return service.request_otp(data.phone)
+
+
+@router.post(
+    "/otp/verify",
+    response_model=Token,
+    summary="Verify mobile login OTP",
+)
+def verify_otp(
+    data: OTPVerifyRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    return service.verify_otp(data.phone, data.otp)
+
+
 @router.get(
     "/me",
     response_model=UserResponse,
@@ -61,7 +86,18 @@ def login(
 def get_me(
     current_user: User = Depends(get_current_user),
 ):
-    return current_user
+    organization = current_user.organization
+    return {
+        "id": current_user.id,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "organization_id": current_user.organization_id,
+        "organization_code": organization.organization_code if organization else None,
+        "organization_name": organization.name if organization else None,
+    }
 
 
 @router.post(

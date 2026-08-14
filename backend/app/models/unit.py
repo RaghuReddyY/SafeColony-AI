@@ -85,6 +85,13 @@ class Unit(Base):
         nullable=True,
     )
 
+    family_join_code: Mapped[str | None] = mapped_column(
+        String(24),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
+
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,

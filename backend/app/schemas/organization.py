@@ -69,3 +69,36 @@ class GuardResponse(BaseModel):
 
     class Config:
         from_attributes = True
+# ------------------------------------------------------------------
+# Block / Finance Administration
+# ------------------------------------------------------------------
+
+class BlockAdminCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone: str
+    password: str
+    section_ids: list[int] = []
+
+
+class FinanceAdminCreate(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone: str
+    password: str
+
+
+class ScopedAdminResponse(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    phone: str
+    role: str
+    section_ids: list[int] = []
+    section_names: list[str] = []
+
+
+class BlockScopeResponse(BaseModel):
+    section_id: int
+    section_name: str
+    property_id: int

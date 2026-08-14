@@ -9,6 +9,12 @@ class Permissions:
     ORGANIZATION_UPDATE = "organization:update"
     ORGANIZATION_DELETE = "organization:delete"
 
+    BLOCK_ADMIN_MANAGE = "block_admin:manage"
+    BLOCK_ADMIN_VIEW = "block_admin:view"
+    COMMUNITY_FINANCE_VIEW = "community_finance:view"
+    COMMUNITY_FINANCE_MANAGE = "community_finance:manage"
+    COMMUNITY_FINANCE_PAYMENT = "community_finance:payment"
+
     # ==========================================================
     # Property
     # ==========================================================

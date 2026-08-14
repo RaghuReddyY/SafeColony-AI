@@ -15,6 +15,7 @@ from app.schemas.maintenance import (
     MaintenancePeriodResponse,
     ResidentMaintenanceSummary,
     MaintenanceBillResponse,
+    MaintenanceBillUpdate,
     MaintenancePaymentLinkResponse,
     MaintenancePaymentSettings,
     MaintenancePaymentSettingsUpdate,
@@ -61,6 +62,15 @@ def generate_bills(period_id: int, current_user: User = Depends(get_current_user
 
 
 @router.post(
+    "/periods/{period_id}/close",
+    response_model=MaintenancePeriodResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
+)
+def close_period(period_id: int, current_user: User = Depends(get_current_user), service: MaintenanceService = Depends(get_service)):
+    return service.close_period(current_user, period_id)
+
+
+@router.post(
     "/periods/{period_id}/expenses",
     response_model=MaintenanceExpenseResponse,
     dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
@@ -76,6 +86,32 @@ def add_expense(period_id: int, data: MaintenanceExpenseCreate, current_user: Us
 )
 def my_maintenance(current_user: User = Depends(get_current_user), service: MaintenanceService = Depends(get_service)):
     return service.resident_summary(current_user)
+
+
+@router.put(
+    "/bills/{bill_id}",
+    response_model=MaintenanceBillResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
+)
+def update_bill(
+    bill_id: int,
+    data: MaintenanceBillUpdate,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.update_bill(current_user, bill_id, data)
+
+
+@router.delete(
+    "/bills/{bill_id}",
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
+)
+def delete_bill(
+    bill_id: int,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.delete_bill(current_user, bill_id)
 
 
 @router.post(
@@ -96,12 +132,11 @@ def community_finance(
     current_user: User = Depends(get_current_user),
     service: MaintenanceService = Depends(get_service),
 ):
-    data = service.community_finance(current_user)
-    return {
-        "period": data["period"],
-        "bills": [],
-        "expenses": data["expenses"],
-    }
+    # Residents are intentionally allowed to see the payment status of
+    # primary households in their own section.  The service already scopes
+    # resident requests to the resident's section.  Do not strip the bills
+    # here; the resident UI uses them to show PAID/UNPAID/PARTIAL status.
+    return service.community_finance(current_user)
 
 
 

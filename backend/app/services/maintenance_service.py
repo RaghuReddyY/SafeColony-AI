@@ -21,6 +21,8 @@ from app.models.user import User
 
 from app.repositories.maintenance_repository import MaintenanceRepository
 from app.repositories.resident_repository import ResidentRepository
+from app.services.scope_service import ScopeService
+from app.models.section import Section
 
 
 class MaintenanceService:
@@ -37,13 +39,35 @@ class MaintenanceService:
     # Helpers
     # ==========================================================
 
+    def _scope_section_id(self, current_user: User, requested: int | None = None) -> int | None:
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if requested is not None and requested not in ids:
+                raise ForbiddenException("You can manage maintenance only for your assigned blocks.")
+            if requested is not None:
+                return requested
+            if len(ids) == 1:
+                return ids[0]
+            raise BadRequestException("Select a block before creating a maintenance period.")
+        if requested is not None:
+            section = self.db.query(Section).filter(Section.id == requested).first()
+            if not section or section.property.organization_id != current_user.organization_id:
+                raise ForbiddenException("Selected block does not belong to your community.")
+        return requested
+
     def _active_residents(
         self,
         organization_id: int,
+        section_id: int | None = None,
     ):
-        return self.resident_repo.get_dropdown_by_organization(
-            organization_id
-        )
+        residents = self.resident_repo.get_dropdown_by_organization(organization_id)
+        # Maintenance is a unit-level obligation. The primary resident owns
+        # the bill and receives the payment notifications. Family members
+        # share the unit but must never get a duplicate maintenance bill.
+        residents = [r for r in residents if r.is_primary]
+        if section_id is None:
+            return residents
+        return [r for r in residents if r.unit and r.unit.section_id == section_id]
 
     def _get_current_resident(
         self,
@@ -86,6 +110,11 @@ class MaintenanceService:
             current_user
         )
 
+        if not resident.is_primary:
+            raise ForbiddenException(
+                "Maintenance bills are managed by the primary resident of the unit."
+            )
+
         bill = self.repo.get_bill_for_resident(
             bill_id=bill_id,
             resident_id=resident.id,
@@ -101,9 +130,11 @@ class MaintenanceService:
     def _previous_closing_balance(
         self,
         organization_id: int,
+        section_id: int | None = None,
     ):
         previous = self.repo.get_latest_period(
-            organization_id
+            organization_id,
+            section_id,
         )
 
         if not previous:
@@ -172,9 +203,11 @@ class MaintenanceService:
         current_user: User,
         data,
     ):
+        section_id = self._scope_section_id(current_user, data.section_id)
         existing = self.repo.get_period_by_month(
             current_user.organization_id,
             data.month.replace(day=1),
+            section_id,
         )
 
         if existing:
@@ -188,14 +221,17 @@ class MaintenanceService:
             )
 
         opening = self._previous_closing_balance(
-            current_user.organization_id
+            current_user.organization_id,
+            section_id,
         )
 
         period = MaintenancePeriod(
             organization_id=current_user.organization_id,
+            section_id=section_id,
             month=data.month.replace(day=1),
             monthly_amount=data.monthly_amount,
             due_date=data.due_date,
+            status="DRAFT",
             opening_balance=opening,
             notes=data.notes,
             created_by=current_user.id,
@@ -215,18 +251,28 @@ class MaintenanceService:
         current_user: User,
         period_id: int,
     ):
+        section_id = None
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if len(ids) != 1:
+                raise BadRequestException("A block administrator must have exactly one block for bill generation.")
+            section_id = ids[0]
         period = self.repo.get_period(
             period_id,
             current_user.organization_id,
+            section_id=section_id,
         )
 
         if not period:
             raise NotFoundException(
                 "Maintenance period"
             )
+        if period.status == "CLOSED":
+            raise BadRequestException("This maintenance period is closed and cannot generate bills.")
 
         residents = self._active_residents(
-            current_user.organization_id
+            current_user.organization_id,
+            period.section_id,
         )
 
         existing = {
@@ -295,12 +341,33 @@ class MaintenanceService:
 
             created += 1
 
+        if created > 0 or existing:
+            period.status = "PUBLISHED"
+            period.updated_at = datetime.utcnow()
+
         self.repo.commit()
 
         return {
             "created": created,
             "skipped": len(existing),
         }
+
+    def close_period(self, current_user: User, period_id: int):
+        section_id = None
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if len(ids) != 1:
+                raise BadRequestException("A block administrator must have exactly one block to close a maintenance period.")
+            section_id = ids[0]
+        period = self.repo.get_period(period_id, current_user.organization_id, section_id=section_id)
+        if not period:
+            raise NotFoundException("Maintenance period")
+        if period.status == "CLOSED":
+            return self._period_response(period)
+        period.status = "CLOSED"
+        period.updated_at = datetime.utcnow()
+        self.repo.commit()
+        return self._period_response(period)
 
     # ==========================================================
     # Expenses
@@ -312,9 +379,16 @@ class MaintenanceService:
         period_id: int,
         data,
     ):
+        section_id = None
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if len(ids) != 1:
+                raise BadRequestException("A block administrator must have exactly one block for expenses.")
+            section_id = ids[0]
         period = self.repo.get_period(
             period_id,
             current_user.organization_id,
+            section_id=section_id,
         )
 
         if not period:
@@ -401,9 +475,11 @@ class MaintenanceService:
         return {
             "id": period.id,
             "organization_id": period.organization_id,
+            "section_id": period.section_id,
             "month": period.month,
             "monthly_amount": period.monthly_amount,
             "due_date": period.due_date,
+            "status": period.status,
             "opening_balance": period.opening_balance,
             "billed_total": billed,
             "collected_total": collected,
@@ -437,8 +513,13 @@ class MaintenanceService:
         self,
         current_user: User,
     ):
+        section_id = None
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            section_id = ids[0] if len(ids) == 1 else None
         period = self.repo.get_latest_period(
-            current_user.organization_id
+            current_user.organization_id,
+            section_id,
         )
 
         if not period:
@@ -489,6 +570,9 @@ class MaintenanceService:
             current_user
         )
 
+        if not resident.is_primary:
+            return {"bill": None, "history": [], "is_primary": False}
+
         bills = self.repo.get_bills_for_resident(
             resident.id
         )
@@ -511,6 +595,7 @@ class MaintenanceService:
                 self._bill_response(bill)
                 for bill in bills
             ],
+            "is_primary": True,
         }
 
     # ==========================================================
@@ -522,33 +607,41 @@ class MaintenanceService:
         current_user: User,
     ):
         """
-        Organization-level finance information.
+        Maintenance visibility for the finance/maintenance view.
 
-        This intentionally does NOT return individual
-        resident bills.
-
-        Residents can see community expenses and
-        financial summary, but not other residents'
-        maintenance bills.
+        For residents, bills are scoped to the resident's own section and
+        include the primary household payment status for that section.
+        Organization/block administrators can see the appropriate scoped
+        maintenance data for their role.
         """
 
+        section_id = None
+        if current_user.role == "RESIDENT":
+            resident = self._get_current_resident(current_user)
+            if resident.unit:
+                section_id = resident.unit.section_id
+
         period = self.repo.get_latest_period(
-            current_user.organization_id
+            current_user.organization_id,
+            section_id,
         )
 
         if not period:
             return {
                 "period": None,
+                "bills": [],
                 "expenses": [],
             }
 
+        if section_id is not None:
+            bills = self.repo.get_bills_for_section(period.id, section_id)
+        else:
+            bills = self.repo.get_bills_for_period(period.id)
+
         return {
-            "period": self._period_response(
-                period
-            ),
-            "expenses": self.repo.get_expenses_for_period(
-                period.id
-            ),
+            "period": self._period_response(period),
+            "bills": [self._bill_response(bill) for bill in bills],
+            "expenses": self.repo.get_expenses_for_period(period.id),
         }
 
     # ==========================================================
@@ -592,11 +685,12 @@ class MaintenanceService:
         data,
     ):
         if current_user.role not in {
+            "SYSTEM_ADMIN",
             "ORGANIZATION_ADMIN",
-            "PROPERTY_MANAGER",
+            "BLOCK_ADMIN",
         }:
             raise ForbiddenException(
-                "Only administrators can update payment settings."
+                "Only organization, system, or block administrators can update maintenance payment settings."
             )
 
         organization = (
@@ -1065,32 +1159,33 @@ class MaintenanceService:
         if current_user.role not in {
             "ORGANIZATION_ADMIN",
             "PROPERTY_MANAGER",
+            "BLOCK_ADMIN",
         }:
             raise ForbiddenException(
-                "Only administrators can view pending payment verification."
+                "Only maintenance administrators can view pending payment verification."
             )
 
+        payments = self.repo.get_pending_payments(current_user.organization_id)
+        if current_user.role == "BLOCK_ADMIN":
+            ids = set(ScopeService.block_ids(self.db, current_user))
+            payments = [
+                p for p in payments
+                if p.bill.resident.unit and p.bill.resident.unit.section_id in ids
+            ]
         return [
             {
                 "id": payment.id,
                 "bill_id": payment.bill_id,
                 "resident_id": payment.bill.resident_id,
-                "resident_name": (
-                    payment.bill.resident.full_name
-                    or "Resident"
-                ),
-                "unit_number": (
-                    payment.bill.resident.unit_number
-                ),
+                "resident_name": (payment.bill.resident.full_name or "Resident"),
+                "unit_number": payment.bill.resident.unit_number,
                 "amount": payment.amount,
                 "reference": payment.reference,
                 "payment_method": payment.payment_method,
                 "status": payment.status,
                 "paid_at": payment.paid_at,
             }
-            for payment in self.repo.get_pending_payments(
-                current_user.organization_id
-            )
+            for payment in payments
         ]
 
     # ==========================================================
@@ -1106,9 +1201,10 @@ class MaintenanceService:
         if current_user.role not in {
             "ORGANIZATION_ADMIN",
             "PROPERTY_MANAGER",
+            "BLOCK_ADMIN",
         }:
             raise ForbiddenException(
-                "Only administrators can verify payments."
+                "Only maintenance administrators can verify payments."
             )
 
         payment = self.repo.get_payment(
@@ -1129,6 +1225,10 @@ class MaintenanceService:
             raise ForbiddenException(
                 "Payment does not belong to your organization."
             )
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if not bill.resident.unit or bill.resident.unit.section_id not in ids:
+                raise ForbiddenException("Payment is outside your assigned block.")
 
         if payment.status != "PENDING":
             raise BadRequestException(
@@ -1508,14 +1608,72 @@ class MaintenanceService:
     # Manual Payment / Invoice / Receipt
     # ==========================================================
 
-    def record_payment(self, current_user: User, bill_id: int, data):
-        if current_user.role not in {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER"}:
-            raise ForbiddenException("Only administrators can record manual maintenance payments.")
+    def _admin_bill(self, current_user: User, bill_id: int):
         bill = self.repo.get_bill(bill_id)
         if not bill:
             raise NotFoundException("Maintenance bill")
         if not bill.resident.user or bill.resident.user.organization_id != current_user.organization_id:
             raise ForbiddenException("Bill does not belong to your organization.")
+        if not bill.resident.is_primary:
+            raise ForbiddenException("Family members do not have separate maintenance bills. Manage the primary resident's unit bill instead.")
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if not bill.resident.unit or bill.resident.unit.section_id not in ids:
+                raise ForbiddenException("Bill is outside your assigned block.")
+        return bill
+
+    def update_bill(self, current_user: User, bill_id: int, data):
+        bill = self._admin_bill(current_user, bill_id)
+        if bill.period.status == "CLOSED":
+            raise BadRequestException("A bill in a closed maintenance period cannot be edited.")
+        if bill.amount_paid > 0 or bill.status in {"PAID", "PARTIAL"}:
+            raise BadRequestException("A bill with a recorded payment cannot be edited. Create an adjustment instead.")
+        if data.due_date < bill.period.month:
+            raise BadRequestException("Due date cannot be before the billing month.")
+        bill.amount = data.amount
+        bill.due_date = data.due_date
+        bill.total_due = Decimal(str(data.amount)) + Decimal(str(bill.carried_forward)) + Decimal(str(bill.late_fee))
+        bill.status = "UNPAID"
+        bill.updated_at = datetime.utcnow()
+        self.db.add(Notification(
+            user_id=bill.resident.user_id,
+            title="Maintenance Bill Updated",
+            message=f"Your maintenance bill was updated to ₹{bill.total_due:.2f}. Due date: {bill.due_date.strftime('%d-%m-%Y')}.",
+            notification_type="MAINTENANCE_DUE",
+        ))
+        self.repo.commit()
+        return self._bill_response(bill)
+
+    def delete_bill(self, current_user: User, bill_id: int):
+        bill = self._admin_bill(current_user, bill_id)
+        if bill.period.status == "CLOSED":
+            raise BadRequestException("A bill in a closed maintenance period cannot be deleted.")
+        if bill.amount_paid > 0 or bill.status in {"PAID", "PARTIAL"} or bill.payments:
+            raise BadRequestException("A bill with a recorded payment cannot be deleted.")
+        resident_user_id = bill.resident.user_id
+        self.db.delete(bill)
+        if resident_user_id:
+            self.db.add(Notification(
+                user_id=resident_user_id,
+                title="Maintenance Bill Cancelled",
+                message="Your previously generated maintenance bill has been cancelled by the administrator.",
+                notification_type="MAINTENANCE_DUE",
+            ))
+        self.repo.commit()
+        return {"success": True, "bill_id": bill_id}
+
+    def record_payment(self, current_user: User, bill_id: int, data):
+        if current_user.role not in {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "BLOCK_ADMIN"}:
+            raise ForbiddenException("Only maintenance administrators can record manual maintenance payments.")
+        bill = self.repo.get_bill(bill_id)
+        if not bill:
+            raise NotFoundException("Maintenance bill")
+        if not bill.resident.user or bill.resident.user.organization_id != current_user.organization_id:
+            raise ForbiddenException("Bill does not belong to your organization.")
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if not bill.resident.unit or bill.resident.unit.section_id not in ids:
+                raise ForbiddenException("Bill is outside your assigned block.")
 
         organization = self.db.query(Organization).filter(
             Organization.id == current_user.organization_id
@@ -1572,6 +1730,10 @@ class MaintenanceService:
             raise NotFoundException("Maintenance bill")
         if bill.resident.user.organization_id != current_user.organization_id:
             raise ForbiddenException("Bill does not belong to your organization.")
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if not bill.resident.unit or bill.resident.unit.section_id not in ids:
+                raise ForbiddenException("Bill is outside your assigned block.")
         organization = self.db.query(Organization).filter(
             Organization.id == current_user.organization_id
         ).first()

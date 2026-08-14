@@ -20,6 +20,8 @@ class ChatService:
         "SECURITY_MANAGER",
         "SECURITY_GUARD",
         "RESIDENT",
+        "COMMUNITY_FINANCE_ADMIN",
+        "BLOCK_ADMIN",
     }
 
     def __init__(self, repo: ChatRepository):

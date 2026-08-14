@@ -13,15 +13,17 @@ class IncidentRepository:
         self.db.flush()
         return incident
 
-    def get_by_id(self, organization_id: int, incident_id: int):
-        return (
+    def get_by_id(self, organization_id: int, incident_id: int, section_ids=None):
+        q = (
             self.db.query(Incident)
             .options(joinedload(Incident.evidence))
             .filter(Incident.id == incident_id, Incident.organization_id == organization_id)
-            .first()
         )
+        if section_ids is not None:
+            q = q.filter(Incident.section_id.in_(section_ids))
+        return q.first()
 
-    def list(self, organization_id: int, status: str | None = None):
+    def list(self, organization_id: int, status: str | None = None, section_ids=None):
         q = (
             self.db.query(Incident)
             .options(joinedload(Incident.evidence))
@@ -29,6 +31,8 @@ class IncidentRepository:
         )
         if status:
             q = q.filter(Incident.status == status)
+        if section_ids is not None:
+            q = q.filter(Incident.section_id.in_(section_ids))
         return q.order_by(Incident.created_at.desc()).all()
 
     def create_evidence(self, evidence):

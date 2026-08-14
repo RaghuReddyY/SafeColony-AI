@@ -7,6 +7,7 @@ from app.models.user import User
 from app.repositories.resident_repository import ResidentRepository
 from app.repositories.unit_repository import UnitRepository
 from app.repositories.user_repository import UserRepository
+from app.services.scope_service import ScopeService
 
 
 class ResidentService:
@@ -18,6 +19,13 @@ class ResidentService:
         self.user_repo = UserRepository(db)
         self.unit_repo = UnitRepository(db)
 
+    def _check_scope(self, current_user, resident):
+        if current_user.role != "BLOCK_ADMIN":
+            return
+        section_ids = set(ScopeService.block_ids(self.db, current_user))
+        if not resident.unit or resident.unit.section_id not in section_ids:
+            raise ValueError("Resident is outside your assigned block.")
+
     # --------------------------------------------------
     # Resident List
     # --------------------------------------------------
@@ -27,18 +35,22 @@ class ResidentService:
         current_user: User,
     ):
 
-        return self.resident_repo.get_all_by_organization(
-            current_user.organization_id,
-        )
+        residents = self.resident_repo.get_all_by_organization(current_user.organization_id)
+        if current_user.role == "BLOCK_ADMIN":
+            ids = set(ScopeService.block_ids(self.db, current_user))
+            return [r for r in residents if r.unit and r.unit.section_id in ids]
+        return residents
 
     def get_pending(
         self,
         current_user: User,
     ):
 
-        return self.resident_repo.get_pending_by_organization(
-            current_user.organization_id,
-        )
+        residents = self.resident_repo.get_pending_by_organization(current_user.organization_id)
+        if current_user.role == "BLOCK_ADMIN":
+            ids = set(ScopeService.block_ids(self.db, current_user))
+            return [r for r in residents if r.unit and r.unit.section_id in ids]
+        return residents
 
     def get_by_id(
         self,
@@ -46,10 +58,10 @@ class ResidentService:
         current_user: User,
     ):
 
-        return self.resident_repo.get_by_id_and_organization(
-            resident_id,
-            current_user.organization_id,
-        )
+        resident = self.resident_repo.get_by_id_and_organization(resident_id, current_user.organization_id)
+        if resident is not None:
+            self._check_scope(current_user, resident)
+        return resident
 
     def get_profile(
         self,
@@ -125,6 +137,8 @@ class ResidentService:
                 raise ValueError(
                     "Unit not found."
                 )
+            if current_user.role == "BLOCK_ADMIN" and unit.section_id not in set(ScopeService.block_ids(self.db, current_user)):
+                raise ValueError("Unit is outside your assigned block.")
 
         resident = Resident(
             user_id=user_id,
@@ -167,6 +181,7 @@ class ResidentService:
 
         if resident is None:
             raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
 
         if unit_id is not None:
 
@@ -205,6 +220,7 @@ class ResidentService:
 
         if resident is None:
             raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
 
         return self.resident_repo.approve(resident)
 
@@ -221,6 +237,7 @@ class ResidentService:
 
         if resident is None:
             raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
 
         return self.resident_repo.reject(resident)
 
@@ -241,6 +258,7 @@ class ResidentService:
 
         if resident is None:
             raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
 
         resident.is_active = True
 
@@ -262,6 +280,7 @@ class ResidentService:
 
         if resident is None:
             raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
 
         resident.is_active = False
 
@@ -287,6 +306,7 @@ class ResidentService:
 
         if resident is None:
             raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
 
         self.db.delete(resident)
         self.db.commit()

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.organization import Organization
     from app.models.resident import Resident
     from app.models.notification import Notification
+    from app.models.user_block_scope import UserBlockScope
 
 
 class User(Base):
@@ -72,6 +73,12 @@ class User(Base):
     resident: Mapped["Resident"] = relationship(
         back_populates="user",
         uselist=False,
+    )
+
+    block_scopes = relationship(
+        "UserBlockScope",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     notifications = relationship(

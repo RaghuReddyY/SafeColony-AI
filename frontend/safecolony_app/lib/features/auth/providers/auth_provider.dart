@@ -102,17 +102,88 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ============================================================
+  // MOBILE OTP LOGIN
+  // ============================================================
 
+  Future<String?> requestOtp(String phone) async {
+    try {
+      state = state.copyWith(
+        isLoading: true,
+        error: null,
+      );
+
+      final devOtp = await _authService.requestOtp(
+        phone.trim(),
+      );
+
+      state = state.copyWith(
+        isLoading: false,
+        error: null,
+      );
+
+      return devOtp;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+
+      return null;
+    }
+  }
+
+  Future<bool> loginWithOtp({
+    required String phone,
+    required String otp,
+  }) async {
+    try {
+      state = state.copyWith(
+        isLoading: true,
+        error: null,
+      );
+
+      final loginResponse = await _authService.verifyOtp(
+        phone: phone.trim(),
+        otp: otp.trim(),
+      );
+
+      await _storage.saveToken(
+        loginResponse.accessToken,
+      );
+
+      final user = await _authService.getCurrentUser();
+
+      state = state.copyWith(
+        isLoading: false,
+        isLoggedIn: true,
+        token: loginResponse.accessToken,
+        user: user,
+        residentStatus: loginResponse.residentStatus,
+        error: null,
+      );
+
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+
+      return false;
+    }
+  }
 
   Future<bool> register({
   required String organizationCode,
-  required int sectionId,
+  int? sectionId,
   required String unitNumber,
   required String residentType,
   required String fullName,
   required String email,
   required String phone,
   required String password,
+  String? familyJoinCode,
 }) async {
   try {
     state = state.copyWith(
@@ -130,6 +201,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password: password,
+        familyJoinCode: familyJoinCode,
       ),
     );
 

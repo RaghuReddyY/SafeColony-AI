@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/login_screen.dart';
@@ -21,6 +22,7 @@ import '../section/screens/section_list_screen.dart';
 import '../unit/screens/unit_list_screen.dart';
 import '../providers/admin_provider.dart';
 import 'resident_approval_screen.dart';
+import 'block_admin_management_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -196,6 +198,10 @@ class _AdminDashboardScreenState
 
                 _hero(),
 
+                const SizedBox(height: 14),
+
+                _organizationCodeCard(),
+
                 const SizedBox(height: 22),
 
                 // --------------------------------------------------
@@ -289,6 +295,14 @@ class _AdminDashboardScreenState
                           const UnitListScreen(),
                         );
                       },
+                    ),
+
+                    _ActionData(
+                      'Block Admins & Finance',
+                      'Assign admins to blocks or one collector to all blocks',
+                      Icons.admin_panel_settings_rounded,
+                      const Color(0xff9333EA),
+                      () => _open(const BlockAdminManagementScreen()),
                     ),
                   ],
                 ),
@@ -623,6 +637,58 @@ class _AdminDashboardScreenState
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _organizationCodeCard() {
+    final user = ref.watch(authProvider).user;
+    final code = user?.organizationCode;
+    final orgId = user?.organizationId;
+    final name = user?.organizationName ?? 'Your Community';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xffE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xffEEF2FF),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: const Icon(Icons.business_rounded, color: Color(0xff4F46E5)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xff0F172A))),
+                const SizedBox(height: 4),
+                Text('Organization Code: ${code ?? 'Not available'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xff475569))),
+                if (orgId != null)
+                  Text('Organization ID: $orgId', style: const TextStyle(fontSize: 11, color: Color(0xff94A3B8))),
+              ],
+            ),
+          ),
+          if (code != null)
+            IconButton(
+              tooltip: 'Copy organization code',
+              icon: const Icon(Icons.copy_rounded),
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: code));
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Organization code copied.')));
+              },
+            ),
+        ],
       ),
     );
   }

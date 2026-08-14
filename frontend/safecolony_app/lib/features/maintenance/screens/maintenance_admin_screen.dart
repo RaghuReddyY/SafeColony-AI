@@ -97,6 +97,32 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     }
   }
 
+  Future<void> _closePeriod(MaintenancePeriod period) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Close maintenance period?'),
+        content: const Text('Closing locks bill edits and deletes for this period. Payments already recorded remain unchanged.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Close Period')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).closePeriod(period.id);
+      if (!mounted) return;
+      ref.invalidate(maintenanceDashboardProvider);
+      _snack('Maintenance period closed.');
+    } catch (e) {
+      _snack('Unable to close period: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _addExpense(MaintenancePeriod period) async {
     final amount = double.tryParse(_expenseAmountController.text.trim());
     if (_expenseCategoryController.text.trim().isEmpty ||
@@ -127,6 +153,71 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     }
   }
 
+
+  Future<void> _editBill(MaintenanceBill bill) async {
+    final amountController = TextEditingController(text: bill.amount.toStringAsFixed(2));
+    DateTime dueDate = bill.dueDate;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+        title: Text('Edit bill - ${bill.residentName}'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: amountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Maintenance amount', prefixText: '₹ ', border: OutlineInputBorder())),
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: () async {
+            final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2020), lastDate: DateTime(2100));
+            if (picked != null) setDialogState(() => dueDate = picked);
+          }, child: Text('Due date: ${_date(dueDate)}')),
+          const SizedBox(height: 8),
+          const Text('Only unpaid bills can be edited. Bills with any payment are locked to preserve financial history.', style: TextStyle(color: Colors.black54)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save Changes')),
+        ],
+      )),
+    );
+    final amount = double.tryParse(amountController.text.trim());
+    amountController.dispose();
+    if (result != true || amount == null || amount <= 0) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).updateBill(billId: bill.id, amount: amount, dueDate: dueDate);
+      if (!mounted) return;
+      _snack('Bill updated.');
+      ref.invalidate(maintenanceDashboardProvider);
+    } catch (e) {
+      _snack('Unable to update bill: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _deleteBill(MaintenanceBill bill) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete bill?'),
+        content: Text('Delete the unpaid bill for ${bill.residentName}? The resident will no longer see this generated bill.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).deleteBill(bill.id);
+      if (!mounted) return;
+      _snack('Bill deleted.');
+      ref.invalidate(maintenanceDashboardProvider);
+    } catch (e) {
+      _snack('Unable to delete bill: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _recordAdminPayment(MaintenanceBill bill) async {
     if (bill.balance <= 0) return;
@@ -290,7 +381,7 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
             ),
             const SizedBox(height: 8),
             const Text(
-              'Choose how residents pay maintenance. Razorpay is automatic; Direct UPI is suitable for communities that collect into a secretary/maintenance person’s PhonePe or Google Pay UPI account.',
+              'Choose how residents pay maintenance. Razorpay is automatic; Direct UPI is suitable for communities that collect into a secretary/maintenance person’s PhonePe or Google Pay UPI account. These settings can be changed after bills are published; they affect future payment attempts, while paid bills remain unchanged.',
               style: TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 16),
@@ -526,7 +617,9 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
                 _summary(dashboard.period!),
                 const SizedBox(height: 20),
                 Row(children: [
-                  Expanded(child: FilledButton.icon(onPressed: _busy ? null : () => _generateBills(dashboard.period!), icon: const Icon(Icons.receipt_long), label: const Text('Generate Monthly Bills'))),
+                  Expanded(child: FilledButton.icon(onPressed: _busy ? null : () => _generateBills(dashboard.period!), icon: const Icon(Icons.receipt_long), label: Text(dashboard.period!.status == 'DRAFT' ? 'Generate & Publish Bills' : 'Regenerate / Sync Bills'))),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(onPressed: _busy || dashboard.period!.status == 'CLOSED' ? null : () => _closePeriod(dashboard.period!), icon: const Icon(Icons.lock_outline), label: const Text('Close')),
                 ]),
                 const SizedBox(height: 20),
                 _expenseForm(dashboard.period!),
@@ -548,7 +641,7 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Create Monthly Maintenance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('Set the monthly amount and due date. Previous month closing balance becomes the opening balance.'),
+            const Text('Set the monthly amount and due date. Previous month closing balance becomes the opening balance. The period starts as Draft; generating bills publishes it.'),
             const SizedBox(height: 16),
             TextField(controller: _amountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Monthly amount', prefixText: '₹ ', border: OutlineInputBorder())),
             const SizedBox(height: 12),
@@ -606,9 +699,17 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
           leading: CircleAvatar(child: Icon(b.status == 'PAID' ? Icons.check : Icons.schedule)),
           title: Text(b.residentName),
           subtitle: Text('${b.propertyName ?? ''} ${b.sectionName ?? ''} Unit ${b.unitNumber ?? ''}\nDue ${_date(b.dueDate)}\nPaid ${_money(b.amountPaid)} • Balance ${_money(b.balance)}'),
-          trailing: b.status == 'PAID'
-              ? const Text('PAID', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
-              : FilledButton(onPressed: _busy ? null : () => _recordAdminPayment(b), child: const Text('Record Paid')),
+          trailing: b.status == 'PAID' || b.status == 'PARTIAL'
+              ? Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text(b.status, style: TextStyle(color: b.status == 'PAID' ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  if (b.status != 'PAID') TextButton(onPressed: _busy ? null : () => _recordAdminPayment(b), child: const Text('Record Payment')),
+                ])
+              : Wrap(spacing: 4, children: [
+                  FilledButton(onPressed: _busy ? null : () => _recordAdminPayment(b), child: const Text('Record Paid')),
+                  IconButton(tooltip: 'Edit bill', onPressed: _busy ? null : () => _editBill(b), icon: const Icon(Icons.edit_outlined)),
+                  IconButton(tooltip: 'Delete bill', onPressed: _busy ? null : () => _deleteBill(b), icon: const Icon(Icons.delete_outline)),
+                ]),
         ))
       ])));
 

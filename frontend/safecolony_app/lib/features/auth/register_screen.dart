@@ -45,15 +45,38 @@ class _RegisterScreenState
   final _confirmPasswordController =
       TextEditingController();
 
+  final _familyJoinCodeController = TextEditingController();
+
   bool _obscurePassword = true;
 
   bool _obscureConfirmPassword = true;
+  bool get _usingFamilyCode => _familyJoinCodeController.text.trim().isNotEmpty;
 
   PropertyLookup? _selectedProperty;
 
   SectionLookup? _selectedSection;
 
   String _residentType = "OWNER";
+  String? _verifiedOrganizationCode;
+
+  @override
+  void initState() {
+    super.initState();
+    // Do not reuse an organization lookup from a previous registration attempt.
+    ref.read(publicProvider.notifier).clear();
+    _organizationCodeController.addListener(_onOrganizationCodeChanged);
+  }
+
+  void _onOrganizationCodeChanged() {
+    final current = _organizationCodeController.text.trim().toUpperCase();
+    if (_verifiedOrganizationCode != null && current != _verifiedOrganizationCode) {
+      _verifiedOrganizationCode = null;
+      _selectedProperty = null;
+      _selectedSection = null;
+      ref.read(publicProvider.notifier).clear();
+      if (mounted) setState(() {});
+    }
+  }
 
 Future<void> _verifyOrganization() async {
   if (_organizationCodeController.text.trim().isEmpty) {
@@ -92,6 +115,8 @@ Future<void> _verifyOrganization() async {
   final organization =
       ref.read(publicProvider).organization;
 
+  _verifiedOrganizationCode = _organizationCodeController.text.trim().toUpperCase();
+
   if (organization != null &&
       organization.properties.isNotEmpty) {
     _selectedProperty =
@@ -119,6 +144,7 @@ Future<void> _verifyOrganization() async {
 }
 
   Future<void> _register() async {
+    final usingFamilyCode = _usingFamilyCode;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -133,27 +159,25 @@ Future<void> _verifyOrganization() async {
       );
       return;
     }
-    if (ref.read(publicProvider).organization == null) {
+    if (ref.read(publicProvider).organization == null ||
+    _verifiedOrganizationCode != _organizationCodeController.text.trim().toUpperCase()) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       backgroundColor: Colors.red,
-      content: Text("Please verify your organization."),
+      content: Text("Please enter and verify your organization code."),
     ),
   );
   return;
 }
 
-if (_selectedProperty == null) {
+if (!usingFamilyCode && _selectedProperty == null) {
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      backgroundColor: Colors.red,
-      content: Text("Please select a property."),
-    ),
+    const SnackBar(backgroundColor: Colors.red, content: Text("Please select a property.")),
   );
   return;
 }
 
-if (_selectedSection == null) {
+if (!usingFamilyCode && _selectedSection == null) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       backgroundColor: Colors.red,
@@ -163,7 +187,7 @@ if (_selectedSection == null) {
   return;
 }
 
-if (_unitNumberController.text.trim().isEmpty) {
+if (!usingFamilyCode && _unitNumberController.text.trim().isEmpty) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       backgroundColor: Colors.red,
@@ -178,10 +202,10 @@ if (_unitNumberController.text.trim().isEmpty) {
       organizationCode:
           _organizationCodeController.text.trim(),
 
-      sectionId: _selectedSection?.id ?? 0,
+      sectionId: usingFamilyCode ? null : _selectedSection?.id,
 
       unitNumber:
-          _unitNumberController.text.trim(),
+          usingFamilyCode ? "" : _unitNumberController.text.trim(),
 
       residentType: _residentType,
 
@@ -192,6 +216,7 @@ if (_unitNumberController.text.trim().isEmpty) {
       phone: _phoneController.text.trim(),
 
       password: _passwordController.text,
+      familyJoinCode: usingFamilyCode ? _familyJoinCodeController.text.trim() : null,
     );
     if (!mounted) return;
 
@@ -200,7 +225,7 @@ if (_unitNumberController.text.trim().isEmpty) {
         const SnackBar(
           backgroundColor: Colors.green,
           content: Text(
-              "Registration successful. Please login."),
+              "Registration submitted successfully. Please wait for administrator approval. You can login after your account is approved."),
         ),
       );
 
@@ -221,6 +246,7 @@ if (_unitNumberController.text.trim().isEmpty) {
 
   @override
   Widget build(BuildContext context) {
+    final usingFamilyCode = _usingFamilyCode;
     final authState = ref.watch(authProvider);
     final publicState = ref.watch(publicProvider);
 
@@ -300,7 +326,23 @@ if (publicState.organization != null)
 
 const SizedBox(height: 16),
 
-if (publicState.organization != null &&
+TextField(
+  controller: _familyJoinCodeController,
+  textCapitalization: TextCapitalization.characters,
+  onChanged: (value) => setState(() {
+    if (value.trim().isNotEmpty) _residentType = "FAMILY";
+  }),
+  decoration: const InputDecoration(
+    labelText: "Family Join Code (optional)",
+    helperText: "Use the code shared by the primary resident to join the same unit.",
+    prefixIcon: Icon(Icons.family_restroom),
+    border: OutlineInputBorder(),
+  ),
+),
+
+const SizedBox(height: 16),
+
+if (!usingFamilyCode && publicState.organization != null &&
     publicState.organization!.properties.isNotEmpty)
   DropdownButtonFormField<PropertyLookup>(
     initialValue: _selectedProperty,
@@ -332,7 +374,7 @@ if (publicState.organization != null &&
 
 const SizedBox(height: 16),
 
-if (publicState.sections.isNotEmpty)
+if (!usingFamilyCode && publicState.sections.isNotEmpty)
   DropdownButtonFormField<SectionLookup>(
     initialValue: _selectedSection,
     decoration: const InputDecoration(
@@ -354,9 +396,9 @@ if (publicState.sections.isNotEmpty)
     },
   ),
 
-const SizedBox(height: 16),
+if (!usingFamilyCode) const SizedBox(height: 16),
 
-AppTextField(
+if (!usingFamilyCode) AppTextField(
   controller: _unitNumberController,
   hint: "Unit Number",
   icon: Icons.home,
@@ -379,7 +421,7 @@ DropdownButtonFormField<String>(
       child: Text("Tenant"),
     ),
     DropdownMenuItem(
-      value: "FAMILY_MEMBER",
+      value: "FAMILY",
       child: Text("Family Member"),
     ),
   ],
@@ -507,6 +549,7 @@ AppTextField(
 
 @override
 void dispose() {
+  _organizationCodeController.removeListener(_onOrganizationCodeChanged);
   _organizationCodeController.dispose();
   _unitNumberController.dispose();
 
@@ -516,6 +559,7 @@ void dispose() {
 
   _passwordController.dispose();
   _confirmPasswordController.dispose();
+  _familyJoinCodeController.dispose();
 
   super.dispose();
 }

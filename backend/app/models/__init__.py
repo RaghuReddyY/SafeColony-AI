@@ -15,3 +15,9 @@ from .complaint import Complaint
 from .amenity import Amenity, AmenityBooking
 
 from .notification_device import NotificationDevice
+
+from .user_block_scope import UserBlockScope
+
+from app.models.login_otp import LoginOTP
+
+from .community_fund import CommunityFund, CommunityFundContribution, CommunityFundExpense

@@ -19,6 +19,9 @@ class Incident(Base):
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    section_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sections.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     incident_type: Mapped[str] = mapped_column(String(50), nullable=False)

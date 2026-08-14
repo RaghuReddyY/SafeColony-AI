@@ -39,6 +39,7 @@ class IncidentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     organization_id: int
+    section_id: int | None
     title: str
     description: str
     incident_type: str

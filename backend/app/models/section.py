@@ -54,6 +54,12 @@ class Section(Base):
         back_populates="sections",
     )
 
+    admin_scopes = relationship(
+        "UserBlockScope",
+        back_populates="section",
+        cascade="all, delete-orphan",
+    )
+
     units = relationship(
         "Unit",
         back_populates="section",

@@ -18,6 +18,7 @@ from app.models.maintenance_period import MaintenancePeriod
 from app.models.maintenance_bill import MaintenanceBill
 from app.models.maintenance_payment import MaintenancePayment
 from app.models.maintenance_expense import MaintenanceExpense
+from app.models.community_fund import CommunityFund, CommunityFundContribution, CommunityFundExpense
 
 from app.models.notification_template import NotificationTemplate, NotificationDelivery
 from app.models.incident import Incident, IncidentEvidence
@@ -27,3 +28,7 @@ from app.models.amenity import Amenity, AmenityBooking
 from app.models.notification_device import NotificationDevice
 
 from app.models.chat import ChatConversation, ChatParticipant, ChatMessage
+
+from app.models.user_block_scope import UserBlockScope
+
+from app.models.login_otp import LoginOTP

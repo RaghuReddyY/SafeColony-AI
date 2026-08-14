@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MaintenancePeriodCreate(BaseModel):
+    section_id: int | None = None
     month: date
     monthly_amount: Decimal = Field(gt=0)
     due_date: date
@@ -76,6 +77,11 @@ class MaintenancePendingPaymentResponse(BaseModel):
     paid_at: datetime
 
 
+class MaintenanceBillUpdate(BaseModel):
+    amount: Decimal = Field(gt=0)
+    due_date: date
+
+
 class MaintenanceBillResponse(BaseModel):
     id: int
     period_id: int
@@ -110,9 +116,11 @@ class MaintenanceExpenseResponse(BaseModel):
 class MaintenancePeriodResponse(BaseModel):
     id: int
     organization_id: int
+    section_id: int | None
     month: date
     monthly_amount: Decimal
     due_date: date
+    status: str = "DRAFT"
     opening_balance: Decimal
     billed_total: Decimal
     collected_total: Decimal
@@ -133,6 +141,7 @@ class MaintenanceDashboardResponse(BaseModel):
 class ResidentMaintenanceSummary(BaseModel):
     bill: MaintenanceBillResponse | None
     history: list[MaintenanceBillResponse]
+    is_primary: bool = True
 
 
 class MaintenanceInvoiceResponse(BaseModel):

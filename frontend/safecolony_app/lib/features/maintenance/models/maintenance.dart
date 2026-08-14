@@ -4,6 +4,7 @@ class MaintenancePeriod {
   final DateTime month;
   final double monthlyAmount;
   final DateTime dueDate;
+  final String status;
   final double openingBalance;
   final double billedTotal;
   final double collectedTotal;
@@ -20,6 +21,7 @@ class MaintenancePeriod {
     required this.month,
     required this.monthlyAmount,
     required this.dueDate,
+    this.status = 'DRAFT',
     required this.openingBalance,
     required this.billedTotal,
     required this.collectedTotal,
@@ -38,6 +40,7 @@ class MaintenancePeriod {
       month: DateTime.parse(json['month']),
       monthlyAmount: _double(json['monthly_amount']),
       dueDate: DateTime.parse(json['due_date']),
+      status: json['status']?.toString() ?? 'DRAFT',
       openingBalance: _double(json['opening_balance']),
       billedTotal: _double(json['billed_total']),
       collectedTotal: _double(json['collected_total']),
@@ -171,10 +174,12 @@ class MaintenanceDashboard {
 class ResidentMaintenanceSummary {
   final MaintenanceBill? bill;
   final List<MaintenanceBill> history;
+  final bool isPrimary;
 
   const ResidentMaintenanceSummary({
     this.bill,
     required this.history,
+    this.isPrimary = true,
   });
 
   factory ResidentMaintenanceSummary.fromJson(Map<String, dynamic> json) {
@@ -183,6 +188,7 @@ class ResidentMaintenanceSummary {
       history: (json['history'] as List? ?? [])
           .map((e) => MaintenanceBill.fromJson(e))
           .toList(),
+      isPrimary: json['is_primary'] != false,
     );
   }
 }
@@ -216,8 +222,11 @@ class MaintenancePaymentSettings {
       displayName: json['display_name']?.toString(),
       paymentPhone: json['payment_phone']?.toString(),
       lateFeeType: json['late_fee_type']?.toString() ?? 'NONE',
-      lateFeeValue: (json['late_fee_value'] as num?)?.toDouble() ?? 0,
-      lateFeeGraceDays: (json['late_fee_grace_days'] as num?)?.toInt() ?? 0,
+      // FastAPI/Pydantic may serialize Decimal fields as JSON strings
+      // (for example, "0.00"). Never cast this field directly to num.
+      // Parse both numeric and string representations safely.
+      lateFeeValue: _double(json['late_fee_value']),
+      lateFeeGraceDays: int.tryParse(json['late_fee_grace_days']?.toString() ?? '0') ?? 0,
     );
   }
 }

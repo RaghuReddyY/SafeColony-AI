@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
 from app.database.dependency import get_db
 from app.models.user import User
+from app.models.unit import Unit
+from app.models.resident import Resident
+import secrets
 from app.schemas.dashboard import ResidentDashboardResponse
 from app.schemas.resident import (
     ResidentCreate,
@@ -237,3 +240,26 @@ def reject_resident(
         resident_id,
         current_user,
     )
+
+@router.get("/me/family-invite")
+def get_family_invite(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    resident = db.query(Resident).filter(Resident.user_id == current_user.id).first()
+    if not resident or not resident.unit:
+        raise HTTPException(status_code=404, detail="Resident unit not found.")
+    if not resident.is_primary:
+        raise HTTPException(status_code=403, detail="Only the primary family resident can generate a family invite.")
+    unit = resident.unit
+    if not unit.family_join_code:
+        unit.family_join_code = secrets.token_urlsafe(9).replace("-", "").replace("_", "").upper()[:12]
+        db.commit()
+        db.refresh(unit)
+    return {
+        "code": unit.family_join_code,
+        "unit_id": unit.id,
+        "unit_number": unit.unit_number,
+        "section_id": unit.section_id,
+        "message": "Share this code with family members. They will join the same unit and remain pending until approved.",
+    }

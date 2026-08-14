@@ -7,6 +7,7 @@ from pydantic import (
     EmailStr,
     StringConstraints,
     field_validator,
+    model_validator,
 )
 from app.enums import ResidentType
 
@@ -56,18 +57,27 @@ Role = Annotated[
 class UserRegister(BaseModel):
     organization_code: str
 
-    section_id: int
-    unit_number: str
+    section_id: int | None = None
+    unit_number: str | None = None
     resident_type: ResidentType = ResidentType.OWNER
 
     full_name: FullName
     email: EmailStr
     phone: Phone
     password: Password
+    family_join_code: str | None = None
+
+    @model_validator(mode="after")
+    def validate_location(self):
+        if not self.family_join_code and (self.section_id is None or not self.unit_number):
+            raise ValueError("Section and unit number are required unless a family join code is provided.")
+        return self
 
     @field_validator("unit_number")
     @classmethod
-    def validate_unit_number(cls, value: str) -> str:
+    def validate_unit_number(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         value = value.strip().upper()
 
         if not value:
@@ -115,6 +125,9 @@ class UserResponse(BaseModel):
     phone: str
     role: UserRole
     is_active: bool
+    organization_id: int | None = None
+    organization_code: str | None = None
+    organization_name: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True,

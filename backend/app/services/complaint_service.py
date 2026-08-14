@@ -8,11 +8,13 @@ from app.models.complaint import Complaint
 from app.models.notification import Notification
 from app.models.resident import Resident
 from app.models.user import User
+from app.models.user_block_scope import UserBlockScope
 from app.repositories.complaint_repository import ComplaintRepository
+from app.services.scope_service import ScopeService
 
 
 class ComplaintService:
-    MANAGE_ROLES = {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER"}
+    MANAGE_ROLES = {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "BLOCK_ADMIN"}
 
     def __init__(self, repo: ComplaintRepository):
         self.repo = repo
@@ -43,7 +45,7 @@ class ComplaintService:
             user_id=user_id, title=title, message=message, notification_type="COMPLAINT"
         ))
 
-    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None):
+    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None, section_id=None):
         users = (
             self.db.query(User)
             .filter(
@@ -53,6 +55,11 @@ class ComplaintService:
             )
             .all()
         )
+        if section_id is not None:
+            scoped_ids = {
+                row[0] for row in self.db.query(UserBlockScope.user_id).filter(UserBlockScope.section_id == section_id).all()
+            }
+            users = [u for u in users if u.role != "BLOCK_ADMIN" or u.id in scoped_ids]
         for user in users:
             if exclude_user_id is not None and user.id == exclude_user_id:
                 continue
@@ -83,10 +90,12 @@ class ComplaintService:
                 "PROPERTY_MANAGER",
                 "SECURITY_MANAGER",
                 "SECURITY_GUARD",
+                "BLOCK_ADMIN",
             },
             f"New Complaint #{complaint.id}",
             f"{complaint.priority} complaint: {complaint.title}.",
             exclude_user_id=current_user.id,
+            section_id=resident.unit.section_id if resident.unit else None,
         )
         self.repo.commit()
         logger.info("Complaint created id=%s resident=%s", complaint.id, resident.id)
@@ -96,12 +105,18 @@ class ComplaintService:
         resident_id = None
         if current_user.role == "RESIDENT":
             resident_id = self._resident(current_user).id
-        return self.repo.list(current_user.organization_id, resident_id, status)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        return self.repo.list(current_user.organization_id, resident_id, status, section_ids)
 
     def update(self, current_user, complaint_id, data):
         if current_user.role not in self.MANAGE_ROLES:
             raise ForbiddenException("Only administrators can manage complaints.")
-        complaint = self.repo.get_by_id(current_user.organization_id, complaint_id)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        complaint = self.repo.get_by_id(current_user.organization_id, complaint_id, section_ids)
         if not complaint:
             raise NotFoundException("Complaint")
 
@@ -169,7 +184,10 @@ class ComplaintService:
     def escalate(self, current_user, complaint_id, data):
         if current_user.role not in self.MANAGE_ROLES:
             raise ForbiddenException("Only administrators can escalate complaints.")
-        complaint = self.repo.get_by_id(current_user.organization_id, complaint_id)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        complaint = self.repo.get_by_id(current_user.organization_id, complaint_id, section_ids)
         if not complaint:
             raise NotFoundException("Complaint")
         complaint.escalated_at = datetime.utcnow()
@@ -182,16 +200,20 @@ class ComplaintService:
         )
         self._notify_roles(
             complaint.organization_id,
-            {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER"},
+            {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER", "BLOCK_ADMIN"},
             f"Complaint #{complaint.id} Escalated",
             complaint.escalation_reason or "Complaint requires escalation.",
             exclude_user_id=current_user.id,
+            section_id=complaint.resident.unit.section_id if complaint.resident and complaint.resident.unit else None,
         )
         self.repo.commit()
         return complaint
 
     def get(self, current_user, complaint_id):
-        complaint = self.repo.get_by_id(current_user.organization_id, complaint_id)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        complaint = self.repo.get_by_id(current_user.organization_id, complaint_id, section_ids)
         if not complaint:
             raise NotFoundException("Complaint")
         if current_user.role == "RESIDENT" and complaint.created_by_user_id != current_user.id:

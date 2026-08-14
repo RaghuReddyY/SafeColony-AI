@@ -101,11 +101,13 @@ class _MaintenanceResidentScreenState
               ),
 
               if (data.bill == null)
-                const Card(
+                Card(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Text(
-                      'No maintenance bill has been generated yet.',
+                      data.isPrimary
+                          ? 'No maintenance bill has been generated yet.'
+                          : 'Maintenance is managed by the primary resident of this unit. No separate maintenance bill is assigned to family members.',
                     ),
                   ),
                 )

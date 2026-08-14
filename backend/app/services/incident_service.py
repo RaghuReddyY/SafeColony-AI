@@ -9,11 +9,14 @@ from app.events.incident_events import IncidentCreatedEvent
 from app.models.incident import Incident, IncidentEvidence
 from app.models.notification import Notification
 from app.models.user import User
+from app.models.user_block_scope import UserBlockScope
 from app.repositories.incident_repository import IncidentRepository
+from app.services.scope_service import ScopeService
+from app.models.resident import Resident
 
 
 class IncidentService:
-    MANAGE_ROLES = {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER"}
+    MANAGE_ROLES = {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER", "BLOCK_ADMIN"}
 
     def __init__(self, repo: IncidentRepository):
         self.repo = repo
@@ -23,6 +26,7 @@ class IncidentService:
         return {
             "id": incident.id,
             "organization_id": incident.organization_id,
+            "section_id": incident.section_id,
             "title": incident.title,
             "description": incident.description,
             "incident_type": incident.incident_type,
@@ -50,8 +54,17 @@ class IncidentService:
     def create(self, current_user, data):
         if not current_user.organization_id:
             raise ForbiddenException("User is not associated with an organization.")
+        section_id = None
+        if current_user.role == "RESIDENT":
+            resident = self.db.query(Resident).filter(Resident.user_id == current_user.id).first()
+            section_id = resident.unit.section_id if resident and resident.unit else None
+        elif current_user.role == "BLOCK_ADMIN":
+            scoped = ScopeService.block_ids(self.db, current_user)
+            section_id = scoped[0] if len(scoped) == 1 else None
+
         incident = Incident(
             organization_id=current_user.organization_id,
+            section_id=section_id,
             title=data.title.strip(),
             description=data.description.strip(),
             incident_type=data.incident_type.strip().upper(),
@@ -74,9 +87,11 @@ class IncidentService:
                 "PROPERTY_MANAGER",
                 "SECURITY_MANAGER",
                 "SECURITY_GUARD",
+                "BLOCK_ADMIN",
             },
             f"Incident Created: {incident.title}",
-            f"{incident.severity} incident reported at {incident.location or 'community'}."
+            f"{incident.severity} incident reported at {incident.location or 'community'}.",
+            section_id=incident.section_id,
         )
         self.repo.commit()
         logger.warning("Incident created id=%s org=%s severity=%s", incident.id, incident.organization_id, incident.severity)
@@ -89,24 +104,33 @@ class IncidentService:
             user_id=user_id, title=title, message=message, notification_type="INCIDENT"
         ))
 
-    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None):
+    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None, section_id=None):
         users = self.db.query(User).filter(
             User.organization_id == organization_id,
             User.role.in_(list(roles)),
             User.is_active.is_(True),
         ).all()
+        if section_id is not None:
+            scoped_ids = {row[0] for row in self.db.query(UserBlockScope.user_id).filter(UserBlockScope.section_id == section_id).all()}
+            users = [u for u in users if u.role != "BLOCK_ADMIN" or u.id in scoped_ids]
         for user in users:
             if exclude_user_id is not None and user.id == exclude_user_id:
                 continue
             self._notify(user.id, title, message)
 
     def list(self, current_user, status=None):
-        return [self._response(x) for x in self.repo.list(current_user.organization_id, status)]
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        return [self._response(x) for x in self.repo.list(current_user.organization_id, status, section_ids)]
 
     def update(self, current_user, incident_id, data):
         if current_user.role not in self.MANAGE_ROLES:
             raise ForbiddenException("You do not have permission to manage incidents.")
-        incident = self.repo.get_by_id(current_user.organization_id, incident_id)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        incident = self.repo.get_by_id(current_user.organization_id, incident_id, section_ids)
         if not incident:
             raise NotFoundException("Incident")
         if data.assigned_to_user_id is not None:
@@ -146,10 +170,11 @@ class IncidentService:
             if incident.status == "RESOLVED":
                 self._notify_roles(
                     incident.organization_id,
-                    {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER", "SECURITY_GUARD"},
+                    {"ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "SECURITY_MANAGER", "SECURITY_GUARD", "BLOCK_ADMIN"},
                     f"Incident #{incident.id} Resolved",
                     f"{incident.title} has been resolved.",
                     exclude_user_id=current_user.id,
+                    section_id=incident.section_id,
                 )
 
         incident.updated_at = datetime.utcnow()
@@ -160,7 +185,10 @@ class IncidentService:
     def add_evidence(self, current_user, incident_id, data):
         if current_user.role not in self.MANAGE_ROLES and current_user.role != "SECURITY_GUARD":
             raise ForbiddenException("You do not have permission to add incident evidence.")
-        incident = self.repo.get_by_id(current_user.organization_id, incident_id)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        incident = self.repo.get_by_id(current_user.organization_id, incident_id, section_ids)
         if not incident:
             raise NotFoundException("Incident")
         if data.evidence_type == "PHOTO" and not data.file_url:
@@ -179,7 +207,10 @@ class IncidentService:
     async def add_photo(self, current_user, incident_id: int, upload):
         if current_user.role not in self.MANAGE_ROLES and current_user.role != "SECURITY_GUARD":
             raise ForbiddenException("You do not have permission to add incident evidence.")
-        incident = self.repo.get_by_id(current_user.organization_id, incident_id)
+        section_ids = None
+        if current_user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, current_user)
+        incident = self.repo.get_by_id(current_user.organization_id, incident_id, section_ids)
         if not incident:
             raise NotFoundException("Incident")
         content_type = upload.content_type or ""

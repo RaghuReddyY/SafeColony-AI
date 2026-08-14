@@ -343,3 +343,101 @@ class OrganizationService:
 
         # Residential layouts are treated as gated communities
         return PropertyType.GATED_COMMUNITY
+# ------------------------------------------------------------------
+# Scoped administration helpers
+# ------------------------------------------------------------------
+
+def _create_scoped_admin(self, current_user, data, role: UserRole):
+    from app.models.user_block_scope import UserBlockScope
+
+    if current_user.role not in {UserRole.SYSTEM_ADMIN.value, UserRole.ORGANIZATION_ADMIN.value}:
+        raise ConflictException("Only the community administrator can create scoped administrators.")
+
+    if self.user_repo.exists_by_email(data.email.lower().strip()):
+        raise ConflictException("Email already exists.")
+    if self.user_repo.exists_by_phone(data.phone.strip()):
+        raise ConflictException("Phone already exists.")
+
+    section_ids = list(dict.fromkeys(data.section_ids)) if hasattr(data, "section_ids") else []
+    if role == UserRole.BLOCK_ADMIN and not section_ids:
+        raise ConflictException("At least one block is required for a block administrator.")
+
+    if section_ids:
+        sections = (
+            self.db.query(Section)
+            .join(Property, Section.property_id == Property.id)
+            .filter(
+                Section.id.in_(section_ids),
+                Property.organization_id == current_user.organization_id,
+            )
+            .all()
+        )
+        if len(sections) != len(section_ids):
+            raise ConflictException("One or more selected blocks do not belong to this community.")
+    else:
+        sections = []
+
+    user = User(
+        full_name=data.full_name.strip(),
+        email=data.email.lower().strip(),
+        phone=data.phone.strip(),
+        password_hash=hash_password(data.password),
+        role=role.value,
+        status=UserStatus.ACTIVE.value,
+        organization_id=current_user.organization_id,
+        is_active=True,
+    )
+    self.db.add(user)
+    self.db.flush()
+
+    for section in sections:
+        self.db.add(UserBlockScope(user_id=user.id, section_id=section.id))
+
+    self.db.commit()
+    self.db.refresh(user)
+    return user
+
+
+def create_block_admin(self, current_user, data):
+    return _create_scoped_admin(self, current_user, data, UserRole.BLOCK_ADMIN)
+
+
+def create_finance_admin(self, current_user, data):
+    return _create_scoped_admin(self, current_user, data, UserRole.COMMUNITY_FINANCE_ADMIN)
+
+
+def get_scoped_admins(self, current_user):
+    from app.models.user_block_scope import UserBlockScope
+    users = (
+        self.db.query(User)
+        .filter(
+            User.organization_id == current_user.organization_id,
+            User.role.in_([UserRole.BLOCK_ADMIN.value, UserRole.COMMUNITY_FINANCE_ADMIN.value]),
+            User.is_active.is_(True),
+        )
+        .order_by(User.full_name.asc())
+        .all()
+    )
+    result = []
+    for user in users:
+        scopes = (
+            self.db.query(UserBlockScope, Section)
+            .join(Section, UserBlockScope.section_id == Section.id)
+            .filter(UserBlockScope.user_id == user.id)
+            .all()
+        )
+        result.append({
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "section_ids": [scope.section_id for scope, _ in scopes],
+            "section_names": [section.name for _, section in scopes],
+        })
+    return result
+
+OrganizationService._create_scoped_admin = _create_scoped_admin
+OrganizationService.create_block_admin = create_block_admin
+OrganizationService.create_finance_admin = create_finance_admin
+OrganizationService.get_scoped_admins = get_scoped_admins

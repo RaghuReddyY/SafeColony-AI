@@ -116,7 +116,7 @@ class DashboardSidebar extends ConsumerWidget {
                 ),
 
               if (user?.role == "ORGANIZATION_ADMIN" ||
-                  user?.role == "PROPERTY_MANAGER" ||
+                  user?.role == "COMMUNITY_FINANCE_ADMIN" ||
                   user?.role == "RESIDENT")
                 _menu(
                   context,

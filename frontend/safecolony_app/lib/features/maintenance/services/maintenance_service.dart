@@ -27,6 +27,15 @@ class MaintenanceService {
     return MaintenancePeriod.fromJson(response.data);
   }
 
+Future<MaintenancePeriod> closePeriod(int periodId) async {
+  final response = await ApiClient.dio.post(
+    '/maintenance/periods/$periodId/close',
+  );
+  return MaintenancePeriod.fromJson(
+    Map<String, dynamic>.from(response.data),
+  );
+}
+
   Future<Map<String, dynamic>> generateBills(int periodId) async {
     final response = await ApiClient.dio.post(
       '/maintenance/periods/$periodId/generate-bills',
@@ -134,6 +143,25 @@ class MaintenanceService {
   Future<ResidentMaintenanceSummary> getMyMaintenance() async {
     final response = await ApiClient.dio.get('/maintenance/me');
     return ResidentMaintenanceSummary.fromJson(response.data);
+  }
+
+  Future<MaintenanceBill> updateBill({
+    required int billId,
+    required double amount,
+    required DateTime dueDate,
+  }) async {
+    final response = await ApiClient.dio.put(
+      '/maintenance/bills/$billId',
+      data: {
+        'amount': amount,
+        'due_date': _date(dueDate),
+      },
+    );
+    return MaintenanceBill.fromJson(response.data);
+  }
+
+  Future<void> deleteBill(int billId) async {
+    await ApiClient.dio.delete('/maintenance/bills/$billId');
   }
 
   Future<MaintenanceBill> recordPayment({

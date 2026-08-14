@@ -98,6 +98,7 @@ class _DashboardScreenState
 
                   return DashboardBody(
                     dashboard: snapshot.data!,
+                    showFamilyInvite: user?.role == "RESIDENT",
                   );
                 },
               );

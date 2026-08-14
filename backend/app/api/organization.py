@@ -13,9 +13,15 @@ from app.schemas.organization import (
     OrganizationResponse,
     GuardCreate,
     GuardResponse,
+    BlockAdminCreate,
+    FinanceAdminCreate,
+    ScopedAdminResponse,
+    BlockScopeResponse,
 )
 from app.auth.dependencies import get_current_user
 from app.models.user import User
+from app.models.section import Section
+from app.models.property import Property
 
 router = APIRouter(
     prefix="/organizations",
@@ -156,3 +162,101 @@ def get_guards(
     service = OrganizationService(db)
 
     return service.get_guards(current_user)
+# ==========================================================
+# Block Admin / Community Finance Collector
+# ==========================================================
+
+@router.post(
+    "/block-admins",
+    response_model=ScopedAdminResponse,
+    dependencies=[Depends(require_permission(Permissions.BLOCK_ADMIN_MANAGE))],
+)
+def create_block_admin(
+    data: BlockAdminCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = OrganizationService(db)
+    user = service.create_block_admin(current_user, data)
+    scopes = service.get_scoped_admins(current_user)
+    return next(item for item in scopes if item["id"] == user.id)
+
+
+@router.post(
+    "/finance-admins",
+    response_model=ScopedAdminResponse,
+    dependencies=[Depends(require_permission(Permissions.BLOCK_ADMIN_MANAGE))],
+)
+def create_finance_admin(
+    data: FinanceAdminCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = OrganizationService(db)
+    user = service.create_finance_admin(current_user, data)
+    scopes = service.get_scoped_admins(current_user)
+    return next(item for item in scopes if item["id"] == user.id)
+
+
+@router.get(
+    "/scoped-admins",
+    response_model=list[ScopedAdminResponse],
+    dependencies=[Depends(require_permission(Permissions.BLOCK_ADMIN_VIEW))],
+)
+def get_scoped_admins(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return OrganizationService(db).get_scoped_admins(current_user)
+
+
+@router.get(
+    "/blocks",
+    response_model=list[BlockScopeResponse],
+    dependencies=[Depends(require_permission(Permissions.BLOCK_ADMIN_VIEW))],
+)
+def get_blocks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = (
+        db.query(Section)
+        .join(Property, Section.property_id == Property.id)
+        .filter(Property.organization_id == current_user.organization_id)
+        .order_by(Section.name.asc())
+        .all()
+    )
+    return [
+        {
+            "section_id": row.id,
+            "section_name": row.name,
+            "property_id": row.property_id,
+        }
+        for row in rows
+    ]
+
+@router.get(
+    "/my-blocks",
+    response_model=list[BlockScopeResponse],
+    dependencies=[Depends(require_permission(Permissions.BLOCK_ADMIN_VIEW))],
+)
+def get_my_blocks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.user_block_scope import UserBlockScope
+    rows = (
+        db.query(Section)
+        .join(UserBlockScope, UserBlockScope.section_id == Section.id)
+        .join(Property, Section.property_id == Property.id)
+        .filter(
+            UserBlockScope.user_id == current_user.id,
+            Property.organization_id == current_user.organization_id,
+        )
+        .order_by(Section.name.asc())
+        .all()
+    )
+    return [
+        {"section_id": row.id, "section_name": row.name, "property_id": row.property_id}
+        for row in rows
+    ]

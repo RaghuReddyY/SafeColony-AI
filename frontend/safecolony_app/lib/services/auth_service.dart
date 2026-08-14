@@ -28,6 +28,25 @@ class AuthService {
     );
   }
 
+  Future<String?> requestOtp(String phone) async {
+    final response = await ApiClient.dio.post(
+      "/auth/otp/request",
+      data: {"phone": phone.trim()},
+    );
+    return response.data["dev_otp"] as String?;
+  }
+
+  Future<LoginResponse> verifyOtp({
+    required String phone,
+    required String otp,
+  }) async {
+    final response = await ApiClient.dio.post(
+      "/auth/otp/verify",
+      data: {"phone": phone.trim(), "otp": otp.trim()},
+    );
+    return LoginResponse.fromJson(response.data);
+  }
+
 Future<OrganizationRegisterResponse> registerOrganization(
   OrganizationRegisterRequest request,
 ) async {

@@ -7,13 +7,16 @@ import 'dashboard_header.dart';
 import 'dashboard_stats.dart';
 import 'quick_action_grid.dart';
 import 'visitor_chart.dart';
+import 'family_invite_card.dart';
 
 class DashboardBody extends StatelessWidget {
   final DashboardSummary dashboard;
+  final bool showFamilyInvite;
 
   const DashboardBody({
     super.key,
     required this.dashboard,
+    this.showFamilyInvite = false,
   });
 
   @override
@@ -75,6 +78,10 @@ class DashboardBody extends StatelessWidget {
             AICard(dashboard: dashboard),
           ],
           const SizedBox(height: 30),
+          if (showFamilyInvite) ...[
+            FamilyInviteCard(),
+            const SizedBox(height: 20),
+          ],
           ActivityTimeline(
             activities: dashboard.recentActivity,
           ),

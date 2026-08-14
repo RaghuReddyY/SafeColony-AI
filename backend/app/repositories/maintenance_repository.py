@@ -24,44 +24,55 @@ class MaintenanceRepository:
         self,
         period_id: int,
         organization_id: int,
+        section_id: int | None = None,
+        include_community: bool = True,
     ):
-        return (
+        q = (
             self.db.query(MaintenancePeriod)
             .filter(
                 MaintenancePeriod.id == period_id,
                 MaintenancePeriod.organization_id == organization_id,
             )
-            .first()
         )
+        if section_id is not None:
+            q = q.filter(MaintenancePeriod.section_id == section_id)
+        elif not include_community:
+            q = q.filter(MaintenancePeriod.section_id.is_(None))
+        return q.first()
 
     def get_period_by_month(
         self,
         organization_id: int,
         month: date,
+        section_id: int | None = None,
     ):
-        return (
+        q = (
             self.db.query(MaintenancePeriod)
             .filter(
                 MaintenancePeriod.organization_id == organization_id,
                 MaintenancePeriod.month == month,
             )
-            .first()
         )
+        if section_id is None:
+            q = q.filter(MaintenancePeriod.section_id.is_(None))
+        else:
+            q = q.filter(MaintenancePeriod.section_id == section_id)
+        return q.first()
 
     def get_latest_period(
         self,
         organization_id: int,
+        section_id: int | None = None,
     ):
-        return (
+        q = (
             self.db.query(MaintenancePeriod)
-            .filter(
-                MaintenancePeriod.organization_id == organization_id,
-            )
-            .order_by(
-                MaintenancePeriod.month.desc(),
-            )
-            .first()
+            .filter(MaintenancePeriod.organization_id == organization_id)
         )
+        if section_id is None:
+            q = q.filter(MaintenancePeriod.section_id.is_(None))
+        else:
+            q = q.filter(MaintenancePeriod.section_id == section_id)
+        return q.order_by(MaintenancePeriod.month.desc()).first()
 
     def create_period(
         self,
@@ -211,13 +222,38 @@ class MaintenanceRepository:
                     Resident.unit
                 ),
             )
+            .join(MaintenanceBill.resident)
             .filter(
                 MaintenanceBill.period_id == period_id,
+                Resident.is_primary.is_(True),
             )
             .order_by(
                 MaintenanceBill.status.asc(),
                 MaintenanceBill.id.asc(),
             )
+            .all()
+        )
+
+
+    def get_bills_for_section(
+        self,
+        period_id: int,
+        section_id: int,
+    ):
+        return (
+            self.db.query(MaintenanceBill)
+            .options(
+                joinedload(MaintenanceBill.resident).joinedload(Resident.user),
+                joinedload(MaintenanceBill.resident).joinedload(Resident.unit),
+            )
+            .join(MaintenanceBill.resident)
+            .join(Resident.unit)
+            .filter(
+                MaintenanceBill.period_id == period_id,
+                Resident.is_primary.is_(True),
+                __import__("app.models.unit", fromlist=["Unit"]).Unit.section_id == section_id,
+            )
+            .order_by(MaintenanceBill.status.asc(), MaintenanceBill.id.asc())
             .all()
         )
 
@@ -246,8 +282,10 @@ class MaintenanceRepository:
                     Resident.unit
                 ),
             )
+            .join(MaintenanceBill.resident)
             .filter(
                 MaintenanceBill.resident_id == resident_id,
+                Resident.is_primary.is_(True),
             )
             .order_by(
                 MaintenanceBill.due_date.desc(),
@@ -302,6 +340,7 @@ class MaintenanceRepository:
             )
             .filter(
                 MaintenanceBill.due_date <= today,
+                Resident.is_primary.is_(True),
                 MaintenanceBill.status.in_(
                     [
                         "UNPAID",
@@ -363,9 +402,10 @@ class MaintenanceRepository:
                     0,
                 )
             )
+            .join(MaintenanceBill.resident)
             .filter(
-                MaintenanceBill.period_id
-                == period_id
+                MaintenanceBill.period_id == period_id,
+                Resident.is_primary.is_(True),
             )
             .scalar()
             or 0
@@ -382,9 +422,10 @@ class MaintenanceRepository:
                     MaintenanceBill.id
                 )
             )
+            .join(MaintenanceBill.resident)
             .filter(
-                MaintenanceBill.period_id
-                == period_id
+                MaintenanceBill.period_id == period_id,
+                Resident.is_primary.is_(True),
             )
         )
 
@@ -475,10 +516,9 @@ class MaintenanceRepository:
                 ),
             )
             .filter(
-                User.organization_id
-                == organization_id,
-                MaintenancePayment.status
-                == "PENDING",
+                User.organization_id == organization_id,
+                Resident.is_primary.is_(True),
+                MaintenancePayment.status == "PENDING",
             )
             .order_by(
                 MaintenancePayment.id.desc(),

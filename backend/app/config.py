@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     TWILIO_WHATSAPP_FROM: str | None = None
     FCM_SERVER_KEY: str | None = None
 
+    # Mobile OTP authentication. In local development the OTP is returned in
+    # the response; production should disable this and configure Twilio.
+    OTP_DEV_MODE: bool = True
+    OTP_EXPIRY_SECONDS: int = 300
+    OTP_MAX_ATTEMPTS: int = 5
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
