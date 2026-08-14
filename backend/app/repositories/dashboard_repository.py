@@ -270,6 +270,9 @@ class DashboardRepository:
         return {
             "resident_name": resident.full_name or "Resident",
             "unit_number": resident.unit_number or "Not Assigned",
+            "section_name": resident.section_name,
+            "organization_name": getattr(organization, "name", None),
+            "organization_code": getattr(organization, "organization_code", None),
             "visitor_count": int(visitor_count),
             "pending_visitors": int(pending_visitors),
             "delivery_count": int(delivery_count),

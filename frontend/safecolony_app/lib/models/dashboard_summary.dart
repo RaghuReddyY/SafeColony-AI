@@ -31,6 +31,9 @@ class DashboardActivity {
 class DashboardSummary {
   final String residentName;
   final String unitNumber;
+  final String? sectionName;
+  final String? organizationName;
+  final String? organizationCode;
   final int visitorCount;
   final int pendingVisitors;
   final int deliveryCount;
@@ -50,6 +53,9 @@ class DashboardSummary {
   DashboardSummary({
     required this.residentName,
     required this.unitNumber,
+    this.sectionName,
+    this.organizationName,
+    this.organizationCode,
     required this.visitorCount,
     required this.pendingVisitors,
     required this.deliveryCount,
@@ -95,6 +101,9 @@ class DashboardSummary {
     return DashboardSummary(
       residentName: json['resident_name']?.toString() ?? 'Resident',
       unitNumber: json['unit_number']?.toString() ?? 'Not Assigned',
+      sectionName: json['section_name']?.toString(),
+      organizationName: json['organization_name']?.toString(),
+      organizationCode: json['organization_code']?.toString(),
       visitorCount: int.tryParse(json['visitor_count'].toString()) ?? 0,
       pendingVisitors:
           int.tryParse(json['pending_visitors'].toString()) ?? 0,

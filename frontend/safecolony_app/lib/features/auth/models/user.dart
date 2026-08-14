@@ -7,6 +7,7 @@ class User {
   final int? organizationId;
   final String? organizationCode;
   final String? organizationName;
+  final List<String> sectionNames;
 
   const User({
     required this.id,
@@ -17,6 +18,7 @@ class User {
     this.organizationId,
     this.organizationCode,
     this.organizationName,
+    this.sectionNames = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class User {
       organizationId: (json["organization_id"] as num?)?.toInt(),
       organizationCode: json["organization_code"],
       organizationName: json["organization_name"],
+      sectionNames: (json["section_names"] as List?)?.map((e) => e.toString()).toList() ?? const [],
     );
   }
 
@@ -41,5 +44,6 @@ class User {
         "organization_id": organizationId,
         "organization_code": organizationCode,
         "organization_name": organizationName,
+        "section_names": sectionNames,
       };
 }

@@ -128,6 +128,7 @@ class UserResponse(BaseModel):
     organization_id: int | None = None
     organization_code: str | None = None
     organization_name: str | None = None
+    section_names: list[str] = []
 
     model_config = ConfigDict(
         from_attributes=True,

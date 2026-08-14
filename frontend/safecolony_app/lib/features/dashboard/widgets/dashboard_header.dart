@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 class DashboardHeader extends StatelessWidget {
   final String resident;
   final String unit;
+  final String? block;
+  final String? organizationName;
+  final String? organizationCode;
   final int score;
 
   const DashboardHeader({
     super.key,
     required this.resident,
     required this.unit,
+    this.block,
+    this.organizationName,
+    this.organizationCode,
     required this.score,
   });
 
@@ -71,11 +77,35 @@ class DashboardHeader extends StatelessWidget {
                         fontSize: 28,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    if (organizationName != null && organizationName!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        organizationName!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
                     Text(
-                      'Unit $unit',
+                      [
+                        if (block != null && block!.trim().isNotEmpty) block!,
+                        'Unit $unit',
+                      ].join(' • '),
                       style: const TextStyle(color: Colors.white70),
                     ),
+                    if (organizationCode != null && organizationCode!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'ORG: ${organizationCode!}',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

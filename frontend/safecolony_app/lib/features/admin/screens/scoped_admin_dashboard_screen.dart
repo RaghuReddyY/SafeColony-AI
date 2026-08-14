@@ -64,8 +64,54 @@ class ScopedAdminDashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome ${user?.fullName ?? ''}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xffE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome ${user?.fullName ?? ''}',
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                  ),
+                  if (user?.organizationName != null && user!.organizationName!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      user.organizationName!,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xff334155),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  if (user?.role == 'BLOCK_ADMIN' && (user?.sectionNames.isNotEmpty ?? false))
+                    Text(
+                      'Block${user!.sectionNames.length > 1 ? 's' : ''}: ${user.sectionNames.join(', ')}',
+                      style: const TextStyle(color: Color(0xff64748B), fontSize: 15),
+                    )
+                  else
+                    Text(
+                      financeOnly ? 'Organization Finance Admin' : 'Block Admin',
+                      style: const TextStyle(color: Color(0xff64748B), fontSize: 15),
+                    ),
+                  if (user?.organizationCode != null && user!.organizationCode!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      'ORG: ${user.organizationCode!}',
+                      style: const TextStyle(color: Color(0xff94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(subtitle, style: const TextStyle(color: Color(0xff64748B), fontSize: 15)),
             const SizedBox(height: 24),
             GridView.count(

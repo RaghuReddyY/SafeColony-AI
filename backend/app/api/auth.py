@@ -97,6 +97,11 @@ def get_me(
         "organization_id": current_user.organization_id,
         "organization_code": organization.organization_code if organization else None,
         "organization_name": organization.name if organization else None,
+        "section_names": [
+            scope.section.name
+            for scope in (current_user.block_scopes or [])
+            if scope.section is not None
+        ],
     }
 
 

@@ -31,6 +31,9 @@ class DashboardBody extends StatelessWidget {
           DashboardHeader(
             resident: dashboard.residentName,
             unit: dashboard.unitNumber,
+            block: dashboard.sectionName,
+            organizationName: dashboard.organizationName,
+            organizationCode: dashboard.organizationCode,
             score: dashboard.securityScore,
           ),
           const SizedBox(height: 30),
