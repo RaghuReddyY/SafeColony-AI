@@ -1,4 +1,4 @@
-package com.example.safecolony_app
+package com.safecolony.app
 
 import io.flutter.embedding.android.FlutterActivity
 

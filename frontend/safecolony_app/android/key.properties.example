@@ -1,0 +1,7 @@
+# Copy this file to android/key.properties and replace the values.
+# NEVER commit key.properties or the .jks/.keystore file to source control.
+
+storePassword=REPLACE_WITH_KEYSTORE_PASSWORD
+keyPassword=REPLACE_WITH_KEY_PASSWORD
+keyAlias=safecolony
+storeFile=safecolony-upload-key.jks

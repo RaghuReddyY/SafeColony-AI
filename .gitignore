@@ -40,3 +40,7 @@ logs/
 # Generated Files
 # ===========================
 backend/uploads/qr/
+# Android release signing credentials
+frontend/safecolony_app/android/key.properties
+*.jks
+*.keystore

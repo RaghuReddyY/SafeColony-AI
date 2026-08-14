@@ -1,10 +1,11 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 from alembic import context
 
 from app.database.base import Base
+from app.config import settings
 
 config = context.config
 
@@ -15,7 +16,9 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url")
+    # Always read the database URL from the environment rather than storing
+    # credentials in alembic.ini/source control.
+    url = settings.DATABASE_URL
 
     context.configure(
         url=url,
@@ -28,9 +31,10 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
+    # Avoid ConfigParser interpolation issues and keep production credentials
+    # entirely in the environment/secret manager.
+    connectable = create_engine(
+        settings.DATABASE_URL,
         poolclass=pool.NullPool,
     )
 

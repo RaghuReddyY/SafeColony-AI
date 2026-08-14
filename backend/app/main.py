@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 
@@ -38,6 +39,7 @@ from app.api.amenity import router as amenity_router
 from app.core.event_registry import register_event_handlers
 from app.core.exceptions import register_exception_handlers
 from app.core.logger import logger
+from app.config import settings
 
 # Scheduler
 from app.scheduler.bootstrap import create_scheduler
@@ -51,6 +53,8 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    settings.validate_for_startup()
 
     logger.info("==========================================")
     logger.info("Starting SafeColony AI...")
@@ -86,20 +90,21 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
+# Reject unexpected Host headers in production. Development keeps the
+# permissive setting so local/emulator/physical-device workflows continue to work.
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=settings.allowed_hosts,
+)
+
 # Global Exception Handlers
 register_exception_handlers(app)
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://localhost",
-        "http://127.0.0.1:8000",
-        "http://127.0.0.1",
-    ],
-    allow_origin_regex=r"http://localhost:\d+",
+    allow_origins=settings.cors_origins,
+    allow_origin_regex=r"http://localhost:\d+" if not settings.is_production else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -136,6 +141,12 @@ app.include_router(amenity_router)
 
 
 # Static Files
+# Ensure directories exist on a fresh deployment before Starlette mounts them.
+from pathlib import Path
+
+Path("uploads/qr").mkdir(parents=True, exist_ok=True)
+Path("uploads/incidents").mkdir(parents=True, exist_ok=True)
+
 app.mount(
     "/uploads/qr",
     StaticFiles(directory="uploads/qr"),
@@ -147,6 +158,15 @@ app.mount(
     StaticFiles(directory="uploads/incidents"),
     name="incident_uploads",
 )
+
+
+@app.get("/health", tags=["System"], include_in_schema=False)
+def health():
+    return {
+        "status": "ok",
+        "service": "SafeColony AI",
+        "version": "1.0.0",
+    }
 
 
 @app.get("/", tags=["System"])
