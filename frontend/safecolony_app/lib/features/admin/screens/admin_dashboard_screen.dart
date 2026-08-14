@@ -13,6 +13,8 @@ import '../../emergency/providers/emergency_provider.dart';
 import '../../emergency/screens/emergency_alerts_screen.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
+import '../../maintenance/screens/community_finance_screen.dart';
+import 'organization_maintenance_details_screen.dart';
 import '../../incidents/screens/incident_screen.dart';
 import '../../complaints/screens/complaint_screen.dart';
 import '../../amenities/screens/amenity_screen.dart';
@@ -21,6 +23,8 @@ import '../property/screens/property_list_screen.dart';
 import '../section/screens/section_list_screen.dart';
 import '../unit/screens/unit_list_screen.dart';
 import '../providers/admin_provider.dart';
+import '../providers/organization_finance_provider.dart';
+import '../widgets/organization_finance_widget.dart';
 import 'resident_approval_screen.dart';
 import 'block_admin_management_screen.dart';
 
@@ -91,6 +95,8 @@ class _AdminDashboardScreenState
     final adminState = ref.watch(adminProvider);
     final maintenanceAsync =
         ref.watch(maintenanceDashboardProvider);
+    final organizationFinanceAsync =
+        ref.watch(organizationFinanceProvider);
     final emergencyAsync =
         ref.watch(unresolvedEmergencyProvider);
 
@@ -172,6 +178,9 @@ class _AdminDashboardScreenState
               maintenanceDashboardProvider,
             );
             ref.invalidate(
+              organizationFinanceProvider,
+            );
+            ref.invalidate(
               unresolvedEmergencyProvider,
             );
           },
@@ -230,6 +239,15 @@ class _AdminDashboardScreenState
 
                 _moneyCard(
                   maintenanceAsync,
+                ),
+
+                const SizedBox(height: 18),
+
+                OrganizationFinanceWidget(
+                  state: organizationFinanceAsync,
+                  onRetry: () => ref.invalidate(organizationFinanceProvider),
+                  onOpenMaintenance: () => _open(const OrganizationMaintenanceDetailsScreen()),
+                  onOpenCommunityFinance: () => _open(const CommunityFinanceScreen()),
                 ),
 
                 const SizedBox(height: 28),
