@@ -27,6 +27,7 @@ import '../providers/organization_finance_provider.dart';
 import '../widgets/organization_finance_widget.dart';
 import 'resident_approval_screen.dart';
 import 'block_admin_management_screen.dart';
+import 'organization_user_management_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -321,6 +322,14 @@ class _AdminDashboardScreenState
                       Icons.admin_panel_settings_rounded,
                       const Color(0xff9333EA),
                       () => _open(const BlockAdminManagementScreen()),
+                    ),
+
+                    _ActionData(
+                      'User Management',
+                      'Create operational users and remove access safely',
+                      Icons.manage_accounts_rounded,
+                      const Color(0xff2563EB),
+                      () => _open(const OrganizationUserManagementScreen()),
                     ),
                   ],
                 ),

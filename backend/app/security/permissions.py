@@ -10,6 +10,8 @@ class Permissions:
     ORGANIZATION_DELETE = "organization:delete"
 
     BLOCK_ADMIN_MANAGE = "block_admin:manage"
+    USER_VIEW = "user:view"
+    USER_MANAGE = "user:manage"
     BLOCK_ADMIN_VIEW = "block_admin:view"
     COMMUNITY_FINANCE_VIEW = "community_finance:view"
     COMMUNITY_FINANCE_MANAGE = "community_finance:manage"

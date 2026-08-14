@@ -14,6 +14,25 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+
+/// A Dio exception whose string form is safe for direct UI display.
+/// This prevents raw HTTP/Dio diagnostics from leaking into SnackBars,
+/// error cards and login screens that still use `e.toString()`.
+class SafeDioException extends DioException {
+  final String userMessage;
+
+  SafeDioException({
+    required super.requestOptions,
+    super.response,
+    super.type,
+    super.error,
+    required this.userMessage,
+  });
+
+  @override
+  String toString() => userMessage;
+}
+
 class ApiClient {
   /// Converts Dio/backend failures into messages that are safe and understandable
   /// for residents and administrators. Raw DioException text is intentionally
@@ -135,13 +154,21 @@ class ApiClient {
           error,
           handler,
         ) {
-          if (error.response?.statusCode ==
-              401) {
-            // Later:
-            // Refresh token / Logout automatically
+          if (error is SafeDioException) {
+            handler.next(error);
+            return;
           }
 
-          handler.next(error);
+          final message = errorMessage(error);
+          handler.next(
+            SafeDioException(
+              requestOptions: error.requestOptions,
+              response: error.response,
+              type: error.type,
+              error: error.error,
+              userMessage: message,
+            ),
+          );
         },
       ),
     );

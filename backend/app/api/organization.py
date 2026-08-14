@@ -17,6 +17,8 @@ from app.schemas.organization import (
     FinanceAdminCreate,
     ScopedAdminResponse,
     BlockScopeResponse,
+    OrganizationUserCreate,
+    OrganizationUserResponse,
 )
 from app.auth.dependencies import get_current_user
 from app.models.user import User
@@ -208,6 +210,63 @@ def get_scoped_admins(
     current_user: User = Depends(get_current_user),
 ):
     return OrganizationService(db).get_scoped_admins(current_user)
+
+
+@router.get(
+    "/users",
+    response_model=list[OrganizationUserResponse],
+    dependencies=[Depends(require_permission(Permissions.USER_VIEW))],
+)
+def get_organization_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return OrganizationService(db).list_organization_users(current_user)
+
+
+@router.post(
+    "/users",
+    response_model=OrganizationUserResponse,
+    dependencies=[Depends(require_permission(Permissions.USER_MANAGE))],
+)
+def create_organization_user(
+    data: OrganizationUserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = OrganizationService(db).create_organization_user(current_user, data)
+    users = OrganizationService(db).list_organization_users(current_user)
+    return next(item for item in users if item["id"] == user.id)
+
+
+@router.delete(
+    "/users/{user_id}",
+    response_model=OrganizationUserResponse,
+    dependencies=[Depends(require_permission(Permissions.USER_MANAGE))],
+)
+def delete_organization_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = OrganizationService(db).delete_organization_user(current_user, user_id)
+    users = OrganizationService(db).list_organization_users(current_user)
+    return next(item for item in users if item["id"] == user.id)
+
+
+@router.post(
+    "/users/{user_id}/restore",
+    response_model=OrganizationUserResponse,
+    dependencies=[Depends(require_permission(Permissions.USER_MANAGE))],
+)
+def restore_organization_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = OrganizationService(db).restore_organization_user(current_user, user_id)
+    users = OrganizationService(db).list_organization_users(current_user)
+    return next(item for item in users if item["id"] == user.id)
 
 
 @router.get(

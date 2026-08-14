@@ -85,6 +85,8 @@ ROLE_PERMISSIONS = {
         Permissions.AI_ASSISTANT,
         Permissions.BLOCK_ADMIN_VIEW,
         Permissions.BLOCK_ADMIN_MANAGE,
+        Permissions.USER_VIEW,
+        Permissions.USER_MANAGE,
         Permissions.COMMUNITY_FINANCE_VIEW,
         Permissions.COMMUNITY_FINANCE_MANAGE,
         Permissions.COMMUNITY_FINANCE_PAYMENT,

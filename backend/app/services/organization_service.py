@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.hashing import hash_password
 from app.core.exceptions import ConflictException
-from app.enums import UserRole, UserStatus
+from app.enums import UserRole, UserStatus, ResidentStatus
 from app.models.organization import Organization
 from app.models.user import User
 from app.repositories.organization_repository import OrganizationRepository
@@ -441,3 +441,232 @@ OrganizationService._create_scoped_admin = _create_scoped_admin
 OrganizationService.create_block_admin = create_block_admin
 OrganizationService.create_finance_admin = create_finance_admin
 OrganizationService.get_scoped_admins = get_scoped_admins
+
+
+# ------------------------------------------------------------------
+# Organization User Management
+# ------------------------------------------------------------------
+
+_MANAGED_USER_ROLES = {
+    UserRole.ORGANIZATION_ADMIN,
+    UserRole.PROPERTY_MANAGER,
+    UserRole.SECURITY_MANAGER,
+    UserRole.SECURITY_GUARD,
+    UserRole.BLOCK_ADMIN,
+    UserRole.COMMUNITY_FINANCE_ADMIN,
+}
+
+
+def list_organization_users(self, current_user):
+    if current_user.organization_id is None:
+        return []
+
+    users = (
+        self.db.query(User)
+        .filter(User.organization_id == current_user.organization_id)
+        .order_by(User.is_active.desc(), User.full_name.asc())
+        .all()
+    )
+
+    result = []
+    for user in users:
+        section_ids = []
+        section_names = []
+
+        for scope in user.block_scopes or []:
+            if scope.section is not None:
+                section_ids.append(scope.section.id)
+                section_names.append(scope.section.name)
+
+        # Residents do not use user_block_scopes; expose their actual block.
+        if user.resident and user.resident.unit and user.resident.unit.section:
+            section = user.resident.unit.section
+            if section.id not in section_ids:
+                section_ids.append(section.id)
+                section_names.append(section.name)
+
+        result.append({
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "status": user.status,
+            "is_active": user.is_active,
+            "section_ids": section_ids,
+            "section_names": section_names,
+        })
+
+    return result
+
+
+def create_organization_user(self, current_user, data):
+    current_role = (
+        current_user.role.value
+        if isinstance(current_user.role, UserRole)
+        else str(current_user.role)
+    )
+
+    requested_role = (
+        data.role
+        if isinstance(data.role, UserRole)
+        else UserRole(str(data.role))
+    )
+
+    if requested_role == UserRole.SYSTEM_ADMIN:
+        raise ConflictException("System administrators cannot be created from an organization.")
+
+    if requested_role == UserRole.ORGANIZATION_ADMIN and current_role != UserRole.SYSTEM_ADMIN.value:
+        raise ConflictException("Only a system administrator can create another organization administrator.")
+
+    if requested_role not in _MANAGED_USER_ROLES:
+        raise ConflictException("This role cannot be created from organization user management.")
+
+    if current_user.organization_id is None:
+        raise ConflictException("Your account is not linked to an organization.")
+
+    email = data.email.lower().strip()
+    phone = data.phone.strip()
+
+    if self.user_repo.exists_by_email(email):
+        raise ConflictException("Email already exists.")
+    if self.user_repo.exists_by_phone(phone):
+        raise ConflictException("Phone already exists.")
+
+    section_ids = list(dict.fromkeys(data.section_ids or []))
+
+    if requested_role == UserRole.BLOCK_ADMIN and not section_ids:
+        raise ConflictException("Select at least one block for a block administrator.")
+
+    if requested_role != UserRole.BLOCK_ADMIN and section_ids:
+        raise ConflictException("Block assignments are only supported for block administrators.")
+
+    sections = []
+    if section_ids:
+        sections = (
+            self.db.query(Section)
+            .join(Property, Section.property_id == Property.id)
+            .filter(
+                Section.id.in_(section_ids),
+                Property.organization_id == current_user.organization_id,
+            )
+            .all()
+        )
+        if len(sections) != len(section_ids):
+            raise ConflictException("One or more selected blocks do not belong to this community.")
+
+    user = User(
+        full_name=data.full_name.strip(),
+        email=email,
+        phone=phone,
+        password_hash=hash_password(data.password),
+        role=requested_role.value,
+        status=UserStatus.ACTIVE.value,
+        organization_id=current_user.organization_id,
+        is_active=True,
+    )
+
+    self.db.add(user)
+    self.db.flush()
+
+    from app.models.user_block_scope import UserBlockScope
+
+    for section in sections:
+        self.db.add(
+            UserBlockScope(
+                user_id=user.id,
+                section_id=section.id,
+            )
+        )
+
+    self.db.commit()
+    self.db.refresh(user)
+
+    return user
+
+
+def delete_organization_user(self, current_user, user_id: int):
+    if current_user.organization_id is None:
+        raise ConflictException("Your account is not linked to an organization.")
+
+    if user_id == current_user.id:
+        raise ConflictException("You cannot delete your own account.")
+
+    target = (
+        self.db.query(User)
+        .filter(
+            User.id == user_id,
+            User.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
+
+    if target is None:
+        raise ConflictException("User was not found in your organization.")
+
+    current_role = (
+        current_user.role.value
+        if isinstance(current_user.role, UserRole)
+        else str(current_user.role)
+    )
+    target_role = str(target.role)
+
+    if target_role == UserRole.SYSTEM_ADMIN.value:
+        raise ConflictException("System administrator accounts cannot be removed here.")
+
+    if (
+        target_role == UserRole.ORGANIZATION_ADMIN.value
+        and current_role != UserRole.SYSTEM_ADMIN.value
+    ):
+        raise ConflictException("Only a system administrator can remove an organization administrator.")
+
+    # SafeColony keeps historical financial, maintenance, incident and
+    # communication records. Do not hard-delete a user and break those
+    # foreign-key references. Deactivate the account instead.
+    target.is_active = False
+    target.status = UserStatus.SUSPENDED.value
+
+    if target.resident:
+        target.resident.is_active = False
+        target.resident.status = ResidentStatus.SUSPENDED
+
+    self.db.commit()
+
+    return target
+
+
+def restore_organization_user(self, current_user, user_id: int):
+    if current_user.organization_id is None:
+        raise ConflictException("Your account is not linked to an organization.")
+
+    target = (
+        self.db.query(User)
+        .filter(
+            User.id == user_id,
+            User.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
+
+    if target is None:
+        raise ConflictException("User was not found in your organization.")
+
+    if target.role == UserRole.SYSTEM_ADMIN.value:
+        raise ConflictException("System administrator accounts cannot be restored here.")
+
+    target.is_active = True
+    target.status = UserStatus.ACTIVE.value
+
+    if target.resident:
+        target.resident.is_active = True
+        target.resident.status = ResidentStatus.ACTIVE
+
+    self.db.commit()
+
+    return target
+
+
+OrganizationService.list_organization_users = list_organization_users
+OrganizationService.create_organization_user = create_organization_user
+OrganizationService.delete_organization_user = delete_organization_user
+OrganizationService.restore_organization_user = restore_organization_user
