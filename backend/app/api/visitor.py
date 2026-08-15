@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.auth.permissions import require_permission
@@ -19,6 +20,8 @@ from app.schemas.scan import (
 )
 from app.auth.dependencies import get_current_user
 from app.models.user import User
+from app.models.visitor import Visitor
+from app.services.storage_service import StorageService
 from app.repositories.resident_repository import ResidentRepository
 from app.schemas.visitor import ResidentVisitorCreate
 
@@ -173,6 +176,31 @@ def check_out_visitor(
 
     return service.check_out(visitor_id)
 
+
+
+@router.get("/{visitor_id}/qr")
+def get_visitor_qr(
+    visitor_id: int,
+    token: str = Query(..., min_length=20, max_length=100),
+    db: Session = Depends(get_db),
+):
+    """Serve a visitor QR without exposing the backing storage bucket."""
+    visitor = db.query(Visitor).filter(
+        Visitor.id == visitor_id,
+        Visitor.qr_token == token,
+    ).first()
+
+    if visitor is None or not visitor.qr_code:
+        raise HTTPException(status_code=404, detail="QR code not found.")
+
+    try:
+        # qr_code is the stable route stored in the database. The actual
+        # storage object is deterministic for the visitor.
+        content = StorageService().read_bytes(f"qr/visitor_{visitor_id}.png")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="QR code file not found.")
+
+    return Response(content=content, media_type="image/png")
 
 @router.post(
     "/validate-qr",

@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.user_block_scope import UserBlockScope
 from app.repositories.incident_repository import IncidentRepository
 from app.services.scope_service import ScopeService
+from app.services.storage_service import StorageService
 from app.models.resident import Resident
 
 
@@ -40,7 +41,19 @@ class IncidentService:
             "resolved_at": incident.resolved_at,
             "created_at": incident.created_at,
             "updated_at": incident.updated_at,
-            "evidence": incident.evidence or [],
+            "evidence": [
+                {
+                    "id": item.id,
+                    "incident_id": item.incident_id,
+                    "evidence_type": item.evidence_type,
+                    "file_url": StorageService().url_for(item.file_url),
+                    "description": item.description,
+                    "uploaded_by_user_id": item.uploaded_by_user_id,
+                    "created_at": item.created_at,
+                    "updated_at": item.updated_at,
+                }
+                for item in (incident.evidence or [])
+            ],
         }
 
     def _org_user(self, current_user, user_id):
@@ -222,15 +235,17 @@ class IncidentService:
         content = await upload.read()
         if len(content) > 10 * 1024 * 1024:
             raise BadRequestException("Incident photo must be 10 MB or smaller.")
-        target_dir = Path("uploads/incidents")
-        target_dir.mkdir(parents=True, exist_ok=True)
         filename = f"{incident.id}-{uuid4().hex}{extension}"
-        target = target_dir / filename
-        target.write_bytes(content)
+        object_name = f"incidents/{incident.id}/{filename}"
+        stored_path = StorageService().upload_bytes(
+            object_name,
+            content,
+            content_type=content_type,
+        )
         evidence = IncidentEvidence(
             incident_id=incident.id,
             evidence_type="PHOTO",
-            file_url=f"/uploads/incidents/{filename}",
+            file_url=stored_path,
             description=upload.filename,
             uploaded_by_user_id=current_user.id,
         )

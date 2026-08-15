@@ -33,6 +33,7 @@ from app.api.public import router as public_router
 from app.api.incident import router as incident_router
 from app.api.complaint import router as complaint_router
 from app.api.amenity import router as amenity_router
+from app.api.internal_scheduler import router as internal_scheduler_router
 
 
 # Core
@@ -64,10 +65,14 @@ async def lifespan(app: FastAPI):
 
     logger.info("Event handlers registered successfully.")
 
-    scheduler = create_scheduler()
-    scheduler.start()
+    scheduler = None
+    if settings.RUN_IN_PROCESS_SCHEDULER:
+        scheduler = create_scheduler()
+        scheduler.start()
+        logger.info("In-process scheduler started successfully.")
+    else:
+        logger.info("In-process scheduler disabled; use Cloud Scheduler/Cloud Run Jobs.")
 
-    logger.info("Scheduler started successfully.")
     logger.info("SafeColony AI started successfully.")
     logger.info("==========================================")
 
@@ -76,7 +81,8 @@ async def lifespan(app: FastAPI):
     logger.info("==========================================")
     logger.info("Stopping Scheduler...")
 
-    scheduler.shutdown()
+    if scheduler is not None:
+        scheduler.shutdown()
 
     logger.info("Stopping SafeColony AI...")
     logger.info("SafeColony AI stopped.")
@@ -137,27 +143,29 @@ app.include_router(public_router)
 app.include_router(incident_router)
 app.include_router(complaint_router)
 app.include_router(amenity_router)
+app.include_router(internal_scheduler_router)
 
 
 
-# Static Files
-# Ensure directories exist on a fresh deployment before Starlette mounts them.
-from pathlib import Path
+# Local file serving is retained for development. Production GCS objects are
+# accessed through StorageService/signed URLs instead.
+if settings.STORAGE_BACKEND.strip().upper() != "GCS":
+    from pathlib import Path
 
-Path("uploads/qr").mkdir(parents=True, exist_ok=True)
-Path("uploads/incidents").mkdir(parents=True, exist_ok=True)
+    Path("uploads/qr").mkdir(parents=True, exist_ok=True)
+    Path("uploads/incidents").mkdir(parents=True, exist_ok=True)
 
-app.mount(
-    "/uploads/qr",
-    StaticFiles(directory="uploads/qr"),
-    name="visitor_qr",
-)
+    app.mount(
+        "/uploads/qr",
+        StaticFiles(directory="uploads/qr"),
+        name="visitor_qr",
+    )
 
-app.mount(
-    "/uploads/incidents",
-    StaticFiles(directory="uploads/incidents"),
-    name="incident_uploads",
-)
+    app.mount(
+        "/uploads/incidents",
+        StaticFiles(directory="uploads/incidents"),
+        name="incident_uploads",
+    )
 
 
 @app.get("/health", tags=["System"], include_in_schema=False)

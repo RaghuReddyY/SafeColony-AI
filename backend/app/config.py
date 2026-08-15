@@ -47,6 +47,17 @@ class Settings(BaseSettings):
     OTP_EXPIRY_SECONDS: int = 300
     OTP_MAX_ATTEMPTS: int = 5
 
+    # Runtime scheduling. Keep enabled for local development; disable it on
+    # Cloud Run and invoke jobs through Cloud Scheduler/Run Jobs instead.
+    RUN_IN_PROCESS_SCHEDULER: bool = True
+    SCHEDULER_SECRET: str | None = None
+
+    # File storage. LOCAL preserves the current development behaviour. GCS is
+    # used in production so uploads survive Cloud Run instance replacement.
+    STORAGE_BACKEND: str = "LOCAL"
+    GCS_BUCKET_NAME: str | None = None
+    GCS_SIGNED_URL_MINUTES: int = 15
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -99,6 +110,15 @@ class Settings(BaseSettings):
 
         if "localhost" in self.DATABASE_URL.lower() or "127.0.0.1" in self.DATABASE_URL:
             raise RuntimeError("Production DATABASE_URL must point to the production database, not localhost.")
+
+        if self.STORAGE_BACKEND.strip().upper() != "GCS":
+            raise RuntimeError("Production STORAGE_BACKEND must be GCS.")
+
+        if not self.GCS_BUCKET_NAME or not self.GCS_BUCKET_NAME.strip():
+            raise RuntimeError("GCS_BUCKET_NAME must be configured in production.")
+
+        if not self.SCHEDULER_SECRET or len(self.SCHEDULER_SECRET.strip()) < 32:
+            raise RuntimeError("SCHEDULER_SECRET must be a new random secret of at least 32 characters.")
 
 
 settings = Settings()

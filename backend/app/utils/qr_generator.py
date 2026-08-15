@@ -1,15 +1,14 @@
-import os
 import uuid
-from pathlib import Path
 
 import qrcode
+
+from app.services.storage_service import StorageService
 
 
 class QRGenerator:
 
     @staticmethod
     def generate(visitor_id: int):
-
         token = str(uuid.uuid4())
 
         qr = qrcode.QRCode(
@@ -26,18 +25,18 @@ class QRGenerator:
             back_color="white",
         )
 
-        folder = Path("uploads") / "qr"
+        from io import BytesIO
 
-        folder.mkdir(
-            parents=True,
-            exist_ok=True,
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+
+        object_name = f"qr/visitor_{visitor_id}.png"
+        StorageService().upload_bytes(
+            object_name,
+            buffer.getvalue(),
+            content_type="image/png",
         )
 
-        filename = f"visitor_{visitor_id}.png"
-
-        filepath = folder / filename
-
-        image.save(filepath)
-
-        # Return URL-friendly path
-        return token, filepath.as_posix()
+        # Stable API route. The token protects access to the image without
+        # exposing the storage bucket directly.
+        return token, f"visitors/{visitor_id}/qr?token={token}"
