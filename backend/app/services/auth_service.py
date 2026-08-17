@@ -29,7 +29,7 @@ from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.section_repository import SectionRepository
 from app.repositories.unit_repository import UnitRepository
-from app.enums import OccupancyStatus, UnitType
+
 
 
 class AuthService:
@@ -277,7 +277,9 @@ class AuthService:
 
     def request_otp(self, phone: str):
         phone = phone.strip()
+
         user = self.user_repo.get_by_phone(phone)
+
         if not user or not user.is_active:
             # Do not reveal whether a phone number is registered.
             return {
@@ -286,44 +288,94 @@ class AuthService:
                 "dev_otp": None,
             }
 
+        # --------------------------------------------------------------
+        # Production safety:
+        # OTP login is optional for production. If no SMS provider is
+        # configured, do not generate/store an OTP and do not expose
+        # any development OTP.
+        # --------------------------------------------------------------
+        sms_configured = (
+            bool(settings.TWILIO_ACCOUNT_SID)
+            and bool(settings.TWILIO_AUTH_TOKEN)
+            and bool(settings.TWILIO_FROM_NUMBER)
+        )
+
+        if settings.is_production and not sms_configured:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Mobile OTP login is temporarily unavailable. Please use email and password login.",
+            )
+
         code = f"{secrets.randbelow(1_000_000):06d}"
         code_hash = hashlib.sha256(code.encode()).hexdigest()
         now = datetime.utcnow()
+
         self.db.query(LoginOTP).filter(
             LoginOTP.phone == phone,
             LoginOTP.consumed_at.is_(None),
-        ).update({"consumed_at": now}, synchronize_session=False)
-        self.db.add(LoginOTP(
-            phone=phone,
-            code_hash=code_hash,
-            expires_at=now + timedelta(seconds=settings.OTP_EXPIRY_SECONDS),
-        ))
+        ).update(
+            {"consumed_at": now},
+            synchronize_session=False,
+        )
+
+        self.db.add(
+            LoginOTP(
+                phone=phone,
+                code_hash=code_hash,
+                expires_at=now + timedelta(
+                    seconds=settings.OTP_EXPIRY_SECONDS
+                ),
+            )
+        )
+
         self.db.commit()
 
         sent = False
-        if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_FROM_NUMBER:
+
+        # --------------------------------------------------------------
+        # SMS provider
+        # --------------------------------------------------------------
+        if sms_configured:
             try:
-                url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.TWILIO_ACCOUNT_SID}/Messages.json"
+                url = (
+                    "https://api.twilio.com/2010-04-01/"
+                    f"Accounts/{settings.TWILIO_ACCOUNT_SID}/Messages.json"
+                )
+
                 body = {
                     "From": settings.TWILIO_FROM_NUMBER,
                     "To": phone,
-                    "Body": f"Your SafeColony login OTP is {code}. It expires in 5 minutes.",
+                    "Body": (
+                        f"Your SafeColony login OTP is {code}. "
+                        "It expires in 5 minutes."
+                    ),
                 }
+
                 response = httpx.post(
                     url,
                     data=body,
-                    auth=(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN),
+                    auth=(
+                        settings.TWILIO_ACCOUNT_SID,
+                        settings.TWILIO_AUTH_TOKEN,
+                    ),
                     timeout=10,
                 )
+
                 sent = 200 <= response.status_code < 300
+
             except Exception:
                 sent = False
 
+        # --------------------------------------------------------------
+        # SMS failed
+        # --------------------------------------------------------------
         if not sent and not settings.OTP_DEV_MODE:
-            # Never expose the OTP when production SMS delivery is required.
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="OTP delivery is not configured. Configure Twilio SMS and try again.",
+                detail=(
+                    "Mobile OTP login is temporarily unavailable. "
+                    "Please use email and password login."
+                ),
             )
 
         return {
