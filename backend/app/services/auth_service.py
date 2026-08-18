@@ -276,6 +276,12 @@ class AuthService:
     # ------------------------------------------------------------------
 
     def request_otp(self, phone: str):
+        if not settings.OTP_ENABLED:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Mobile OTP login is currently disabled. Please use email and password login.",
+            )
+
         phone = phone.strip()
 
         user = self.user_repo.get_by_phone(phone)
@@ -385,6 +391,12 @@ class AuthService:
         }
 
     def verify_otp(self, phone: str, otp: str):
+        if not settings.OTP_ENABLED:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Mobile OTP login is currently disabled. Please use email and password login.",
+            )
+
         phone = phone.strip()
         otp = otp.strip()
         user = self.user_repo.get_by_phone(phone)
