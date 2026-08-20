@@ -48,10 +48,8 @@ class QuickActionsSection extends StatelessWidget {
 
             mainAxisSpacing: 16,
 
-            childAspectRatio:
-                crossAxisCount == 4
-                    ? 2.6
-                    : 2.0,
+            mainAxisExtent:
+                crossAxisCount == 4 ? 86 : 118,
           ),
 
           itemBuilder: (context, index) {

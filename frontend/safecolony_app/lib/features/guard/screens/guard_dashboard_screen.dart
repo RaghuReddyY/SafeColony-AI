@@ -511,8 +511,12 @@ class _GuardDashboardScreenState
         onRefresh: _refresh,
 
         child: ListView(
-          padding:
-              const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(
+            MediaQuery.sizeOf(context).width < 600 ? 16 : 24,
+            16,
+            MediaQuery.sizeOf(context).width < 600 ? 16 : 24,
+            28,
+          ),
 
           children: [
             // ====================================================
@@ -539,7 +543,7 @@ class _GuardDashboardScreenState
             ),
 
             const SizedBox(
-              height: 30,
+              height: 20,
             ),
 
             // ====================================================
@@ -552,7 +556,7 @@ class _GuardDashboardScreenState
             ),
 
             const SizedBox(
-              height: 30,
+              height: 20,
             ),
 
             // ====================================================
@@ -685,7 +689,7 @@ class _GuardDashboardScreenState
             ),
 
             const SizedBox(
-              height: 36,
+              height: 24,
             ),
 
             // ====================================================
@@ -722,7 +726,7 @@ class _GuardDashboardScreenState
             const PendingVisitorsSection(),
 
             const SizedBox(
-              height: 36,
+              height: 24,
             ),
 
             // ====================================================
@@ -735,7 +739,7 @@ class _GuardDashboardScreenState
             const ApprovedVisitorsSection(),
 
             const SizedBox(
-              height: 36,
+              height: 24,
             ),
 
             // ====================================================

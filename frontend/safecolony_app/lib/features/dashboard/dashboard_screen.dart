@@ -37,15 +37,18 @@ class _DashboardScreenState
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: const Text("SafeColony AI"),
+        title: const Text(
+          'SafeColony AI',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+        ),
         actions: [
           if (user?.role == "RESIDENT")
             const NotificationBell(),
 
           const Padding(
             padding: EdgeInsets.only(
-              right: 20,
-              left: 4,
+              right: 14,
+              left: 2,
             ),
             child: CircleAvatar(
               child: Icon(Icons.person),

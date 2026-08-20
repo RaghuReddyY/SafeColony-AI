@@ -190,11 +190,11 @@ class _AdminDashboardScreenState
             physics:
                 const AlwaysScrollableScrollPhysics(),
 
-            padding: const EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              32,
+            padding: EdgeInsets.fromLTRB(
+              MediaQuery.sizeOf(context).width < 600 ? 16 : 20,
+              16,
+              MediaQuery.sizeOf(context).width < 600 ? 16 : 20,
+              28,
             ),
 
             child: Column(
@@ -676,46 +676,67 @@ class _AdminDashboardScreenState
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xffE2E8F0)),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xffEEF2FF),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: const Icon(Icons.business_rounded, color: Color(0xff4F46E5)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xff0F172A))),
-                const SizedBox(height: 4),
-                Text('Organization Code: ${code ?? 'Not available'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xff475569))),
-                if (orgId != null)
-                  Text('Organization ID: $orgId', style: const TextStyle(fontSize: 11, color: Color(0xff94A3B8))),
-              ],
-            ),
-          ),
-          if (code != null)
-            IconButton(
-              tooltip: 'Copy organization code',
-              icon: const Icon(Icons.copy_rounded),
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: code));
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Organization code copied.')));
-              },
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 520;
+          final details = Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xffEEF2FF),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(Icons.business_rounded, color: Color(0xff4F46E5)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xff0F172A))),
+                    const SizedBox(height: 4),
+                    Text('Organization Code: ${code ?? 'Not available'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xff475569))),
+                    if (orgId != null)
+                      Text('Organization ID: $orgId', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xff94A3B8))),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          final copy = code == null
+              ? const SizedBox.shrink()
+              : IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Copy organization code',
+                  icon: const Icon(Icons.copy_rounded),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: code));
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Organization code copied.')));
+                  },
+                );
+
+          if (!compact) {
+            return Row(children: [Expanded(child: details), copy]);
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              details,
+              if (code != null) Align(alignment: Alignment.centerRight, child: copy),
+            ],
+          );
+        },
       ),
     );
   }
@@ -740,9 +761,7 @@ class _AdminDashboardScreenState
         final columns =
             constraints.maxWidth >= 1050
                 ? 4
-                : constraints.maxWidth >= 650
-                    ? 2
-                    : 1;
+                : 2;
 
         final width =
             (constraints.maxWidth -
@@ -1039,9 +1058,7 @@ class _AdminDashboardScreenState
         final columns =
             constraints.maxWidth >= 950
                 ? 4
-                : constraints.maxWidth >= 600
-                    ? 2
-                    : 1;
+                : 2;
 
         final width =
             (constraints.maxWidth -
@@ -1058,10 +1075,9 @@ class _AdminDashboardScreenState
               return SizedBox(
                 width: width,
 
-                // IMPORTANT:
-                // Explicit finite height prevents
-                // unbounded RenderFlex errors inside Wrap.
-                height: 165,
+                // Keep action cards compact on phones while
+                // retaining a finite height for Wrap.
+                height: MediaQuery.sizeOf(context).width < 600 ? 145 : 165,
 
                 child:
                     _actionCard(
@@ -1097,7 +1113,7 @@ Widget _actionCard(
         width: double.infinity,
         height: double.infinity,
 
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 12 : 16),
 
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -1118,8 +1134,8 @@ Widget _actionCard(
             Row(
               children: [
                 Container(
-                  width: 46,
-                  height: 46,
+                  width: MediaQuery.sizeOf(context).width < 600 ? 40 : 46,
+                  height: MediaQuery.sizeOf(context).width < 600 ? 40 : 46,
 
                   decoration: BoxDecoration(
                     color: action.color.withValues(
@@ -1133,6 +1149,7 @@ Widget _actionCard(
                   child: Icon(
                     action.icon,
                     color: action.color,
+                    size: MediaQuery.sizeOf(context).width < 600 ? 20 : 24,
                   ),
                 ),
 
@@ -1166,7 +1183,7 @@ Widget _actionCard(
               ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             // ------------------------------------------------------
             // TITLE
@@ -1175,7 +1192,7 @@ Widget _actionCard(
             Text(
               action.title,
 
-              maxLines: 1,
+              maxLines: 2,
 
               overflow: TextOverflow.ellipsis,
 
@@ -1518,120 +1535,72 @@ Widget _actionCard(
 
   Widget _aiBanner() {
     return InkWell(
-      onTap: () {
-        _open(
-          const AIAssistantScreen(),
-        );
-      },
-
-      borderRadius:
-          BorderRadius.circular(24),
-
+      onTap: () => _open(const AIAssistantScreen()),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
-        padding:
-            const EdgeInsets.all(22),
-
-        decoration:
-            BoxDecoration(
-          gradient:
-              const LinearGradient(
-            colors: [
-              Color(0xffEEF2FF),
-              Color(0xffF5F3FF),
-            ],
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xffEEF2FF), Color(0xffF5F3FF)],
           ),
-
-          borderRadius:
-              BorderRadius.circular(
-            24,
-          ),
-
-          border: Border.all(
-            color:
-                const Color(
-              0xffC7D2FE,
-            ),
-          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xffC7D2FE)),
         ),
-
-        child: Row(
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-
-              decoration:
-                  BoxDecoration(
-                gradient:
-                    const LinearGradient(
-                  colors: [
-                    Color(0xff4F46E5),
-                    Color(0xff7C3AED),
-                  ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 520;
+            final icon = Container(
+              width: compact ? 48 : 58,
+              height: compact ? 48 : 58,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xff4F46E5), Color(0xff7C3AED)],
                 ),
-
-                borderRadius:
-                    BorderRadius.circular(
-                  18,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 27),
+            );
+            final text = const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Need help running the community?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Color(0xff1E1B4B),
+                  ),
                 ),
-              ),
+                SizedBox(height: 5),
+                Text(
+                  'Ask SafeColony AI about maintenance, residents, visitors, security or daily admin tasks.',
+                  style: TextStyle(color: Color(0xff475569), height: 1.35, fontSize: 13),
+                ),
+              ],
+            );
 
-              child:
-                  const Icon(
-                Icons.smart_toy_rounded,
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-
-            const SizedBox(
-              width: 14,
-            ),
-
-            const Expanded(
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+            if (compact) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Need help running the community?',
-
-                    style:
-                        TextStyle(
-                      fontWeight:
-                          FontWeight.w800,
-                      fontSize: 16,
-                      color:
-                          Color(0xff1E1B4B),
-                    ),
-                  ),
-
-                  SizedBox(
-                    height: 5,
-                  ),
-
-                  Text(
-                    'Ask SafeColony AI about maintenance, residents, visitors, security or daily admin tasks.',
-
-                    style:
-                        TextStyle(
-                      color:
-                          Color(0xff475569),
-                      height: 1.35,
-                      fontSize: 13,
-                    ),
-                  ),
+                  icon,
+                  const SizedBox(width: 12),
+                  Expanded(child: text),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.arrow_forward_rounded, color: Color(0xff4F46E5)),
                 ],
-              ),
-            ),
+              );
+            }
 
-            const Icon(
-              Icons.arrow_forward_rounded,
-              color:
-                  Color(0xff4F46E5),
-            ),
-          ],
+            return Row(
+              children: [
+                icon,
+                const SizedBox(width: 14),
+                Expanded(child: text),
+                const Icon(Icons.arrow_forward_rounded, color: Color(0xff4F46E5)),
+              ],
+            );
+          },
         ),
       ),
     );

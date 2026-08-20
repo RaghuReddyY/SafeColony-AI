@@ -21,10 +21,17 @@ class DashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 1000;
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width > 1000;
+    final horizontalPadding = width < 600 ? 16.0 : 24.0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        16,
+        horizontalPadding,
+        24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -36,27 +43,21 @@ class DashboardBody extends StatelessWidget {
             organizationCode: dashboard.organizationCode,
             score: dashboard.securityScore,
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
           const Text(
             'Overview',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           DashboardStats(dashboard: dashboard),
-          const SizedBox(height: 35),
+          const SizedBox(height: 26),
           const Text(
             'Quick Actions',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           const QuickActionGrid(),
-          const SizedBox(height: 35),
+          const SizedBox(height: 28),
           if (isDesktop)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,26 +69,21 @@ class DashboardBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 20),
-                Expanded(
-                  child: AICard(dashboard: dashboard),
-                ),
+                Expanded(child: AICard(dashboard: dashboard)),
               ],
             )
           else ...[
-            VisitorChart(
-              weeklyVisitors: dashboard.weeklyVisitors,
-            ),
-            const SizedBox(height: 20),
+            VisitorChart(weeklyVisitors: dashboard.weeklyVisitors),
+            const SizedBox(height: 18),
             AICard(dashboard: dashboard),
           ],
-          const SizedBox(height: 30),
           if (showFamilyInvite) ...[
-            FamilyInviteCard(),
             const SizedBox(height: 20),
+            const FamilyInviteCard(),
           ],
-          ActivityTimeline(
-            activities: dashboard.recentActivity,
-          ),
+          const SizedBox(height: 20),
+          ActivityTimeline(activities: dashboard.recentActivity),
+          const SizedBox(height: 16),
         ],
       ),
     );

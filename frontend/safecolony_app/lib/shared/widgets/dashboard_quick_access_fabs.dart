@@ -7,7 +7,7 @@ import '../../features/chat/screens/community_chat_screen.dart';
 import '../../features/chat/services/chat_service.dart';
 
 /// Persistent dashboard shortcuts for AI and Community Chat.
-/// The chat badge is based on unread messages in the user's conversations.
+/// On phones the shortcuts stay compact so they do not cover dashboard content.
 class DashboardQuickAccessFabs extends StatefulWidget {
   const DashboardQuickAccessFabs({super.key});
 
@@ -24,7 +24,7 @@ class _DashboardQuickAccessFabsState extends State<DashboardQuickAccessFabs> {
   void initState() {
     super.initState();
     _loadUnread();
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _loadUnread());
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _loadUnread());
   }
 
   @override
@@ -43,12 +43,10 @@ class _DashboardQuickAccessFabsState extends State<DashboardQuickAccessFabs> {
           (total, conversation) => total + conversation.unreadCount,
         );
       });
-    } catch (_) {
-      // Keep the shortcut usable even if chat is temporarily unavailable.
-    }
+    } catch (_) {}
   }
 
-  void _openChat() async {
+  Future<void> _openChat() async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CommunityChatScreen()),
@@ -65,6 +63,8 @@ class _DashboardQuickAccessFabsState extends State<DashboardQuickAccessFabs> {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = MediaQuery.sizeOf(context).width < 600;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -98,15 +98,26 @@ class _DashboardQuickAccessFabsState extends State<DashboardQuickAccessFabs> {
               ),
           ],
         ),
-        const SizedBox(height: 10),
-        FloatingActionButton.extended(
-          heroTag: 'safe_colony_ai_fab',
-          onPressed: _openAi,
-          icon: const Icon(Icons.auto_awesome_rounded),
-          label: const Text('AI Assistant'),
-          backgroundColor: const Color(0xff4F46E5),
-          foregroundColor: Colors.white,
-        ),
+        const SizedBox(height: 8),
+        if (mobile)
+          FloatingActionButton(
+            heroTag: 'safe_colony_ai_fab',
+            mini: true,
+            tooltip: 'AI Assistant',
+            onPressed: _openAi,
+            backgroundColor: const Color(0xff4F46E5),
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.auto_awesome_rounded),
+          )
+        else
+          FloatingActionButton.extended(
+            heroTag: 'safe_colony_ai_fab',
+            onPressed: _openAi,
+            icon: const Icon(Icons.auto_awesome_rounded),
+            label: const Text('AI Assistant'),
+            backgroundColor: const Color(0xff4F46E5),
+            foregroundColor: Colors.white,
+          ),
       ],
     );
   }

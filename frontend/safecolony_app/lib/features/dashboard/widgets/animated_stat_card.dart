@@ -15,158 +15,87 @@ class AnimatedStatCard extends StatefulWidget {
   });
 
   @override
-  State<AnimatedStatCard> createState() =>
-      _AnimatedStatCardState();
+  State<AnimatedStatCard> createState() => _AnimatedStatCardState();
 }
 
-class _AnimatedStatCardState
-    extends State<AnimatedStatCard> {
+class _AnimatedStatCardState extends State<AnimatedStatCard> {
   bool hover = false;
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-
-    final bool desktop = width > 900;
+    final desktop = MediaQuery.sizeOf(context).width > 900;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => hover = true),
-      onExit: (_) => setState(() => hover = false),
-
+      onEnter: (_) {
+        if (desktop) setState(() => hover = true);
+      },
+      onExit: (_) {
+        if (desktop) setState(() => hover = false);
+      },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-
-        transform: Matrix4.translationValues(
-          0,
-          hover ? -6 : 0,
-          0,
-        ),
-
+        duration: const Duration(milliseconds: 180),
+        transform: Matrix4.translationValues(0, hover ? -3 : 0, 0),
+        padding: EdgeInsets.all(desktop ? 18 : 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-
+          borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [
-              widget.color,
-              widget.color.withValues(alpha: .80),
-            ],
+            colors: [widget.color, widget.color.withValues(alpha: .82)],
           ),
-
           boxShadow: [
             BoxShadow(
-              color: widget.color.withValues(alpha: .25),
-              blurRadius: hover ? 22 : 12,
-              offset: const Offset(0, 10),
+              color: widget.color.withValues(alpha: .18),
+              blurRadius: hover ? 18 : 10,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-
-          child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-
-            children: [
-
-              Row(
+        child: Row(
+          children: [
+            Container(
+              width: desktop ? 50 : 44,
+              height: desktop ? 50 : 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                widget.icon,
+                color: Colors.white,
+                size: desktop ? 24 : 21,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  Container(
-                    padding:
-                        const EdgeInsets.all(10),
-
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(
-                        alpha: .18,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(14),
-                    ),
-
-                    child: Icon(
-                      widget.icon,
+                  Text(
+                    widget.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       color: Colors.white,
-                      size: desktop ? 24 : 20,
+                      fontSize: desktop ? 30 : 26,
+                      height: 1,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-
-                  const Spacer(),
-
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(
-                        alpha: .18,
-                      ),
-                      borderRadius:
-                          BorderRadius.circular(30),
-                    ),
-
-                    child: const Text(
-                      "+12%",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const SizedBox(height: 5),
+                  Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .88),
+                      fontSize: desktop ? 14 : 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-
-              Text(
-                widget.value,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: desktop ? 40 : 30,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              Text(
-                widget.title,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: desktop ? 17 : 15,
-                ),
-              ),
-
-              Row(
-                children: [
-
-                  const Icon(
-                    Icons.trending_up,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  Expanded(
-                    child: Text(
-                      "Compared to yesterday",
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize:
-                            desktop ? 12 : 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

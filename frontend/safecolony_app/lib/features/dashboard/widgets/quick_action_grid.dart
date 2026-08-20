@@ -14,98 +14,84 @@ class QuickActionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 18,
-      mainAxisSpacing: 18,
-      childAspectRatio: .95,
-      children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Four columns are useful on desktop, but four very narrow
+        // tiles make labels wrap vertically on phones. Two columns
+        // give each action enough room to be read and tapped.
+        final columns = constraints.maxWidth >= 900 ? 4 : 2;
 
-        QuickActionCard(
-          icon: Icons.person_add_alt_1,
-          title: "Visitor",
-          onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const VisitorListScreen(),
-    ),
-  );
-}
-        ),
-
-        QuickActionCard(
-          icon: Icons.inventory,
-          title: "Delivery",
-          onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const DeliveryDashboardScreen(),
-    ),
-  );
-}
-        ),
-
-        QuickActionCard(
-          icon: Icons.beach_access,
-          title: "Vacation",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const VacationScreen()),
-            );
-          }
-        ),
-
-        QuickActionCard(
-          icon: Icons.support_agent,
-          title: "Complaint",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ComplaintScreen()),
-            );
-          },
-        ),
-
-        QuickActionCard(
-          icon: Icons.report_problem_outlined,
-          title: "Incidents",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const IncidentScreen()),
-            );
-          },
-        ),
-
-        QuickActionCard(
-          icon: Icons.pool,
-          title: "Amenities",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AmenityScreen()),
-            );
-          },
-        ),
-
-        QuickActionCard(
-          icon: Icons.warning_amber,
-          title: "Emergency",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const EmergencySOSScreen(),
+        return GridView.count(
+          crossAxisCount: columns,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: columns == 4 ? 1.35 : 1.45,
+          children: [
+            QuickActionCard(
+              icon: Icons.person_add_alt_1,
+              title: 'Visitors',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const VisitorListScreen(),
+                ),
               ),
-            );
-          },
-        ),
-      ],
+            ),
+            QuickActionCard(
+              icon: Icons.inventory_2_outlined,
+              title: 'Deliveries',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeliveryDashboardScreen(),
+                ),
+              ),
+            ),
+            QuickActionCard(
+              icon: Icons.beach_access,
+              title: 'Vacation',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VacationScreen()),
+              ),
+            ),
+            QuickActionCard(
+              icon: Icons.support_agent,
+              title: 'Complaints',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ComplaintScreen()),
+              ),
+            ),
+            QuickActionCard(
+              icon: Icons.report_problem_outlined,
+              title: 'Incidents',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const IncidentScreen()),
+              ),
+            ),
+            QuickActionCard(
+              icon: Icons.emergency_outlined,
+              title: 'Emergency',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EmergencySOSScreen()),
+              ),
+            ),
+            QuickActionCard(
+              icon: Icons.pool_outlined,
+              title: 'Amenities',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AmenityScreen()),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

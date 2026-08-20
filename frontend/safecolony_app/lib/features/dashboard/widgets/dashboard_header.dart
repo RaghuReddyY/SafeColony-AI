@@ -29,9 +29,9 @@ class DashboardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -41,49 +41,57 @@ class DashboardHeader extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 650;
+          final nameSize = compact ? 24.0 : 28.0;
+
           final identity = Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 72,
-                width: 72,
+                height: compact ? 58 : 72,
+                width: compact ? 58 : 72,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: .18),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.home_work,
-                  size: 34,
+                  size: compact ? 28 : 34,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '${_greeting()} 👋',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 16,
+                        fontSize: compact ? 14 : 16,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       resident,
-                      style: const TextStyle(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 28,
+                        fontSize: nameSize,
+                        height: 1.1,
                       ),
                     ),
                     if (organizationName != null && organizationName!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
                         organizationName!,
-                        style: const TextStyle(
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
+                          fontSize: compact ? 14 : 15,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -94,15 +102,22 @@ class DashboardHeader extends StatelessWidget {
                         if (block != null && block!.trim().isNotEmpty) block!,
                         'Unit $unit',
                       ].join(' • '),
-                      style: const TextStyle(color: Colors.white70),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: compact ? 13 : 14,
+                      ),
                     ),
                     if (organizationCode != null && organizationCode!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         'ORG: ${organizationCode!}',
-                        style: const TextStyle(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
                           color: Colors.white60,
-                          fontSize: 12,
+                          fontSize: compact ? 11 : 12,
                         ),
                       ),
                     ],
@@ -113,34 +128,39 @@ class DashboardHeader extends StatelessWidget {
           );
 
           final scoreWidget = Container(
-            padding: const EdgeInsets.all(18),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 14 : 18,
+              vertical: compact ? 10 : 14,
+            ),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: .18),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
             ),
-            child: Column(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.shield,
-                  color: score >= 80
-                      ? Colors.greenAccent
-                      : Colors.amberAccent,
+                  color: score >= 80 ? Colors.greenAccent : Colors.amberAccent,
+                  size: compact ? 20 : 24,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '$score%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-                const Text(
-                  'Security',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$score%',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: compact ? 18 : 20,
+                      ),
+                    ),
+                    const Text(
+                      'Security',
+                      style: TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -151,11 +171,8 @@ class DashboardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 identity,
-                const SizedBox(height: 18),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: scoreWidget,
-                ),
+                const SizedBox(height: 14),
+                Align(alignment: Alignment.centerLeft, child: scoreWidget),
               ],
             );
           }
@@ -163,6 +180,7 @@ class DashboardHeader extends StatelessWidget {
           return Row(
             children: [
               Expanded(child: identity),
+              const SizedBox(width: 18),
               scoreWidget,
             ],
           );
