@@ -44,3 +44,4 @@ backend/uploads/qr/
 frontend/safecolony_app/android/key.properties
 *.jks
 *.keystore
+database_url.txt
