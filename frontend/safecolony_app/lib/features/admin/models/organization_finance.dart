@@ -155,3 +155,23 @@ class CommunityFundSummary {
     );
   }
 }
+
+
+class MoneyTransaction {
+  final String id, kind, title, payerOrCategory, status, occurredAt;
+  final String? blockName, unitNumber, paymentMethod, reference;
+  final double amount;
+  const MoneyTransaction({
+    required this.id, required this.kind, required this.title,
+    required this.payerOrCategory, required this.status, required this.occurredAt,
+    this.blockName, this.unitNumber, this.paymentMethod, this.reference,
+    required this.amount,
+  });
+  factory MoneyTransaction.fromJson(Map<String,dynamic> j)=>MoneyTransaction(
+    id:j['id']?.toString()??'', kind:j['kind']?.toString()??'', title:j['title']?.toString()??'',
+    payerOrCategory:j['payer_or_category']?.toString()??'', status:j['status']?.toString()??'',
+    occurredAt:j['occurred_at']?.toString()??'', blockName:j['block_name']?.toString(),
+    unitNumber:j['unit_number']?.toString(), paymentMethod:j['payment_method']?.toString(),
+    reference:j['reference']?.toString(), amount:double.tryParse(j['amount']?.toString()??'')??0,
+  );
+}

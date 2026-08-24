@@ -14,7 +14,25 @@ import '../../visitors/screens/visitor_list_screen.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../../maintenance/screens/maintenance_resident_screen.dart';
 import '../../maintenance/screens/community_finance_screen.dart';
+import '../../admin/screens/organization_money_details_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../community_services/screens/community_services_screen.dart';
+import '../../complaints/screens/complaint_screen.dart';
+import '../../incidents/screens/incident_screen.dart';
+import '../../emergency/screens/emergency_alerts_screen.dart';
+import '../../emergency/screens/emergency_sos_screen.dart';
+import '../../amenities/screens/amenity_screen.dart';
+import '../../admin/screens/block_admin_management_screen.dart';
+import '../../admin/screens/resident_approval_screen.dart';
+import '../../admin/property/screens/property_list_screen.dart';
+import '../../admin/section/screens/section_list_screen.dart';
+import '../../admin/unit/screens/unit_list_screen.dart';
+import '../../admin/screens/organization_user_management_screen.dart';
+import '../../admin/guard/screens/guard_list_screen.dart';
+import '../../marketplace/screens/marketplace_screen.dart';
+import '../../marketplace/screens/marketplace_admin_screen.dart';
+import '../../marketplace/screens/marketplace_vendor_screen.dart';
+import '../../super_app/screens/super_app_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
   const DashboardSidebar({super.key});
@@ -73,6 +91,9 @@ class DashboardSidebar extends ConsumerWidget {
 
               const SizedBox(height: 12),
 
+              // The sidebar mirrors the modules available to the current
+              // role's dashboard. Do not show resident-only modules to
+              // administrators/guards, or admin-only modules to residents.
               _menu(
                 context,
                 ref,
@@ -82,95 +103,86 @@ class DashboardSidebar extends ConsumerWidget {
                 selected: true,
               ),
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.people,
-                title: "Visitors",
-              ),
-            if (user?.role == "SECURITY_GUARD")
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.qr_code_scanner,
-                title: "Guard Scanner",
-              ),
+              if (user?.role == "RESIDENT") ...[
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.hub_rounded, title: "SafeColony Hub"),
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.inventory_2,
-                title: "Deliveries",
-              ),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.people, title: "Visitors"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.inventory_2, title: "Deliveries"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.beach_access, title: "Vacation"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.support_agent, title: "Complaints"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.report_problem_outlined, title: "Incidents"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.emergency_outlined, title: "Emergency"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.pool_outlined, title: "Amenities"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.notifications, title: "Notifications"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.forum_rounded, title: "Community Chat"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.handyman_rounded, title: "Community Services"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.storefront_rounded, title: "Marketplace"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.auto_awesome, title: "AI Assistant"),
+              ],
 
-              if (user?.role == "ORGANIZATION_ADMIN" || user?.role == "PROPERTY_MANAGER" || user?.role == "RESIDENT")
-                _menu(
-                  context,
-                  ref,
-                  role: user?.role ?? "",
-                  icon: Icons.account_balance_wallet,
-                  title: "Maintenance",
-                ),
+              if (user?.role == "ORGANIZATION_ADMIN") ...[
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.hub_rounded, title: "SafeColony Hub"),
 
-              if (user?.role == "ORGANIZATION_ADMIN" ||
-                  user?.role == "COMMUNITY_FINANCE_ADMIN" ||
-                  user?.role == "RESIDENT")
-                _menu(
-                  context,
-                  ref,
-                  role: user?.role ?? "",
-                  icon: Icons.account_balance,
-                  title: "Community Finance",
-                ),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.person_add_alt_1_rounded, title: "Resident Approvals"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.apartment_rounded, title: "Properties"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.grid_view_rounded, title: "Sections"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.home_work_rounded, title: "Units"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.admin_panel_settings_rounded, title: "Block Admins & Finance"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.manage_accounts_rounded, title: "User Management"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.shield_rounded, title: "Security Guards"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_wallet_rounded, title: "Maintenance"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.receipt_long_rounded, title: "Money Details"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_rounded, title: "Community Finance"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.notifications_active_rounded, title: "Notifications"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.sos_rounded, title: "Emergency Alerts"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.forum_rounded, title: "Community Chat"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.report_problem_rounded, title: "Incidents"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.handyman_rounded, title: "Community Services"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.storefront_rounded, title: "Marketplace"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.auto_awesome, title: "AI Assistant"),
+              ],
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.beach_access,
-                title: "Vacation",
-              ),
+              if (user?.role == "BLOCK_ADMIN") ...[
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.hub_rounded, title: "SafeColony Hub"),
 
-              if (user?.role != "RESIDENT")
-                _menu(
-                  context,
-                  ref,
-                  role: user?.role ?? "",
-                  icon: Icons.notifications,
-                  title: "Notifications",
-                ),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.support_agent_rounded, title: "Complaints"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.report_problem_rounded, title: "Incidents"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_wallet_rounded, title: "Maintenance"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.notifications_active_rounded, title: "Notifications"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.forum_rounded, title: "Community Chat"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.handyman_rounded, title: "Community Services"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.storefront_rounded, title: "Marketplace"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.auto_awesome, title: "AI Assistant"),
+              ],
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.forum_rounded,
-                title: "Community Chat",
-              ),
+              if (user?.role == "COMMUNITY_FINANCE_ADMIN") ...[
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.hub_rounded, title: "SafeColony Hub"),
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.auto_awesome,
-                title: "AI Assistant",
-              ),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_wallet_rounded, title: "Community Funds"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.notifications_active_rounded, title: "Notifications"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.forum_rounded, title: "Community Chat"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.handyman_rounded, title: "Community Services"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.storefront_rounded, title: "Marketplace"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.auto_awesome, title: "AI Assistant"),
+              ],
 
-              const Divider(
-                color: Colors.white24,
-                height: 30,
-              ),
+              if (user?.role == "VENDOR") ...[
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.storefront_rounded, title: "Marketplace"),
+              ],
 
-              _menu(
-                context,
-                ref,
-                role: user?.role ?? "",
-                icon: Icons.settings,
-                title: "Settings",
-              ),
+              if (user?.role == "SECURITY_GUARD" || user?.role == "SECURITY_MANAGER") ...[
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.people, title: "Visitors"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.qr_code_scanner, title: "Guard Scanner"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.inventory_2, title: "Deliveries"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.emergency_outlined, title: "Emergency"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.report_problem_outlined, title: "Incidents"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.notifications, title: "Notifications"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.forum_rounded, title: "Community Chat"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.handyman_rounded, title: "Community Services"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.auto_awesome, title: "AI Assistant"),
+              ],
+
+              const Divider(color: Colors.white24, height: 30),
 
               _menu(
                 context,
@@ -297,6 +309,32 @@ case "Visitors":
               );
               break;
 
+            case "Community Services":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CommunityServicesScreen(),
+                ),
+              );
+              break;
+
+            case "SafeColony Hub":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SuperAppScreen()));
+              break;
+
+            case "Marketplace":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) {
+                    if (role == "VENDOR") return const MarketplaceVendorScreen();
+                    if (role == "ORGANIZATION_ADMIN") return const MarketplaceAdminScreen();
+                    return const MarketplaceScreen();
+                  },
+                ),
+              );
+              break;
+
             case "AI Assistant":
               Navigator.push(
                 context,
@@ -304,6 +342,67 @@ case "Visitors":
                   builder: (_) => const AIAssistantScreen(),
                 ),
               );
+              break;
+
+            case "Complaints":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintScreen()));
+              break;
+
+            case "Incidents":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const IncidentScreen()));
+              break;
+
+            case "Emergency":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencySOSScreen()));
+              break;
+
+            case "Emergency Alerts":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyAlertsScreen()));
+              break;
+
+            case "Amenities":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AmenityScreen()));
+              break;
+
+            case "Resident Approvals":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ResidentApprovalScreen()));
+              break;
+
+            case "Properties":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PropertyListScreen()));
+              break;
+
+            case "Sections":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SectionListScreen()));
+              break;
+
+            case "Units":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const UnitListScreen()));
+              break;
+
+            case "Block Admins & Finance":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const BlockAdminManagementScreen()));
+              break;
+
+            case "User Management":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const OrganizationUserManagementScreen()));
+              break;
+
+            case "Security Guards":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const GuardListScreen()));
+              break;
+
+            case "Money Details":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const OrganizationMoneyDetailsScreen(),
+                ),
+              );
+              break;
+
+            case "Community Funds":
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const CommunityFinanceScreen()));
               break;
 
             case "Settings":

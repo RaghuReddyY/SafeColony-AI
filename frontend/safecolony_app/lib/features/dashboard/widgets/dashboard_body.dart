@@ -8,6 +8,7 @@ import 'dashboard_stats.dart';
 import 'quick_action_grid.dart';
 import 'visitor_chart.dart';
 import 'family_invite_card.dart';
+import '../../community_services/widgets/community_services_card.dart';
 
 class DashboardBody extends StatelessWidget {
   final DashboardSummary dashboard;
@@ -57,6 +58,8 @@ class DashboardBody extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const QuickActionGrid(),
+          const SizedBox(height: 22),
+          const CommunityServicesCard(),
           const SizedBox(height: 28),
           if (isDesktop)
             Row(

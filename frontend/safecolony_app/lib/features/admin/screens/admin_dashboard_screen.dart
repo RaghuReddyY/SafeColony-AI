@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../dashboard/widgets/dashboard_sidebar.dart';
+
 import '../../auth/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../ai/screens/ai_assistant_screen.dart';
@@ -28,6 +30,9 @@ import '../widgets/organization_finance_widget.dart';
 import 'resident_approval_screen.dart';
 import 'block_admin_management_screen.dart';
 import 'organization_user_management_screen.dart';
+import '../../community_services/widgets/community_services_card.dart';
+import 'organization_money_details_screen.dart';
+import '../../marketplace/screens/marketplace_admin_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -106,6 +111,7 @@ class _AdminDashboardScreenState
         emergencyAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
+      drawer: const DashboardSidebar(),
       backgroundColor: const Color(0xffF5F7FB),
 
       // ============================================================
@@ -211,6 +217,10 @@ class _AdminDashboardScreenState
                 const SizedBox(height: 14),
 
                 _organizationCodeCard(),
+
+                const SizedBox(height: 14),
+
+                const CommunityServicesCard(),
 
                 const SizedBox(height: 22),
 
@@ -409,14 +419,10 @@ class _AdminDashboardScreenState
 
                     _ActionData(
                       'Money Details',
-                      'Open the full finance dashboard',
+                      'Detailed collections, payments, receipts and dues',
                       Icons.receipt_long_rounded,
                       const Color(0xff16A34A),
-                      () {
-                        _open(
-                          const MaintenanceAdminScreen(),
-                        );
-                      },
+                      () => _open(const OrganizationMoneyDetailsScreen()),
                     ),
 
                     _ActionData(
@@ -444,6 +450,24 @@ class _AdminDashboardScreenState
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 28),
+
+                _sectionHeader(
+                  'Community Marketplace',
+                  'Bring groceries, pharmacy and service providers into the community',
+                  Icons.storefront_rounded,
+                ),
+                const SizedBox(height: 12),
+                _managementGrid([
+                  _ActionData(
+                    'Marketplace',
+                    'Create community days, vendors and review aggregated orders',
+                    Icons.storefront_rounded,
+                    const Color(0xff0F766E),
+                    () => _open(const MarketplaceAdminScreen()),
+                  ),
+                ]),
 
                 const SizedBox(height: 28),
 

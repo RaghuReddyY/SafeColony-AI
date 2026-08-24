@@ -30,6 +30,12 @@ class User(Base):
         nullable=False,
     )
 
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+
     phone: Mapped[str] = mapped_column(
         String(20),
         unique=True,

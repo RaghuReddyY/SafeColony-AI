@@ -21,9 +21,13 @@ from app.models.unit import Unit
 from app.models.property import Property
 from app.models.resident import Resident
 from app.models.login_otp import LoginOTP
+from app.models.password_reset import PasswordResetToken
+from app.models.email_verification import EmailVerificationToken
 from app.models.notification import Notification
 from app.models.user_block_scope import UserBlockScope
 from app.config import settings
+from app.services.notification_providers import send_email
+from app.core.logger import logger
 
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.user_repository import UserRepository
@@ -76,7 +80,7 @@ class AuthService:
         if self.user_repo.get_by_email(email):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Email already exists.",
+                detail="An account with this email already exists. Please login or use Forgot Password.",
             )
 
         if self.user_repo.get_by_phone(data.phone):
@@ -138,6 +142,7 @@ class AuthService:
             role=UserRole.RESIDENT.value,
             status=UserStatus.PENDING.value,
             is_active=True,
+            email_verified=False,
             organization_id=organization.id,
         )
 
@@ -199,11 +204,222 @@ class AuthService:
 
         self.db.refresh(user)
 
+        # Email ownership is verified separately from administrator approval.
+        # If SMTP is unavailable, keep the account pending and allow resend later.
+        if all([
+            settings.SMTP_HOST,
+            settings.SMTP_USERNAME,
+            settings.SMTP_PASSWORD,
+            settings.SMTP_FROM_EMAIL,
+            settings.EMAIL_VERIFICATION_BASE_URL,
+        ]):
+            try:
+                self._send_email_verification(user)
+            except Exception as exc:
+                logger.warning("Registration email verification delivery failed: %s", exc)
+
         return {
-            "message": "Registration successful. Awaiting administrator approval.",
+            "message": "Registration successful. Please verify your email. After email verification, your registration will remain pending until administrator approval.",
             "user_id": user.id,
             "status": user.status,
         }
+
+    # ------------------------------------------------------------------
+    # Email Verification
+    # ------------------------------------------------------------------
+
+    def _send_email_verification(self, user: User) -> None:
+        if user.email_verified:
+            return
+
+        now = datetime.utcnow()
+        self.db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+        record = EmailVerificationToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=now + timedelta(minutes=settings.EMAIL_VERIFICATION_EXPIRY_MINUTES),
+        )
+        self.db.add(record)
+        self.db.commit()
+
+        base_url = (settings.EMAIL_VERIFICATION_BASE_URL or "").strip().rstrip("/")
+        if not base_url:
+            record.used_at = datetime.utcnow()
+            self.db.commit()
+            raise RuntimeError("EMAIL_VERIFICATION_BASE_URL is not configured.")
+
+        verification_url = f"{base_url}/auth/verify-email?token={raw_token}"
+
+        send_email(
+            user.email,
+            "Verify your SafeColony email",
+            (
+                f"Hello {user.full_name},\n\n"
+                "Welcome to SafeColony. Please verify that this email address belongs to you "
+                "by opening the link below:\n\n"
+                f"{verification_url}\n\n"
+                f"This verification link expires in {settings.EMAIL_VERIFICATION_EXPIRY_MINUTES} minutes "
+                "and can be used only once.\n\n"
+                "After email verification, your registration will still require administrator approval "
+                "before you can log in.\n\n"
+                "If you did not create this account, you can safely ignore this email.\n\n"
+                "SafeColony"
+            ),
+        )
+
+    def resend_email_verification(self, email: str) -> dict:
+        normalized = email.strip().lower()
+        user = self.user_repo.get_by_email(normalized)
+
+        response = {
+            "message": "If an account exists and its email is not yet verified, a verification email has been sent."
+        }
+
+        if not user or not user.is_active or user.email_verified:
+            return response
+
+        if not all([
+            settings.SMTP_HOST,
+            settings.SMTP_USERNAME,
+            settings.SMTP_PASSWORD,
+            settings.SMTP_FROM_EMAIL,
+            settings.EMAIL_VERIFICATION_BASE_URL,
+        ]):
+            logger.warning("Email verification resend requested but SMTP/base URL is not configured.")
+            return response
+
+        try:
+            self._send_email_verification(user)
+        except Exception as exc:
+            logger.warning("Email verification resend failed: %s", exc)
+
+        return response
+
+    def verify_email(self, token: str) -> str:
+        token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+        record = (
+            self.db.query(EmailVerificationToken)
+            .filter(EmailVerificationToken.token_hash == token_hash)
+            .first()
+        )
+        now = datetime.utcnow()
+
+        if not record or record.used_at is not None or record.expires_at < now:
+            return "This verification link is invalid or has expired. Please request a new verification email."
+
+        user = record.user
+        if not user or not user.is_active:
+            return "This verification link is invalid or has expired."
+
+        user.email_verified = True
+        record.used_at = now
+
+        self.db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.id != record.id,
+            EmailVerificationToken.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
+
+        self.db.commit()
+        return "Your email has been verified successfully. You can now return to SafeColony and log in after your account is approved."
+
+    # ------------------------------------------------------------------
+    # Forgot / Reset Password
+    # ------------------------------------------------------------------
+
+    def forgot_password(self, email: str):
+        normalized = email.strip().lower()
+        user = self.user_repo.get_by_email(normalized)
+
+        # Always use the same response for unknown addresses to avoid account enumeration.
+        response = {
+            "message": "If an account exists for this email, password reset instructions have been sent.",
+            "expires_in_minutes": settings.PASSWORD_RESET_EXPIRY_MINUTES,
+            "dev_reset_token": None,
+        }
+        if not user or not user.is_active:
+            return response
+
+        now = datetime.utcnow()
+        self.db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        record = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=now + timedelta(minutes=settings.PASSWORD_RESET_EXPIRY_MINUTES),
+        )
+        self.db.add(record)
+        self.db.commit()
+
+        if settings.PASSWORD_RESET_DEV_MODE and not settings.is_production:
+            response["dev_reset_token"] = raw_token
+            return response
+
+        if not all([settings.SMTP_HOST, settings.SMTP_USERNAME, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
+            # Keep the response indistinguishable from the unknown-email path.
+            # The token is invalidated so an undelivered reset token cannot be reused.
+            record.used_at = datetime.utcnow()
+            self.db.commit()
+            logger.warning("Password reset requested but SMTP is not configured.")
+            return response
+
+        try:
+            send_email(
+                user.email,
+                "SafeColony password reset",
+                (
+                    f"Hello {user.full_name},\n\n"
+                    "We received a request to reset your SafeColony password.\n\n"
+                    f"Your one-time reset code is:\n\n{raw_token}\n\n"
+                    f"This code expires in {settings.PASSWORD_RESET_EXPIRY_MINUTES} minutes and can be used only once.\n\n"
+                    "If you did not request this, you can safely ignore this email.\n\n"
+                    "SafeColony"
+                ),
+            )
+        except Exception as exc:
+            record.used_at = datetime.utcnow()
+            self.db.commit()
+            logger.warning("Password reset email delivery failed: %s", exc)
+            return response
+
+        # Email was delivered successfully. Always return the response expected
+        # by ForgotPasswordResponse so FastAPI does not validate a None result.
+        return response
+
+    def reset_password(self, email: str, token: str, new_password: str):
+        normalized = email.strip().lower()
+        token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+        record = self.db.query(PasswordResetToken).join(User).filter(
+            User.email == normalized,
+            PasswordResetToken.token_hash == token_hash,
+        ).first()
+        if not record or record.used_at is not None or record.expires_at < datetime.utcnow():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The password reset code is invalid or expired.")
+
+        user = record.user
+        if not user or not user.is_active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The password reset code is invalid or expired.")
+
+        user.password_hash = hash_password(new_password)
+        record.used_at = datetime.utcnow()
+        self.db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.id != record.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({"used_at": datetime.utcnow()}, synchronize_session=False)
+        self.db.commit()
 
     # ------------------------------------------------------------------
     # Login
@@ -230,6 +446,12 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password.",
+            )
+
+        if not user.email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email address before logging in. Check your Gmail for the SafeColony verification link.",
             )
 
         if user.status == UserStatus.PENDING.value:

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,9 @@ from app.schemas.token import Token
 from app.schemas.otp import OTPRequest, OTPRequestResponse, OTPVerifyRequest
 from app.schemas.user import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
     RegisterResponse,
     UserRegister,
     UserResponse,
@@ -103,6 +107,78 @@ def get_me(
             if scope.section is not None
         ],
     }
+
+
+
+
+@router.post(
+    "/resend-verification",
+    status_code=status.HTTP_200_OK,
+    summary="Resend email verification",
+)
+def resend_verification(
+    request: ForgotPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    return service.resend_email_verification(request.email)
+
+
+@router.get(
+    "/verify-email",
+    response_class=HTMLResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verify email address",
+)
+def verify_email(
+    token: str,
+    service: AuthService = Depends(get_auth_service),
+):
+    message = service.verify_email(token)
+    success = message.startswith("Your email has been verified successfully.")
+    title = "Email verified" if success else "Verification link problem"
+    color = "#0F766E" if success else "#B91C1C"
+    return HTMLResponse(
+        content=f"""<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeColony - {title}</title>
+</head>
+<body style="font-family:Arial,sans-serif;background:#F5F7FB;padding:32px;">
+<div style="max-width:560px;margin:60px auto;background:white;padding:32px;border-radius:18px;box-shadow:0 8px 30px rgba(15,23,42,.10);">
+<h1 style="color:{color};">SafeColony</h1>
+<h2>{title}</h2>
+<p style="font-size:16px;line-height:1.6;">{message}</p>
+<p style="color:#64748B;">You can close this page and return to the SafeColony app.</p>
+</div>
+</body>
+</html>""",
+    )
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Request password reset",
+)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    return service.forgot_password(request.email)
+
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_200_OK,
+    summary="Reset password using one-time token",
+)
+def reset_password(
+    request: ResetPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    service.reset_password(request.email, request.token, request.new_password)
+    return {"message": "Password reset successfully. Please log in with your new password."}
 
 
 @router.post(

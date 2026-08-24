@@ -268,3 +268,123 @@ class OrganizationFinanceService:
             "maintenance_sections": maintenance_sections,
             "community_funds": community_funds,
         }
+
+
+    def money_details(self, user: User):
+        self._require_organization_admin(user)
+        org_id = user.organization_id
+        from app.models.maintenance_bill import MaintenanceBill
+        from app.models.maintenance_payment import MaintenancePayment
+        from app.models.community_fund import CommunityFundContribution, CommunityFundExpense, CommunityFund
+        from app.models.resident import Resident
+        from app.models.unit import Unit
+        from app.models.section import Section
+        from app.models.property import Property
+
+        transactions = []
+
+        payments = (
+            self.db.query(MaintenancePayment)
+            .join(MaintenanceBill, MaintenancePayment.bill_id == MaintenanceBill.id)
+            .join(Resident, MaintenanceBill.resident_id == Resident.id)
+            .join(User, Resident.user_id == User.id)
+            .outerjoin(Unit, Resident.unit_id == Unit.id)
+            .outerjoin(Section, Unit.section_id == Section.id)
+            .outerjoin(Property, Unit.property_id == Property.id)
+            .filter(User.organization_id == org_id)
+            .order_by(MaintenancePayment.paid_at.desc())
+            .limit(200)
+            .all()
+        )
+        for p in payments:
+            r = p.bill.resident
+            transactions.append({
+                "id": f"MAINT-PAY-{p.id}",
+                "kind": "MAINTENANCE_PAYMENT",
+                "title": "Maintenance payment",
+                "payer_or_category": r.full_name or "Resident",
+                "block_name": r.section_name,
+                "unit_number": r.unit_number,
+                "amount": p.amount,
+                "status": p.status,
+                "payment_method": p.payment_method,
+                "reference": p.reference,
+                "occurred_at": p.paid_at.isoformat(),
+            })
+
+        bills = (
+            self.db.query(MaintenanceBill)
+            .join(Resident, MaintenanceBill.resident_id == Resident.id)
+            .join(User, Resident.user_id == User.id)
+            .filter(
+                User.organization_id == org_id,
+                MaintenanceBill.status.in_(["UNPAID", "PARTIAL"]),
+            )
+            .order_by(MaintenanceBill.due_date.asc())
+            .limit(200)
+            .all()
+        )
+        for bill in bills:
+            r = bill.resident
+            transactions.append({
+                "id": f"MAINT-DUE-{bill.id}",
+                "kind": "MAINTENANCE_DUE",
+                "title": "Maintenance due",
+                "payer_or_category": r.full_name or "Resident",
+                "block_name": r.section_name,
+                "unit_number": r.unit_number,
+                "amount": bill.total_due - bill.amount_paid,
+                "status": bill.status,
+                "payment_method": None,
+                "reference": None,
+                "occurred_at": bill.due_date.isoformat(),
+            })
+
+        funds = (
+            self.db.query(CommunityFundContribution)
+            .join(CommunityFund, CommunityFundContribution.fund_id == CommunityFund.id)
+            .filter(CommunityFund.organization_id == org_id)
+            .order_by(CommunityFundContribution.collected_at.desc())
+            .limit(200)
+            .all()
+        )
+        for c in funds:
+            transactions.append({
+                "id": f"FUND-PAY-{c.id}",
+                "kind": "COMMUNITY_CONTRIBUTION",
+                "title": c.fund.title,
+                "payer_or_category": c.payer_name,
+                "block_name": c.block_name,
+                "unit_number": c.unit_number,
+                "amount": c.amount,
+                "status": c.status,
+                "payment_method": c.payment_method,
+                "reference": c.reference,
+                "occurred_at": c.collected_at.isoformat(),
+            })
+
+        expenses = (
+            self.db.query(CommunityFundExpense)
+            .join(CommunityFund, CommunityFundExpense.fund_id == CommunityFund.id)
+            .filter(CommunityFund.organization_id == org_id)
+            .order_by(CommunityFundExpense.spent_on.desc())
+            .limit(200)
+            .all()
+        )
+        for e in expenses:
+            transactions.append({
+                "id": f"FUND-EXP-{e.id}",
+                "kind": "COMMUNITY_EXPENSE",
+                "title": e.fund.title,
+                "payer_or_category": e.category,
+                "block_name": None,
+                "unit_number": None,
+                "amount": e.amount,
+                "status": "EXPENSE",
+                "payment_method": None,
+                "reference": e.description,
+                "occurred_at": e.spent_on.isoformat(),
+            })
+
+        transactions.sort(key=lambda x: x["occurred_at"], reverse=True)
+        return transactions[:400]

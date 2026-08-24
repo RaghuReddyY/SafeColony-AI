@@ -225,7 +225,7 @@ if (!usingFamilyCode && _unitNumberController.text.trim().isEmpty) {
         const SnackBar(
           backgroundColor: Colors.green,
           content: Text(
-              "Registration submitted successfully. Please wait for administrator approval. You can login after your account is approved."),
+               "Registration submitted successfully. Please check your Gmail and click the SafeColony verification link. After verification, your account will still require administrator approval before you can log in."),
         ),
       );
 
@@ -447,6 +447,15 @@ AppTextField(
                       controller: _emailController,
                       hint: "Email",
                       icon: Icons.email,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        final email = value?.trim() ?? '';
+                        if (email.isEmpty) return 'Email is required';
+                        if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+                          return 'Enter a valid email address';
+                        }
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 16),

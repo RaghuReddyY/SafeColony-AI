@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../dashboard/widgets/dashboard_sidebar.dart';
+
 import '../../auth/login_screen.dart';
 import '../../../shared/widgets/dashboard_quick_access_fabs.dart';
 import '../../chat/screens/community_chat_screen.dart';
@@ -38,6 +40,7 @@ import '../../emergency/screens/emergency_sos_screen.dart';
 import '../../emergency/screens/emergency_alerts_screen.dart';
 import '../../emergency/providers/emergency_provider.dart';
 import '../../incidents/screens/incident_screen.dart';
+import '../../community_services/widgets/community_services_card.dart';
 
 class GuardDashboardScreen extends ConsumerStatefulWidget {
   const GuardDashboardScreen({super.key});
@@ -407,6 +410,7 @@ class _GuardDashboardScreenState
     // ============================================================
 
     return Scaffold(
+      drawer: const DashboardSidebar(),
       backgroundColor: const Color(0xffF5F7FB),
 
       // ==========================================================
@@ -541,6 +545,12 @@ class _GuardDashboardScreenState
                       .summary
                       .deliveries,
             ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            const CommunityServicesCard(),
 
             const SizedBox(
               height: 20,

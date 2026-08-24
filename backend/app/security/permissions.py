@@ -195,6 +195,24 @@ class Permissions:
     CHAT_SEND = "chat:send"
 
     # ==========================================================
+    # Community Services Directory
+    # ==========================================================
+
+    COMMUNITY_SERVICE_VIEW = "community_service:view"
+    COMMUNITY_SERVICE_CREATE = "community_service:create"
+    COMMUNITY_SERVICE_UPDATE = "community_service:update"
+
+
+    # ==========================================================
+    # Community Marketplace
+    # ==========================================================
+    MARKETPLACE_VIEW = "marketplace:view"
+    MARKETPLACE_MANAGE = "marketplace:manage"
+    MARKETPLACE_ORDER = "marketplace:order"
+    MARKETPLACE_VENDOR = "marketplace:vendor"
+    SUPER_APP_MANAGE = "super_app:manage"
+
+    # ==========================================================
     # Dashboard
     # ==========================================================
 

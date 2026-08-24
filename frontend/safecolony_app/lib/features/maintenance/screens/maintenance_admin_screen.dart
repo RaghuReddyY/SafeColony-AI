@@ -691,27 +691,145 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
         SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : () => _addExpense(period), child: const Text('Add Expense'))),
       ])));
 
-  Widget _bills(List<MaintenanceBill> bills) => Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Resident Payment Tracking', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        if (bills.isEmpty) const Text('Bills are not generated yet.') else ...bills.map((b) => ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(child: Icon(b.status == 'PAID' ? Icons.check : Icons.schedule)),
-          title: Text(b.residentName),
-          subtitle: Text('${b.propertyName ?? ''} ${b.sectionName ?? ''} Unit ${b.unitNumber ?? ''}\nDue ${_date(b.dueDate)}\nPaid ${_money(b.amountPaid)} • Balance ${_money(b.balance)}'),
-          trailing: b.status == 'PAID' || b.status == 'PARTIAL'
-              ? Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(b.status, style: TextStyle(color: b.status == 'PAID' ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  if (b.status != 'PAID') TextButton(onPressed: _busy ? null : () => _recordAdminPayment(b), child: const Text('Record Payment')),
-                ])
-              : Wrap(spacing: 4, children: [
-                  FilledButton(onPressed: _busy ? null : () => _recordAdminPayment(b), child: const Text('Record Paid')),
-                  IconButton(tooltip: 'Edit bill', onPressed: _busy ? null : () => _editBill(b), icon: const Icon(Icons.edit_outlined)),
-                  IconButton(tooltip: 'Delete bill', onPressed: _busy ? null : () => _deleteBill(b), icon: const Icon(Icons.delete_outline)),
-                ]),
-        ))
-      ])));
+  Widget _bills(List<MaintenanceBill> bills) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Resident Payment Tracking',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              if (bills.isEmpty)
+                const Text('Bills are not generated yet.')
+              else
+                ...bills.map(
+                  (b) => Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    elevation: 0,
+                    color: const Color(0xffF8FAFC),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final compact = constraints.maxWidth < 620;
+                          final info = Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                child: Icon(
+                                  b.status == 'PAID'
+                                      ? Icons.check
+                                      : Icons.schedule,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      b.residentName,
+                                      softWrap: true,
+                                      overflow: TextOverflow.visible,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${b.propertyName ?? ''} ${b.sectionName ?? ''} • Unit ${b.unitNumber ?? ''}',
+                                      softWrap: true,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Due ${_date(b.dueDate)} • Paid ${_money(b.amountPaid)} • Balance ${_money(b.balance)}',
+                                      softWrap: true,
+                                      style: const TextStyle(color: Colors.black54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                          final actions = b.status == 'PAID' || b.status == 'PARTIAL'
+                              ? Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 4,
+                                  children: [
+                                    Text(
+                                      b.status,
+                                      style: TextStyle(
+                                        color: b.status == 'PAID'
+                                            ? Colors.green
+                                            : Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (b.status != 'PAID')
+                                      TextButton(
+                                        onPressed: _busy
+                                            ? null
+                                            : () => _recordAdminPayment(b),
+                                        child: const Text('Record Payment'),
+                                      ),
+                                  ],
+                                )
+                              : Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 4,
+                                  children: [
+                                    FilledButton(
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _recordAdminPayment(b),
+                                      child: const Text('Record Paid'),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Edit bill',
+                                      onPressed: _busy ? null : () => _editBill(b),
+                                      icon: const Icon(Icons.edit_outlined),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Delete bill',
+                                      onPressed: _busy ? null : () => _deleteBill(b),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
+                                  ],
+                                );
+                          if (compact) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                info,
+                                const SizedBox(height: 10),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: actions,
+                                ),
+                              ],
+                            );
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(child: info),
+                              const SizedBox(width: 12),
+                              actions,
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
 
   Widget _expenses(List<MaintenanceExpense> expenses) => Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Monthly Expenses', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),

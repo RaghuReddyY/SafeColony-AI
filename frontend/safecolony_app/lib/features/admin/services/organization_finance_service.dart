@@ -8,4 +8,11 @@ class OrganizationFinanceService {
       Map<String, dynamic>.from(response.data as Map),
     );
   }
+
+  Future<List<MoneyTransaction>> getMoneyDetails() async {
+    final response = await ApiClient.dio.get('/dashboard/money-details');
+    return (response.data as List)
+        .map((e) => MoneyTransaction.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
 }

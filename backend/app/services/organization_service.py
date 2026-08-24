@@ -454,6 +454,7 @@ _MANAGED_USER_ROLES = {
     UserRole.SECURITY_GUARD,
     UserRole.BLOCK_ADMIN,
     UserRole.COMMUNITY_FINANCE_ADMIN,
+    UserRole.VENDOR,
 }
 
 

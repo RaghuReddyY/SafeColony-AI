@@ -107,12 +107,24 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
     });
     _scrollToBottom();
     try {
-      final reply = await _service.chat(_messages);
+      final intent = await _service.action(message: text);
       if (!mounted) return;
-      setState(() {
-        _messages.add(AIMessage(role: 'assistant', content: reply));
-        _sending = false;
-      });
+      if (intent.requiresConfirmation && intent.action != 'CHAT') {
+        setState(() { _sending = false; });
+        final confirm = await showDialog<bool>(context: context, builder: (c)=>AlertDialog(title: const Text('Confirm SafeColony action'),content: Text(intent.preview),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Confirm'))]));
+        if (confirm == true && mounted) {
+          setState(() { _sending = true; });
+          final result = await _service.action(message: text, confirmed: true);
+          if (!mounted) return;
+          setState(() { _messages.add(AIMessage(role: 'assistant', content: result.preview)); _sending = false; });
+        } else if (mounted) {
+          setState(() { _messages.add(const AIMessage(role: 'assistant', content: 'Action cancelled.')); _sending = false; });
+        }
+      } else {
+        final reply = await _service.chat(_messages);
+        if (!mounted) return;
+        setState(() { _messages.add(AIMessage(role: 'assistant', content: reply)); _sending = false; });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {

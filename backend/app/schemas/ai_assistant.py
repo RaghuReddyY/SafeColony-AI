@@ -14,3 +14,29 @@ class AIChatRequest(BaseModel):
 
 class AIChatResponse(BaseModel):
     message: str
+
+
+class AIIntentRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+
+class AIIntentResponse(BaseModel):
+    intent: str
+    category: str | None = None
+    action: str | None = None
+    requires_confirmation: bool = True
+    explanation: str
+
+
+class AIActionRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    confirmed: bool = False
+    event_id: int | None = None
+    items: list[dict] | None = None
+    service_request: dict | None = None
+
+class AIActionResponse(BaseModel):
+    intent: str
+    action: str
+    requires_confirmation: bool
+    preview: str
+    result: dict | None = None

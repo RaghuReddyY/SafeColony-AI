@@ -8,6 +8,7 @@ import '../../vacation/screens/vacation_screen.dart';
 import '../../complaints/screens/complaint_screen.dart';
 import '../../incidents/screens/incident_screen.dart';
 import '../../amenities/screens/amenity_screen.dart';
+import '../../marketplace/screens/marketplace_screen.dart';
 
 class QuickActionGrid extends StatelessWidget {
   const QuickActionGrid({super.key});
@@ -87,6 +88,14 @@ class QuickActionGrid extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const AmenityScreen()),
+              ),
+            ),
+            QuickActionCard(
+              icon: Icons.storefront_rounded,
+              title: 'Marketplace',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MarketplaceScreen()),
               ),
             ),
           ],

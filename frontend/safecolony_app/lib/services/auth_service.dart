@@ -75,11 +75,40 @@ Future<void> register(
     print("REGISTER RESPONSE:");
     print(response.data);
   } on DioException catch (e) {
-    print("STATUS CODE: ${e.response?.statusCode}");
-    print("ERROR BODY: ${e.response?.data}");
-    rethrow;
+    final message = ApiClient.errorMessage(e);
+    throw ApiException(message, statusCode: e.response?.statusCode);
   }
 }
+  Future<void> resendEmailVerification(String email) async {
+    await ApiClient.dio.post(
+      "/auth/resend-verification",
+      data: {"email": email.trim().toLowerCase()},
+    );
+  }
+
+  Future<String?> forgotPassword(String email) async {
+    final response = await ApiClient.dio.post(
+      "/auth/forgot-password",
+      data: {"email": email.trim().toLowerCase()},
+    );
+    return response.data["dev_reset_token"] as String?;
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    await ApiClient.dio.post(
+      "/auth/reset-password",
+      data: {
+        "email": email.trim().toLowerCase(),
+        "token": token.trim(),
+        "new_password": newPassword,
+      },
+    );
+  }
+
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,

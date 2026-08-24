@@ -34,6 +34,9 @@ from app.api.incident import router as incident_router
 from app.api.complaint import router as complaint_router
 from app.api.amenity import router as amenity_router
 from app.api.internal_scheduler import router as internal_scheduler_router
+from app.api.community_service import router as community_service_router
+from app.api.marketplace import router as marketplace_router
+from app.api.super_app import router as super_app_router
 
 
 # Core
@@ -144,6 +147,9 @@ app.include_router(incident_router)
 app.include_router(complaint_router)
 app.include_router(amenity_router)
 app.include_router(internal_scheduler_router)
+app.include_router(community_service_router)
+app.include_router(marketplace_router)
+app.include_router(super_app_router)
 
 
 

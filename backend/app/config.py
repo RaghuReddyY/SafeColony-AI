@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
+    EMAIL_VERIFICATION_BASE_URL: str | None = None
+    EMAIL_VERIFICATION_EXPIRY_MINUTES: int = 30
+    PASSWORD_RESET_EXPIRY_MINUTES: int = 30
+    PASSWORD_RESET_DEV_MODE: bool = False
     TWILIO_ACCOUNT_SID: str | None = None
     TWILIO_AUTH_TOKEN: str | None = None
     TWILIO_FROM_NUMBER: str | None = None

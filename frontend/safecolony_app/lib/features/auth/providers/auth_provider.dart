@@ -338,4 +338,49 @@ Future<OrganizationRegisterResponse?> registerOrganization({
 
   }
 
+
+  Future<bool> resendEmailVerification(String email) async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      await _authService.resendEmailVerification(email.trim().toLowerCase());
+      state = state.copyWith(isLoading: false, error: null);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<String?> forgotPassword(String email) async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      final devToken = await _authService.forgotPassword(email.trim().toLowerCase());
+      state = state.copyWith(isLoading: false, error: null);
+      return devToken;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return null;
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      await _authService.resetPassword(
+        email: email.trim().toLowerCase(),
+        token: token.trim(),
+        newPassword: newPassword,
+      );
+      state = state.copyWith(isLoading: false, error: null);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
 }
+

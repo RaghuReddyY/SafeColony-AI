@@ -18,6 +18,8 @@ from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.visitor import Visitor
 from app.models.vacation_mode import VacationMode
+from app.models.marketplace import MarketplaceEvent, MarketplaceOrder
+from app.models.super_app import ServiceRequest, CommunityParcel, RecurringOrder
 
 
 class AIInsightsEngine:
@@ -39,20 +41,32 @@ class AIInsightsEngine:
                 {
                     "key": "ai_cctv_integration",
                     "title": "AI CCTV Integration",
-                    "status": "FUTURE",
-                    "description": "Connect camera streams for real-time computer-vision analysis.",
+                    "status": "ROADMAP",
+                    "description": "Connect camera streams for real-time computer-vision analysis with explicit privacy controls.",
                 },
                 {
                     "key": "ai_face_recognition",
                     "title": "AI Face Recognition",
-                    "status": "FUTURE",
+                    "status": "OPTIONAL_ROADMAP",
                     "description": "Optional face verification with explicit privacy and consent controls.",
                 },
                 {
                     "key": "ai_voice_assistant",
                     "title": "AI Voice Assistant",
-                    "status": "FUTURE",
+                    "status": "ROADMAP",
                     "description": "Voice-based resident and guard workflows.",
+                },
+                {
+                    "key": "community_marketplace_intelligence",
+                    "title": "Community Marketplace Intelligence",
+                    "status": "ACTIVE",
+                    "description": "Surface open community days, orders, service requests, recurring orders and delivery-hub workload.",
+                },
+                {
+                    "key": "ai_action_intents",
+                    "title": "AI Action Intents",
+                    "status": "ACTIVE",
+                    "description": "AI can classify shopping, service, utility and issue requests into safe, confirmation-required actions.",
                 },
             ],
         }
@@ -352,8 +366,30 @@ class AIInsightsEngine:
             for n in my_notifications
         ]
 
+        marketplace_open_events = self.db.query(func.count(MarketplaceEvent.id)).filter(
+            MarketplaceEvent.organization_id == org_id, MarketplaceEvent.status == "OPEN"
+        ).scalar() or 0
+        marketplace_orders_today = self.db.query(func.count(MarketplaceOrder.id)).filter(
+            MarketplaceOrder.organization_id == org_id, MarketplaceOrder.created_at >= today
+        ).scalar() or 0
+        service_requests_open = self.db.query(func.count(ServiceRequest.id)).filter(
+            ServiceRequest.organization_id == org_id,
+            ServiceRequest.status.in_(["REQUESTED","ASSIGNED","QUOTED","APPROVED","IN_PROGRESS"])
+        ).scalar() or 0
+        parcels_at_hub = self.db.query(func.count(CommunityParcel.id)).filter(
+            CommunityParcel.organization_id == org_id, CommunityParcel.status == "AT_HUB"
+        ).scalar() or 0
+        recurring_orders = self.db.query(func.count(RecurringOrder.id)).filter(
+            RecurringOrder.organization_id == org_id, RecurringOrder.active.is_(True)
+        ).scalar() or 0
+
         return {
             "organization_id": org_id,
+            "marketplace_open_events": int(marketplace_open_events),
+            "marketplace_orders_today": int(marketplace_orders_today),
+            "service_requests_open": int(service_requests_open),
+            "parcels_at_hub": int(parcels_at_hub),
+            "active_recurring_orders": int(recurring_orders),
             "active_residents": int(active_residents),
             "security_staff": int(security_staff),
             "visitors_pending": int(visitors_pending),
@@ -428,6 +464,18 @@ class AIInsightsEngine:
             parking_level = "MEDIUM"
 
         cards = [
+            self._card(
+                "super_app_operations",
+                "AI Super-App Operations",
+                "MARKETPLACE",
+                f"{m.get('marketplace_open_events', 0)} community days are open, {m.get('marketplace_orders_today', 0)} marketplace orders were placed today, and {m.get('service_requests_open', 0)} service requests are active.",
+                [
+                    f"Delivery hub parcels waiting: {m.get('parcels_at_hub', 0)}.",
+                    f"Active recurring orders: {m.get('active_recurring_orders', 0)}.",
+                    "Use aggregated community ordering to reduce vendor trips and improve resident convenience.",
+                ],
+                "Review SafeColony Hub operations.",
+            ),
             self._card(
                 "security_summary",
                 "AI Security Summary",

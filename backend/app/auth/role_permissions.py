@@ -90,6 +90,10 @@ ROLE_PERMISSIONS = {
         Permissions.COMMUNITY_FINANCE_VIEW,
         Permissions.COMMUNITY_FINANCE_MANAGE,
         Permissions.COMMUNITY_FINANCE_PAYMENT,
+        Permissions.MARKETPLACE_VIEW,
+        Permissions.MARKETPLACE_MANAGE,
+        Permissions.MARKETPLACE_ORDER,
+        Permissions.SUPER_APP_MANAGE,
     },
 
     # ==========================================================
@@ -141,6 +145,7 @@ ROLE_PERMISSIONS = {
         Permissions.CHAT_VIEW,
         Permissions.CHAT_SEND,
         Permissions.AI_ASSISTANT,
+        Permissions.SUPER_APP_MANAGE,
     },
 
     # ==========================================================
@@ -275,6 +280,8 @@ ROLE_PERMISSIONS = {
         Permissions.CHAT_VIEW,
         Permissions.CHAT_SEND,
         Permissions.AI_ASSISTANT,
+        Permissions.MARKETPLACE_VIEW,
+        Permissions.MARKETPLACE_ORDER,
     },
 
     # ==========================================================
@@ -293,6 +300,17 @@ ROLE_PERMISSIONS = {
         Permissions.CHAT_VIEW,
         Permissions.CHAT_SEND,
         Permissions.AI_ASSISTANT,
+        Permissions.MARKETPLACE_VIEW,
+        Permissions.MARKETPLACE_ORDER,
+    },
+
+    # ==========================================================
+    # Community Vendor
+    # ==========================================================
+    UserRole.VENDOR: {
+        Permissions.MARKETPLACE_VIEW,
+        Permissions.MARKETPLACE_VENDOR,
+        Permissions.DASHBOARD_VIEW,
     },
 
     # ==========================================================
@@ -348,9 +366,31 @@ ROLE_PERMISSIONS = {
         Permissions.CHAT_VIEW,
         Permissions.CHAT_SEND,
         Permissions.AI_ASSISTANT,
+        Permissions.MARKETPLACE_VIEW,
+        Permissions.MARKETPLACE_ORDER,
 
         Permissions.JOIN_REQUEST_VIEW,
         Permissions.JOIN_REQUEST_APPROVE,
         Permissions.JOIN_REQUEST_REJECT,
     },
 }
+
+# Community Services is an organization-wide directory. Every authenticated
+# community role can view, add, and update entries; the organization scope is
+# enforced by the API so one colony cannot edit another colony's directory.
+_COMMUNITY_SERVICE_PERMISSIONS = {
+    Permissions.COMMUNITY_SERVICE_VIEW,
+    Permissions.COMMUNITY_SERVICE_CREATE,
+    Permissions.COMMUNITY_SERVICE_UPDATE,
+}
+
+for _role in (
+    UserRole.ORGANIZATION_ADMIN,
+    UserRole.PROPERTY_MANAGER,
+    UserRole.SECURITY_MANAGER,
+    UserRole.SECURITY_GUARD,
+    UserRole.BLOCK_ADMIN,
+    UserRole.COMMUNITY_FINANCE_ADMIN,
+    UserRole.RESIDENT,
+):
+    ROLE_PERMISSIONS.setdefault(_role, set()).update(_COMMUNITY_SERVICE_PERMISSIONS)

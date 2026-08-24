@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../dashboard/widgets/dashboard_sidebar.dart';
+
 import '../../ai/screens/ai_assistant_screen.dart';
 import '../../chat/screens/community_chat_screen.dart';
 import '../../complaints/screens/complaint_screen.dart';
@@ -12,6 +14,7 @@ import '../../notifications/widgets/notification_bell.dart';
 import '../../../shared/widgets/dashboard_quick_access_fabs.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../community_services/widgets/community_services_card.dart';
 
 class ScopedAdminDashboardScreen extends ConsumerWidget {
   final bool financeOnly;
@@ -30,6 +33,7 @@ class ScopedAdminDashboardScreen extends ConsumerWidget {
         : 'Manage the blocks assigned to you without seeing unrelated blocks.';
 
     return Scaffold(
+      drawer: const DashboardSidebar(),
       backgroundColor: const Color(0xffF5F7FB),
       appBar: AppBar(
         title: Text(title),
@@ -113,6 +117,8 @@ class ScopedAdminDashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(subtitle, style: const TextStyle(color: Color(0xff64748B), fontSize: 15)),
+            const SizedBox(height: 18),
+            const CommunityServicesCard(),
             const SizedBox(height: 24),
             GridView.count(
               crossAxisCount: MediaQuery.of(context).size.width > 900 ? 4 : 2,

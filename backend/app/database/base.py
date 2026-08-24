@@ -32,3 +32,6 @@ from app.models.chat import ChatConversation, ChatParticipant, ChatMessage
 from app.models.user_block_scope import UserBlockScope
 
 from app.models.login_otp import LoginOTP
+from app.models.email_verification import EmailVerificationToken
+
+from app.models.community_service import CommunityService

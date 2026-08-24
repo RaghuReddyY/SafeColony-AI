@@ -50,3 +50,17 @@ class OrganizationFinanceSummaryResponse(BaseModel):
     community_fund_count: int
     maintenance_sections: list[OrganizationMaintenanceSectionSummary]
     community_funds: list[OrganizationCommunityFundSummary]
+
+
+class MoneyTransactionResponse(BaseModel):
+    id: str
+    kind: str
+    title: str
+    payer_or_category: str
+    block_name: str | None = None
+    unit_number: str | None = None
+    amount: Decimal
+    status: str
+    payment_method: str | None = None
+    reference: str | None = None
+    occurred_at: str

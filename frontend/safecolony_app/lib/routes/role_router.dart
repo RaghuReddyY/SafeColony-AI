@@ -4,6 +4,7 @@ import '../features/dashboard/dashboard_screen.dart';
 import '../features/guard/screens/guard_dashboard_screen.dart';
 import '../features/admin/screens/admin_dashboard_screen.dart';
 import '../features/admin/screens/scoped_admin_dashboard_screen.dart';
+import '../features/marketplace/screens/marketplace_vendor_screen.dart';
 
 class RoleRouter {
   static Widget getHomeScreen({
@@ -25,6 +26,9 @@ class RoleRouter {
 
       case "RESIDENT":
         return const DashboardScreen();
+
+      case "VENDOR":
+        return const MarketplaceVendorScreen();
 
       case "SECURITY_MANAGER":
         return const GuardDashboardScreen();

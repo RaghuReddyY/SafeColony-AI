@@ -81,7 +81,7 @@ class _NotificationBellState
       children: [
         IconButton(
           tooltip: "Notifications",
-          icon: const Icon(Icons.notifications_outlined),
+          icon: const Icon(Icons.notifications_outlined, color: Color(0xff334155), size: 26),
           onPressed: _openNotifications,
         ),
 

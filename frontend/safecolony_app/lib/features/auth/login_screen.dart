@@ -8,6 +8,7 @@ import '../../routes/role_router.dart';
 import 'providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'organization_registration_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -402,6 +403,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 authState.isLoading,
                                 'LOGIN',
                                 _passwordLogin,
+                              ),
+
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: authState.isLoading
+                                      ? null
+                                      : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => const ForgotPasswordScreen(),
+                                            ),
+                                          ),
+                                  child: const Text('Forgot Password?'),
+                                ),
                               ),
                             ]
 

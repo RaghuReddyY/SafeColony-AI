@@ -21,3 +21,10 @@ from .user_block_scope import UserBlockScope
 from app.models.login_otp import LoginOTP
 
 from .community_fund import CommunityFund, CommunityFundContribution, CommunityFundExpense
+
+from .community_service import CommunityService
+
+from .marketplace import MarketplaceVendor, MarketplaceEvent, MarketplaceOrder, MarketplaceOrderItem
+
+from .super_app import ServiceRequest, VendorOffer, VendorRating, CommunityParcel, UtilityBill, RecurringOrder, UtilityProvider, CommunityMapPoint
+from .password_reset import PasswordResetToken
