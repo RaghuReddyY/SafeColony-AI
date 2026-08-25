@@ -1,8 +1,10 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.ai.assistant import AIAssistant
+from app.config import settings
 from app.ai.insights import AIInsightsEngine
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
@@ -88,7 +90,7 @@ def report(
         report_type=report_type,
         title=f"SafeColony AI {report_type.title()} Report",
         content=content,
-        generated_at=datetime.utcnow().isoformat(),
+        generated_at=datetime.now(ZoneInfo(settings.APP_TIMEZONE)).isoformat(),
     )
 
 

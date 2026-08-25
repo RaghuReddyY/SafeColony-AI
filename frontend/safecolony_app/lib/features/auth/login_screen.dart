@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,6 +31,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _useOtp = false;
   bool _otpSent = false;
 
+  bool _showResendVerification = false;
+  bool _resendVerificationInProgress = false;
+
+  DateTime? _verificationResendAvailableAt;
+  Timer? _verificationResendTimer;
+
   // ============================================================
   // EMAIL + PASSWORD LOGIN
   // ============================================================
@@ -38,22 +46,141 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    final success =
-        await ref.read(authProvider.notifier).login(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            );
+    // Hide the resend section while starting a new login attempt.
+    setState(() {
+      _showResendVerification = false;
+    });
+
+    final success = await ref.read(authProvider.notifier).login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
     if (!mounted) return;
 
     if (!success) {
+      final error = ref.read(authProvider).error ?? 'Login failed';
+
+      debugPrint('SafeColony LOGIN ERROR: $error');
+
+      final normalizedError = error.toLowerCase();
+
+      /*
+       * Do NOT depend on one exact backend error message.
+       *
+       * Different FastAPI/http exception paths can produce messages such as:
+       *
+       *   Email not verified
+       *   Email is not verified
+       *   Email address is not verified
+       *   Please verify your email
+       *   Please verify your email address
+       *   email verification required
+       *
+       * The resend option should be available for all of these.
+       */
+      final emailVerificationRequired =
+          normalizedError.contains('not verified') ||
+          normalizedError.contains('unverified') ||
+          normalizedError.contains('verify your email') ||
+          normalizedError.contains('email verification') ||
+          normalizedError.contains('email is not verified') ||
+          normalizedError.contains('email address is not verified') ||
+          normalizedError.contains('verification required') ||
+          normalizedError.contains('verification link');
+
+      setState(() {
+        _showResendVerification = emailVerificationRequired;
+      });
+
+      _showError(error);
+      return;
+    }
+
+    setState(() {
+      _showResendVerification = false;
+    });
+
+    _goHome();
+  }
+
+  // ============================================================
+  // RESEND EMAIL VERIFICATION
+  // ============================================================
+
+  Future<void> _resendVerificationEmail() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
       _showError(
-        ref.read(authProvider).error ?? 'Login failed',
+        'Enter your registered email address first.',
       );
       return;
     }
 
-    _goHome();
+    final now = DateTime.now();
+
+    if (_verificationResendAvailableAt != null &&
+        now.isBefore(_verificationResendAvailableAt!)) {
+      final seconds = _verificationResendAvailableAt!
+          .difference(now)
+          .inSeconds
+          .clamp(1, 60);
+
+      _showError(
+        'Please wait $seconds seconds before requesting another email.',
+      );
+      return;
+    }
+
+    setState(() {
+      _resendVerificationInProgress = true;
+    });
+
+    final success = await ref
+        .read(authProvider.notifier)
+        .resendEmailVerification(email);
+
+    if (!mounted) return;
+
+    setState(() {
+      _resendVerificationInProgress = false;
+    });
+
+    if (!success) {
+      _showError(
+        ref.read(authProvider).error ??
+            'Unable to resend the verification email. Please try again.',
+      );
+      return;
+    }
+
+    // Allow another request after 60 seconds.
+    setState(() {
+      _verificationResendAvailableAt =
+          DateTime.now().add(const Duration(seconds: 60));
+    });
+
+    _verificationResendTimer?.cancel();
+
+    _verificationResendTimer = Timer(
+      const Duration(seconds: 60),
+      () {
+        if (!mounted) return;
+
+        setState(() {
+          _verificationResendAvailableAt = null;
+        });
+      },
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Verification email sent. Please check your inbox and spam folder.',
+        ),
+      ),
+    );
   }
 
   // ============================================================
@@ -84,8 +211,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _otpSent = true;
     });
 
-    // Development mode:
-    // Backend may return OTP directly.
     if (devOtp != null) {
       _otpController.text = devOtp;
 
@@ -129,8 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (!success) {
       _showError(
-        ref.read(authProvider).error ??
-            'OTP login failed',
+        ref.read(authProvider).error ?? 'OTP login failed',
       );
       return;
     }
@@ -240,8 +364,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 56,
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         SizedBox(height: 20),
@@ -268,8 +391,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Form(
                         key: _formKey,
                         child: Column(
-                          mainAxisSize:
-                              MainAxisSize.min,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
                               Icons.shield,
@@ -277,23 +399,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               color: Colors.white,
                             ),
 
-                            const SizedBox(
-                              height: 20,
-                            ),
+                            const SizedBox(height: 20),
 
                             const Text(
                               'Welcome Back',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 34,
-                                fontWeight:
-                                    FontWeight.bold,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
 
-                            const SizedBox(
-                              height: 20,
-                            ),
+                            const SizedBox(height: 20),
 
                             // ------------------------------------------------
                             // LOGIN MODE
@@ -323,21 +440,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               selected: {
                                 _useOtp,
                               },
-                              onSelectionChanged:
-                                  (value) {
+                              onSelectionChanged: (value) {
                                 setState(() {
-                                  _useOtp =
-                                      value.first;
+                                  _useOtp = value.first;
                                   _otpSent = false;
-                                  _otpController
-                                      .clear();
+                                  _otpController.clear();
+                                  _showResendVerification = false;
                                 });
                               },
                             ),
 
-                            const SizedBox(
-                              height: 22,
-                            ),
+                            const SizedBox(height: 22),
 
                             // ==================================================
                             // EMAIL LOGIN
@@ -351,9 +464,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 icon: Icons.email,
                               ),
 
-                              const SizedBox(
-                                height: 20,
-                              ),
+                              const SizedBox(height: 20),
 
                               TextFormField(
                                 controller:
@@ -368,22 +479,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                                   return null;
                                 },
-                                decoration:
-                                    InputDecoration(
-                                  hintText:
-                                      'Password',
+                                decoration: InputDecoration(
+                                  hintText: 'Password',
                                   prefixIcon:
-                                      const Icon(
-                                    Icons.lock,
-                                  ),
+                                      const Icon(Icons.lock),
                                   suffixIcon:
                                       IconButton(
                                     icon: Icon(
                                       _obscurePassword
-                                          ? Icons
-                                              .visibility
-                                          : Icons
-                                              .visibility_off,
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
                                     ),
                                     onPressed: () {
                                       setState(() {
@@ -395,9 +500,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
 
-                              const SizedBox(
-                                height: 20,
-                              ),
+                              const SizedBox(height: 20),
 
                               _button(
                                 authState.isLoading,
@@ -406,19 +509,113 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
 
                               Align(
-                                alignment: Alignment.centerRight,
+                                alignment:
+                                    Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: authState.isLoading
-                                      ? null
-                                      : () => Navigator.push(
+                                  onPressed:
+                                      authState.isLoading
+                                          ? null
+                                          : () =>
+                                              Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => const ForgotPasswordScreen(),
+                                              builder: (_) =>
+                                                  const ForgotPasswordScreen(),
                                             ),
                                           ),
-                                  child: const Text('Forgot Password?'),
+                                  child:
+                                      const Text(
+                                    'Forgot Password?',
+                                  ),
                                 ),
                               ),
+
+                              // ==================================================
+                              // EMAIL VERIFICATION / RESEND
+                              // ==================================================
+
+                              if (_showResendVerification) ...[
+                                const SizedBox(height: 4),
+
+                                Container(
+                                  width: double.infinity,
+                                  padding:
+                                      const EdgeInsets.all(12),
+                                  decoration:
+                                      BoxDecoration(
+                                    color: Colors.white
+                                        .withValues(alpha: 0.10),
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.18),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Text(
+                                        'Your email address is not verified.',
+                                        textAlign:
+                                            TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight:
+                                              FontWeight.w600,
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 4),
+
+                                      const Text(
+                                        'Check your inbox or request a new verification link.',
+                                        textAlign:
+                                            TextAlign.center,
+                                        style: TextStyle(
+                                          color:
+                                              Colors.white70,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 6),
+
+                                      TextButton.icon(
+                                        onPressed:
+                                            authState.isLoading ||
+                                                    _resendVerificationInProgress
+                                                ? null
+                                                : _resendVerificationEmail,
+                                        icon:
+                                            _resendVerificationInProgress
+                                                ? const SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth:
+                                                          2,
+                                                    ),
+                                                  )
+                                                : const Icon(
+                                                    Icons
+                                                        .mark_email_read_outlined,
+                                                  ),
+                                        label: Text(
+                                          _verificationResendAvailableAt !=
+                                                      null &&
+                                                  DateTime.now()
+                                                      .isBefore(
+                                                    _verificationResendAvailableAt!,
+                                                  )
+                                              ? 'Verification email sent'
+                                              : 'Resend Verification Link',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ]
 
                             // ==================================================
@@ -433,17 +630,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 icon: Icons.phone,
                               ),
 
-                              const SizedBox(
-                                height: 14,
-                              ),
+                              const SizedBox(height: 14),
 
                               if (_otpSent)
                                 TextFormField(
                                   controller:
                                       _otpController,
                                   keyboardType:
-                                      TextInputType
-                                          .number,
+                                      TextInputType.number,
                                   maxLength: 6,
                                   decoration:
                                       const InputDecoration(
@@ -456,9 +650,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                 ),
 
-                              const SizedBox(
-                                height: 8,
-                              ),
+                              const SizedBox(height: 8),
 
                               _button(
                                 authState.isLoading,
@@ -473,8 +665,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               if (_otpSent)
                                 TextButton(
                                   onPressed:
-                                      authState
-                                              .isLoading
+                                      authState.isLoading
                                           ? null
                                           : _requestOtp,
                                   child:
@@ -494,16 +685,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 vertical: 18,
                               ),
                               child: Divider(
-                                color:
-                                    Colors.white24,
+                                color: Colors.white24,
                               ),
                             ),
 
                             const Text(
                               'New Community?',
                               style: TextStyle(
-                                color:
-                                    Colors.white70,
+                                color: Colors.white70,
                                 fontSize: 13,
                               ),
                             ),
@@ -528,17 +717,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
 
-                            const SizedBox(
-                              height: 6,
-                            ),
+                            const SizedBox(height: 6),
 
                             const Text(
                               'Already have an Organization Code?',
-                              textAlign:
-                                  TextAlign.center,
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                color:
-                                    Colors.white70,
+                                color: Colors.white70,
                                 fontSize: 13,
                               ),
                             ),
@@ -610,6 +795,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _verificationResendTimer?.cancel();
 
     super.dispose();
   }

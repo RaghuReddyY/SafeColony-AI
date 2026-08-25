@@ -92,6 +92,7 @@ class ResidentResponse(BaseModel):
 
     resident_type: ResidentType
     status: ResidentStatus
+    family_sponsor_resident_id: int | None = None
 
     gender: str | None
     is_primary: bool

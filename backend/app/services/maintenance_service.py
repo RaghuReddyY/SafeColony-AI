@@ -15,6 +15,7 @@ from app.models.maintenance_payment import MaintenancePayment
 from app.models.maintenance_period import MaintenancePeriod
 from app.models.notification import Notification
 from app.models.organization import Organization
+from app.models.resident import Resident
 from app.core.event_bus import event_bus
 from app.events.maintenance_events import MaintenancePaidEvent
 from app.models.user import User
@@ -550,6 +551,68 @@ class MaintenanceService:
                 period.id
             ),
         }
+
+    # ==========================================================
+    # Maintenance Payer
+    # ==========================================================
+
+    def maintenance_payer(self, current_user: User):
+        resident = self._get_current_resident(current_user)
+        if not resident.unit_id:
+            raise BadRequestException("Your resident account is not linked to a unit.")
+
+        unit = resident.unit
+        eligible = [
+            r for r in (unit.residents or [])
+            if r.is_active
+            and r.resident_type in {"OWNER", "TENANT"}
+            and getattr(r.status, "value", r.status) == "APPROVED"
+            and r.user
+            and r.user.is_active
+        ]
+        payer = unit.maintenance_payer
+        return {
+            "current_payer_resident_id": payer.id if payer else None,
+            "current_payer_name": payer.full_name if payer else None,
+            "current_payer_type": getattr(payer.resident_type, "value", payer.resident_type) if payer else None,
+            "eligible_residents": [
+                {
+                    "id": r.id,
+                    "full_name": r.full_name or "Resident",
+                    "resident_type": getattr(r.resident_type, "value", r.resident_type),
+                    "is_primary": bool(r.is_primary),
+                }
+                for r in eligible
+            ],
+        }
+
+    def set_maintenance_payer(self, current_user: User, resident_id: int):
+        current = self._get_current_resident(current_user)
+        if not current.unit_id:
+            raise BadRequestException("Your resident account is not linked to a unit.")
+
+        target = self.db.query(Resident).filter(
+            Resident.id == resident_id,
+            Resident.unit_id == current.unit_id,
+            Resident.is_active.is_(True),
+        ).first()
+        if not target or target.resident_type not in {"OWNER", "TENANT"}:
+            raise BadRequestException("Maintenance payer must be an active owner or tenant of the same unit.")
+        if not target.user or not target.user.is_active:
+            raise BadRequestException("The selected maintenance payer is not active.")
+
+        is_manager = current_user.role in {
+            "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "BLOCK_ADMIN", "COMMUNITY_FINANCE_ADMIN"
+        }
+        if not is_manager and current.id != current.unit.maintenance_payer_resident_id:
+            raise ForbiddenException("Only the current maintenance payer or an authorized administrator can change the payer.")
+
+        for resident in current.unit.residents:
+            resident.is_primary = (resident.id == target.id)
+        current.unit.maintenance_payer_resident_id = target.id
+        self.db.commit()
+        self.db.refresh(current.unit)
+        return self.maintenance_payer(current_user)
 
     # ==========================================================
     # Resident Maintenance

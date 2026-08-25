@@ -85,9 +85,25 @@ class Unit(Base):
         nullable=True,
     )
 
+    # Separate family invitations keep an owner's family and a tenant's family
+    # attached to the correct sponsor. The legacy family_join_code is retained
+    # for backward compatibility and is treated as the owner-family code.
     family_join_code: Mapped[str | None] = mapped_column(
         String(24),
         unique=True,
+        nullable=True,
+        index=True,
+    )
+
+    tenant_family_join_code: Mapped[str | None] = mapped_column(
+        String(24),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
+
+    maintenance_payer_resident_id: Mapped[int | None] = mapped_column(
+        ForeignKey("residents.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -122,4 +138,11 @@ class Unit(Base):
         "Resident",
         back_populates="unit",
         cascade="all, delete-orphan",
+        foreign_keys="Resident.unit_id",
+    )
+
+    maintenance_payer = relationship(
+        "Resident",
+        foreign_keys=[maintenance_payer_resident_id],
+        post_update=True,
     )

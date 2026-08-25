@@ -15,6 +15,7 @@ class _FamilyInviteCardState extends State<FamilyInviteCard> {
   bool _loading = false;
   String? _code;
   String? _unit;
+  String? _sponsorType;
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -24,6 +25,7 @@ class _FamilyInviteCardState extends State<FamilyInviteCard> {
       setState(() {
         _code = data['code']?.toString();
         _unit = data['unit_number']?.toString();
+        _sponsorType = data['sponsor_type']?.toString();
       });
     } catch (e) {
       if (!mounted) return;
@@ -69,14 +71,14 @@ class _FamilyInviteCardState extends State<FamilyInviteCard> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
+                    children: [
+                      const Text(
                         'Invite family members',
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Let family join this unit without creating another unit.',
+                        '${_sponsorType == null ? 'Owner or Tenant' : _sponsorType == 'TENANT' ? 'Tenant' : 'Owner'} family can join this unit using a separate invitation code.',
                         style: TextStyle(color: Color(0xff64748B), height: 1.35),
                       ),
                     ],

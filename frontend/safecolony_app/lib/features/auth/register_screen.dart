@@ -50,13 +50,14 @@ class _RegisterScreenState
   bool _obscurePassword = true;
 
   bool _obscureConfirmPassword = true;
-  bool get _usingFamilyCode => _familyJoinCodeController.text.trim().isNotEmpty;
+  bool get _usingFamilyCode => _registrationMode == "FAMILY";
 
   PropertyLookup? _selectedProperty;
 
   SectionLookup? _selectedSection;
 
   String _residentType = "OWNER";
+  String _registrationMode = "OWNER";
   String? _verifiedOrganizationCode;
 
   @override
@@ -159,8 +160,9 @@ Future<void> _verifyOrganization() async {
       );
       return;
     }
-    if (ref.read(publicProvider).organization == null ||
-    _verifiedOrganizationCode != _organizationCodeController.text.trim().toUpperCase()) {
+    if (!usingFamilyCode &&
+    (ref.read(publicProvider).organization == null ||
+        _verifiedOrganizationCode != _organizationCodeController.text.trim().toUpperCase())) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       backgroundColor: Colors.red,
@@ -192,6 +194,16 @@ if (!usingFamilyCode && _unitNumberController.text.trim().isEmpty) {
     const SnackBar(
       backgroundColor: Colors.red,
       content: Text("Please enter your unit number."),
+    ),
+  );
+  return;
+}
+
+if (usingFamilyCode && _familyJoinCodeController.text.trim().isEmpty) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      backgroundColor: Colors.red,
+      content: Text("Please enter the family invitation code."),
     ),
   );
   return;
@@ -288,7 +300,7 @@ Row(
     Expanded(
       child: AppTextField(
         controller: _organizationCodeController,
-        hint: "Organization Code",
+        hint: "Organization Code (not required for Family Code)",
         icon: Icons.business,
       ),
     ),
@@ -326,21 +338,46 @@ if (publicState.organization != null)
 
 const SizedBox(height: 16),
 
-TextField(
-  controller: _familyJoinCodeController,
-  textCapitalization: TextCapitalization.characters,
-  onChanged: (value) => setState(() {
-    if (value.trim().isNotEmpty) _residentType = "FAMILY";
-  }),
+DropdownButtonFormField<String>(
+  initialValue: _registrationMode,
   decoration: const InputDecoration(
-    labelText: "Family Join Code (optional)",
-    helperText: "Use the code shared by the primary resident to join the same unit.",
-    prefixIcon: Icon(Icons.family_restroom),
+    labelText: "Registration Type",
+    helperText: "Owner and Tenant register directly. Family members use an invitation code.",
+    prefixIcon: Icon(Icons.home_work_outlined),
     border: OutlineInputBorder(),
   ),
+  items: const [
+    DropdownMenuItem(value: "OWNER", child: Text("Owner")),
+    DropdownMenuItem(value: "TENANT", child: Text("Tenant")),
+    DropdownMenuItem(value: "FAMILY", child: Text("Family Member")),
+  ],
+  onChanged: (value) {
+    if (value == null) return;
+    setState(() {
+      _registrationMode = value;
+      _residentType = value == "FAMILY" ? "FAMILY" : value;
+      if (value != "FAMILY") {
+        _familyJoinCodeController.clear();
+      }
+    });
+  },
 ),
 
 const SizedBox(height: 16),
+
+if (_usingFamilyCode)
+  TextField(
+    controller: _familyJoinCodeController,
+    textCapitalization: TextCapitalization.characters,
+    decoration: const InputDecoration(
+      labelText: "Family Invitation Code",
+      helperText: "Use the code shared by the Owner or Tenant who invited you.",
+      prefixIcon: Icon(Icons.family_restroom),
+      border: OutlineInputBorder(),
+    ),
+  ),
+
+if (_usingFamilyCode) const SizedBox(height: 16),
 
 if (!usingFamilyCode && publicState.organization != null &&
     publicState.organization!.properties.isNotEmpty)
@@ -360,19 +397,15 @@ if (!usingFamilyCode && publicState.organization != null &&
         .toList(),
     onChanged: (property) async {
       if (property == null) return;
-
       setState(() {
         _selectedProperty = property;
         _selectedSection = null;
       });
-
-      await ref
-          .read(publicProvider.notifier)
-          .loadSections(property.id);
+      await ref.read(publicProvider.notifier).loadSections(property.id);
     },
   ),
 
-const SizedBox(height: 16),
+if (!usingFamilyCode) const SizedBox(height: 16),
 
 if (!usingFamilyCode && publicState.sections.isNotEmpty)
   DropdownButtonFormField<SectionLookup>(
@@ -390,49 +423,18 @@ if (!usingFamilyCode && publicState.sections.isNotEmpty)
         )
         .toList(),
     onChanged: (section) {
-      setState(() {
-        _selectedSection = section;
-      });
+      setState(() => _selectedSection = section);
     },
   ),
 
 if (!usingFamilyCode) const SizedBox(height: 16),
 
-if (!usingFamilyCode) AppTextField(
-  controller: _unitNumberController,
-  hint: "Unit Number",
-  icon: Icons.home,
-),
-
-const SizedBox(height: 16),
-
-DropdownButtonFormField<String>(
-  initialValue: _residentType,
-  decoration: const InputDecoration(
-       border: OutlineInputBorder(),
+if (!usingFamilyCode)
+  AppTextField(
+    controller: _unitNumberController,
+    hint: "Unit Number",
+    icon: Icons.home,
   ),
-  items: const [
-    DropdownMenuItem(
-      value: "OWNER",
-      child: Text("Owner"),
-    ),
-    DropdownMenuItem(
-      value: "TENANT",
-      child: Text("Tenant"),
-    ),
-    DropdownMenuItem(
-      value: "FAMILY",
-      child: Text("Family Member"),
-    ),
-  ],
-  onChanged: (value) {
-    if (value == null) return;
-
-    setState(() {
-      _residentType = value;
-    });
-  },
-),
 
 const SizedBox(height: 16),
 

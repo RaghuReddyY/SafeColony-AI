@@ -145,6 +145,19 @@ Future<MaintenancePeriod> closePeriod(int periodId) async {
     return ResidentMaintenanceSummary.fromJson(response.data);
   }
 
+  Future<MaintenancePayerInfo> getMaintenancePayer() async {
+    final response = await ApiClient.dio.get('/maintenance/me/payer');
+    return MaintenancePayerInfo.fromJson(Map<String, dynamic>.from(response.data));
+  }
+
+  Future<MaintenancePayerInfo> updateMaintenancePayer(int residentId) async {
+    final response = await ApiClient.dio.put(
+      '/maintenance/me/payer',
+      data: {'resident_id': residentId},
+    );
+    return MaintenancePayerInfo.fromJson(Map<String, dynamic>.from(response.data));
+  }
+
   Future<MaintenanceBill> updateBill({
     required int billId,
     required double amount,

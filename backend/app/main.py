@@ -37,6 +37,7 @@ from app.api.internal_scheduler import router as internal_scheduler_router
 from app.api.community_service import router as community_service_router
 from app.api.marketplace import router as marketplace_router
 from app.api.super_app import router as super_app_router
+from app.api.privacy_policy import router as privacy_policy_router
 
 
 # Core
@@ -150,6 +151,7 @@ app.include_router(internal_scheduler_router)
 app.include_router(community_service_router)
 app.include_router(marketplace_router)
 app.include_router(super_app_router)
+app.include_router(privacy_policy_router)
 
 
 

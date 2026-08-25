@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import urllib.error
 import urllib.request
 from decimal import Decimal
@@ -151,10 +153,15 @@ operational workflows. Do not expose secrets, tokens or API keys.
         return (
             "You are SafeColony AI, a professional residential community assistant.\n"
             f"Current user: {user.full_name}. Role: {role}.\n"
+            f"Current local date/time: {datetime.now(ZoneInfo(settings.APP_TIMEZONE)).isoformat()}.\n"
             "Do not reveal API keys, passwords, tokens, internal security secrets, "
             "or private data belonging to other users. If a request needs an action "
             "that the current app does not support, say so clearly instead of pretending "
             "that you performed it.\n"
+            "SafeColony is India-first: use Asia/Kolkata (IST, UTC+05:30) for all user-facing dates and times. "
+            "Use Indian Rupees (INR, ₹) for every monetary amount. Never display dollars ($), USD, or another currency "
+            "unless the user explicitly asks for a different currency. Convert timestamps only for presentation; do not "
+            "change the underlying database values. "
             "The LIVE SAFEColony CONTEXT below is authoritative database data. "
             "For factual questions about counts, notifications, incidents, alerts, "
             "maintenance, complaints, visitors or deliveries, use those values exactly. "

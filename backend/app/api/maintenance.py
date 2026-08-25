@@ -22,6 +22,8 @@ from app.schemas.maintenance import (
     DirectUPIPaymentCreate,
     MaintenancePendingPaymentResponse,
     MaintenanceInvoiceResponse,
+    MaintenancePayerUpdate,
+    MaintenancePayerResponse,
     MaintenanceReceiptResponse,
 )
 from app.security.permissions import Permissions
@@ -86,6 +88,30 @@ def add_expense(period_id: int, data: MaintenanceExpenseCreate, current_user: Us
 )
 def my_maintenance(current_user: User = Depends(get_current_user), service: MaintenanceService = Depends(get_service)):
     return service.resident_summary(current_user)
+
+@router.get(
+    "/me/payer",
+    response_model=MaintenancePayerResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_VIEW))],
+)
+def my_maintenance_payer(
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.maintenance_payer(current_user)
+
+
+@router.put(
+    "/me/payer",
+    response_model=MaintenancePayerResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_PAYMENT))],
+)
+def update_maintenance_payer(
+    data: MaintenancePayerUpdate,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.set_maintenance_payer(current_user, data.resident_id)
 
 
 @router.put(

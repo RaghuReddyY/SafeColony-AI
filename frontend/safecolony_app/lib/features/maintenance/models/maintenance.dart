@@ -196,6 +196,51 @@ class ResidentMaintenanceSummary {
 double _double(dynamic value) => double.tryParse(value?.toString() ?? '0') ?? 0;
 
 
+
+class MaintenancePayerResident {
+  final int id;
+  final String fullName;
+  final String residentType;
+  final bool isPrimary;
+
+  const MaintenancePayerResident({
+    required this.id,
+    required this.fullName,
+    required this.residentType,
+    required this.isPrimary,
+  });
+
+  factory MaintenancePayerResident.fromJson(Map<String, dynamic> json) => MaintenancePayerResident(
+        id: json['id'],
+        fullName: json['full_name']?.toString() ?? 'Resident',
+        residentType: json['resident_type']?.toString() ?? 'RESIDENT',
+        isPrimary: json['is_primary'] == true,
+      );
+}
+
+class MaintenancePayerInfo {
+  final int? currentPayerResidentId;
+  final String? currentPayerName;
+  final String? currentPayerType;
+  final List<MaintenancePayerResident> eligibleResidents;
+
+  const MaintenancePayerInfo({
+    this.currentPayerResidentId,
+    this.currentPayerName,
+    this.currentPayerType,
+    required this.eligibleResidents,
+  });
+
+  factory MaintenancePayerInfo.fromJson(Map<String, dynamic> json) => MaintenancePayerInfo(
+        currentPayerResidentId: json['current_payer_resident_id'] as int?,
+        currentPayerName: json['current_payer_name']?.toString(),
+        currentPayerType: json['current_payer_type']?.toString(),
+        eligibleResidents: (json['eligible_residents'] as List? ?? [])
+            .map((e) => MaintenancePayerResident.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+}
+
 class MaintenancePaymentSettings {
   final String mode;
   final String? upiId;

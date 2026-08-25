@@ -249,17 +249,28 @@ def get_family_invite(
     resident = db.query(Resident).filter(Resident.user_id == current_user.id).first()
     if not resident or not resident.unit:
         raise HTTPException(status_code=404, detail="Resident unit not found.")
-    if not resident.is_primary:
-        raise HTTPException(status_code=403, detail="Only the primary family resident can generate a family invite.")
+    if not resident.is_active or resident.resident_type not in {"OWNER", "TENANT"}:
+        raise HTTPException(status_code=403, detail="Only an active owner or tenant can generate a family invitation.")
+
     unit = resident.unit
-    if not unit.family_join_code:
-        unit.family_join_code = secrets.token_urlsafe(9).replace("-", "").replace("_", "").upper()[:12]
-        db.commit()
-        db.refresh(unit)
+    if resident.resident_type == "OWNER":
+        if not unit.family_join_code:
+            unit.family_join_code = secrets.token_urlsafe(9).replace("-", "").replace("_", "").upper()[:12]
+        code = unit.family_join_code
+        sponsor_type = "OWNER"
+    else:
+        if not unit.tenant_family_join_code:
+            unit.tenant_family_join_code = secrets.token_urlsafe(9).replace("-", "").replace("_", "").upper()[:12]
+        code = unit.tenant_family_join_code
+        sponsor_type = "TENANT"
+
+    db.commit()
+    db.refresh(unit)
     return {
-        "code": unit.family_join_code,
+        "code": code,
+        "sponsor_type": sponsor_type,
         "unit_id": unit.id,
         "unit_number": unit.unit_number,
         "section_id": unit.section_id,
-        "message": "Share this code with family members. They will join the same unit and remain pending until approved.",
+        "message": f"Share this {sponsor_type.lower()} family code with family members. They will join the same unit and remain pending until approved.",
     }

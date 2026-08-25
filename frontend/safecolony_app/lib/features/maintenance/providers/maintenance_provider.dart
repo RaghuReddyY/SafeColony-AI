@@ -46,3 +46,8 @@ final pendingMaintenancePaymentsProvider =
     return ref.read(maintenanceServiceProvider).getPendingPayments();
   },
 );
+
+final maintenancePayerProvider =
+    FutureProvider.autoDispose<MaintenancePayerInfo>((ref) {
+  return ref.read(maintenanceServiceProvider).getMaintenancePayer();
+});

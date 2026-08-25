@@ -100,6 +100,8 @@ class _MaintenanceResidentScreenState
                 ),
               ),
 
+              _maintenancePayerCard(context, data.isPrimary),
+
               if (data.bill == null)
                 Card(
                   child: Padding(
@@ -107,7 +109,7 @@ class _MaintenanceResidentScreenState
                     child: Text(
                       data.isPrimary
                           ? 'No maintenance bill has been generated yet.'
-                          : 'Maintenance is managed by the primary resident of this unit. No separate maintenance bill is assigned to family members.',
+                          : 'Maintenance is managed by the configured owner/tenant payer for this unit. Family members do not receive a separate maintenance bill.',
                     ),
                   ),
                 )
@@ -172,6 +174,86 @@ class _MaintenanceResidentScreenState
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _maintenancePayerCard(BuildContext context, bool isCurrentPayer) {
+    final payerState = ref.watch(maintenancePayerProvider);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: payerState.when(
+        loading: () => const ListTile(
+          leading: Icon(Icons.payments_outlined),
+          title: Text('Maintenance payer'),
+          subtitle: Text('Loading unit payment responsibility...'),
+        ),
+        error: (error, _) => ListTile(
+          leading: const Icon(Icons.payments_outlined),
+          title: const Text('Maintenance payer'),
+          subtitle: Text('Unable to load payer details: $error'),
+        ),
+        data: (payer) {
+          final current = payer.currentPayerName == null
+              ? 'Not configured'
+              : '${payer.currentPayerName} (${payer.currentPayerType ?? 'RESIDENT'})';
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Maintenance payer',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text('Only one owner or tenant is responsible for the unit maintenance bill.'),
+                const SizedBox(height: 8),
+                Text('Current payer: $current', style: const TextStyle(fontWeight: FontWeight.w600)),
+                if (isCurrentPayer && payer.eligibleResidents.length > 1) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(
+                      labelText: 'Change payer',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: payer.eligibleResidents
+                        .map((resident) => DropdownMenuItem<int>(
+                              value: resident.id,
+                              child: Text('${resident.fullName} (${resident.residentType})'),
+                            ))
+                        .toList(),
+                    onChanged: (residentId) async {
+                      if (residentId == null) return;
+                      try {
+                        await ref.read(maintenanceServiceProvider).updateMaintenancePayer(residentId);
+                        ref.invalidate(maintenancePayerProvider);
+                        ref.invalidate(residentMaintenanceProvider);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Maintenance payer updated successfully.')),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Unable to change maintenance payer: $e')),
+                        );
+                      }
+                    },
+                  ),
+                ],
+                if (!isCurrentPayer)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'The current payer receives the maintenance bill and payment notifications. Family members do not receive a separate bill.',
+                      style: TextStyle(color: Color(0xff64748B)),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

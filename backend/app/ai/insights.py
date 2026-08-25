@@ -1,10 +1,12 @@
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from decimal import Decimal
 
 from sqlalchemy import func
 
 from app.models.amenity import Amenity, AmenityBooking
+from app.config import settings
 from app.models.complaint import Complaint
 from app.models.delivery import Delivery
 from app.models.incident import Incident
@@ -28,13 +30,23 @@ class AIInsightsEngine:
     def __init__(self, db):
         self.db = db
 
+    def _now_local(self) -> datetime:
+        return datetime.now(ZoneInfo(settings.APP_TIMEZONE))
+
+    def _localize_db_timestamp(self, value) -> str | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(ZoneInfo(settings.APP_TIMEZONE)).isoformat()
+
     def build(self, user: User) -> dict:
         metrics = self._metrics(user)
         role = user.role
         cards = self._cards(role, metrics)
         return {
             "role": role,
-            "generated_at": datetime.utcnow(),
+            "generated_at": self._now_local(),
             "metrics": metrics,
             "insights": cards,
             "future_features": [
@@ -79,9 +91,12 @@ class AIInsightsEngine:
         if not org_id:
             return {"organization_id": None}
 
-        now = datetime.utcnow()
-        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_start = today - timedelta(days=today.weekday())
+        local_now = self._now_local()
+        local_today = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Database timestamps are stored as naive UTC datetimes. Use UTC
+        # boundaries corresponding to the user's Indian calendar day.
+        today = local_today.astimezone(timezone.utc).replace(tzinfo=None)
+        week_start = (local_today - timedelta(days=local_today.weekday())).astimezone(timezone.utc).replace(tzinfo=None)
 
         active_residents = self.db.query(func.count(Resident.id)).join(
             User, Resident.user_id == User.id
@@ -342,7 +357,7 @@ class AIInsightsEngine:
                 "status": i.status,
                 "type": i.incident_type,
                 "location": i.location,
-                "created_at": i.created_at.isoformat() if i.created_at else None,
+                "created_at": self._localize_db_timestamp(i.created_at),
             }
             for i in active_incident_rows
         ]
@@ -351,7 +366,7 @@ class AIInsightsEngine:
                 "id": a.id,
                 "type": a.alert_type,
                 "severity": a.severity,
-                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "created_at": self._localize_db_timestamp(a.created_at),
             }
             for a in active_alert_rows
         ]
@@ -361,7 +376,7 @@ class AIInsightsEngine:
                 "title": n.title,
                 "type": n.notification_type,
                 "is_read": n.is_read,
-                "created_at": n.created_at.isoformat() if n.created_at else None,
+                "created_at": self._localize_db_timestamp(n.created_at),
             }
             for n in my_notifications
         ]

@@ -1,3 +1,5 @@
+from .unit import Unit
+from .resident import Resident
 from .user import User
 from .organization import Organization
 from .property import Property

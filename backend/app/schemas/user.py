@@ -56,7 +56,7 @@ Role = Annotated[
 # ------------------------------------------------------------------
 
 class UserRegister(BaseModel):
-    organization_code: str
+    organization_code: str | None = None
 
     section_id: int | None = None
     unit_number: str | None = None
@@ -70,8 +70,12 @@ class UserRegister(BaseModel):
 
     @model_validator(mode="after")
     def validate_location(self):
-        if not self.family_join_code and (self.section_id is None or not self.unit_number):
-            raise ValueError("Section and unit number are required unless a family join code is provided.")
+        if self.family_join_code:
+            return self
+        if not self.organization_code:
+            raise ValueError("Organization code is required for Owner or Tenant registration.")
+        if self.section_id is None or not self.unit_number:
+            raise ValueError("Section and unit number are required for Owner or Tenant registration.")
         return self
 
     @field_validator("unit_number")

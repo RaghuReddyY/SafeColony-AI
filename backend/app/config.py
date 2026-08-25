@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-3.6-flash"
 
+    # SafeColony displays resident-facing AI dates/times in India time and
+    # monetary values in Indian Rupees. Database timestamps remain UTC.
+    APP_TIMEZONE: str = "Asia/Kolkata"
+    CURRENCY_CODE: str = "INR"
+    CURRENCY_SYMBOL: str = "₹"
+
     # Comma-separated values. Example:
     # CORS_ORIGINS=https://safecolony.com,https://www.safecolony.com
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000,http://127.0.0.1:8000,http://localhost,http://127.0.0.1"

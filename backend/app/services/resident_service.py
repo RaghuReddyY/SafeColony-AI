@@ -140,6 +140,12 @@ class ResidentService:
             if current_user.role == "BLOCK_ADMIN" and unit.section_id not in set(ScopeService.block_ids(self.db, current_user)):
                 raise ValueError("Unit is outside your assigned block.")
 
+        if is_primary and unit_id is not None and resident_type in {"OWNER", "TENANT"}:
+            self.db.query(Resident).filter(
+                Resident.unit_id == unit_id,
+                Resident.is_primary.is_(True),
+            ).update({"is_primary": False}, synchronize_session=False)
+
         resident = Resident(
             user_id=user_id,
             unit_id=unit_id,
@@ -148,14 +154,17 @@ class ResidentService:
             date_of_birth=date_of_birth,
             emergency_contact=emergency_contact,
             emergency_contact_name=emergency_contact_name,
-            is_primary=is_primary,
+            is_primary=bool(is_primary and resident_type in {"OWNER", "TENANT"}),
             status=ResidentStatus.PENDING,
             is_active=True,
         )
 
-        return self.resident_repo.create(
-            resident,
-        )
+        result = self.resident_repo.create(resident)
+        if result.is_primary and result.unit:
+            result.unit.maintenance_payer_resident_id = result.id
+            self.db.commit()
+            self.db.refresh(result)
+        return result
         # --------------------------------------------------
     # Update
     # --------------------------------------------------
@@ -199,9 +208,18 @@ class ResidentService:
         resident.date_of_birth = date_of_birth
         resident.emergency_contact = emergency_contact
         resident.emergency_contact_name = emergency_contact_name
-        resident.is_primary = is_primary
+        resident.is_primary = bool(is_primary and resident.resident_type in {"OWNER", "TENANT"})
 
-        return self.resident_repo.update(resident)
+        if resident.is_primary and resident.unit_id:
+            self.db.query(Resident).filter(
+                Resident.unit_id == resident.unit_id,
+                Resident.id != resident.id,
+                Resident.is_primary.is_(True),
+            ).update({"is_primary": False}, synchronize_session=False)
+            resident.unit.maintenance_payer_resident_id = resident.id
+
+        result = self.resident_repo.update(resident)
+        return result
 
     # --------------------------------------------------
     # Approval

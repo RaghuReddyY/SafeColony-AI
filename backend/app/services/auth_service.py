@@ -14,6 +14,7 @@ from app.enums import (
     ResidentStatus,
     OccupancyStatus,
     UnitType,
+    ResidentType,
 )
 
 from app.models.user import User
@@ -53,18 +54,19 @@ class AuthService:
 
     def register(self, data):
 
-        organization = self.org_repo.get_by_code(
-            data.organization_code.strip().upper()
-        )
-
-        if organization is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Invalid organization code.",
+        organization = None
+        if data.organization_code:
+            organization = self.org_repo.get_by_code(
+                data.organization_code.strip().upper()
             )
+            if organization is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Invalid organization code.",
+                )
 
         section = None
-        if data.section_id is not None:
+        if data.section_id is not None and not data.family_join_code:
             section = self.section_repo.get_by_id_and_organization(
                 data.section_id,
                 organization.id,
@@ -90,19 +92,63 @@ class AuthService:
             )
 
         unit = None
+        family_sponsor = None
+
         if data.family_join_code:
-            unit = (
+            # A family code belongs to a specific sponsor. Owner and tenant
+            # sponsors have separate codes so a tenant's family can never be
+            # attached to the owner's family relationship by accident.
+            code = data.family_join_code.strip().upper()
+            unit_query = (
                 self.db.query(Unit)
                 .join(Property, Unit.property_id == Property.id)
                 .filter(
-                    Unit.family_join_code == data.family_join_code.strip().upper(),
                     Unit.is_active.is_(True),
-                    Property.organization_id == organization.id,
+                    (Unit.family_join_code == code)
+                    | (Unit.tenant_family_join_code == code),
                 )
-                .first()
             )
+            if organization is not None:
+                unit_query = unit_query.filter(Property.organization_id == organization.id)
+            unit = unit_query.first()
+            if unit is not None and organization is None:
+                organization = self.org_repo.get_by_id(unit.property.organization_id)
             if unit is None:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid family join code.")
+
+            if unit.family_join_code == code:
+                family_sponsor = (
+                    self.db.query(Resident)
+                    .filter(
+                        Resident.unit_id == unit.id,
+                        Resident.resident_type == "OWNER",
+                        Resident.is_active.is_(True),
+                    )
+                    .order_by(Resident.id.asc())
+                    .first()
+                )
+            else:
+                family_sponsor = (
+                    self.db.query(Resident)
+                    .filter(
+                        Resident.unit_id == unit.id,
+                        Resident.resident_type == "TENANT",
+                        Resident.is_active.is_(True),
+                    )
+                    .order_by(Resident.id.asc())
+                    .first()
+                )
+
+            if family_sponsor is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This family invitation is no longer valid because its owner/tenant sponsor is not active.",
+                )
+
+            # A family member always uses the FAMILY resident type. The
+            # sponsor relationship records whether this is an owner's family
+            # or a tenant's family.
+            resident_type = ResidentType.FAMILY
         else:
             if section is None:
                 raise HTTPException(
@@ -129,6 +175,36 @@ class AuthService:
                 )
                 self.unit_repo.create_without_commit(unit)
 
+            # A unit may have one owner and one or more tenants, but only one
+            # active account can hold each ownership/tenancy role.
+            if data.resident_type == ResidentType.OWNER:
+                existing_owner = self.db.query(Resident).filter(
+                    Resident.unit_id == unit.id,
+                    Resident.resident_type == ResidentType.OWNER,
+                    Resident.is_active.is_(True),
+                ).first()
+                if existing_owner:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="This unit already has a registered owner. Use the family invitation code for family members.",
+                    )
+            elif data.resident_type == ResidentType.TENANT:
+                existing_tenant = self.db.query(Resident).filter(
+                    Resident.unit_id == unit.id,
+                    Resident.resident_type == ResidentType.TENANT,
+                    Resident.is_active.is_(True),
+                ).first()
+                if existing_tenant:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="This unit already has a registered tenant. Use the tenant's family invitation code for family members.",
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Resident type must be Owner, Tenant, or Family via invitation code.",
+                )
+
         existing_resident_count = self.db.query(Resident).filter(
             Resident.unit_id == unit.id,
             Resident.is_active.is_(True),
@@ -151,17 +227,30 @@ class AuthService:
             commit=False,
         )
 
+        # The first OWNER/TENANT account for a unit becomes the current
+        # maintenance payer. Subsequent owners/tenants are non-payers until
+        # the payer is explicitly changed. Family members are never payers.
+        make_primary = (
+            not data.family_join_code
+            and existing_resident_count == 0
+            and data.resident_type in {ResidentType.OWNER, ResidentType.TENANT}
+        )
+
         resident = Resident(
             user_id=user.id,
             unit_id=unit.id,
-            resident_type=data.resident_type,
+            resident_type=resident_type,
+            family_sponsor_resident_id=family_sponsor.id if family_sponsor else None,
             status=ResidentStatus.PENDING,
-            is_primary=(existing_resident_count == 0),
+            is_primary=make_primary,
             is_active=True,
         )
 
         self.db.add(resident)
         self.db.flush()
+
+        if make_primary and unit.maintenance_payer_resident_id is None:
+            unit.maintenance_payer_resident_id = resident.id
 
         # Notify the administrators who can approve this pending resident.
         # Organization admins see every request; a block admin sees requests
@@ -285,20 +374,46 @@ class AuthService:
         if not user or not user.is_active or user.email_verified:
             return response
 
-        if not all([
-            settings.SMTP_HOST,
-            settings.SMTP_USERNAME,
-            settings.SMTP_PASSWORD,
-            settings.SMTP_FROM_EMAIL,
-            settings.EMAIL_VERIFICATION_BASE_URL,
-        ]):
-            logger.warning("Email verification resend requested but SMTP/base URL is not configured.")
-            return response
+        # Do not report success when the email provider is unavailable.
+        # The Flutter client uses the HTTP status to decide whether the
+        # verification email was actually sent.
+        missing = []
+        if not settings.SMTP_HOST:
+            missing.append("SMTP_HOST")
+        if not settings.SMTP_USERNAME:
+            missing.append("SMTP_USERNAME")
+        if not settings.SMTP_PASSWORD:
+            missing.append("SMTP_PASSWORD")
+        if not settings.SMTP_FROM_EMAIL:
+            missing.append("SMTP_FROM_EMAIL")
+        if not settings.EMAIL_VERIFICATION_BASE_URL:
+            missing.append("EMAIL_VERIFICATION_BASE_URL")
+
+        if missing:
+            logger.error(
+                "Email verification resend unavailable; missing configuration: %s",
+                ", ".join(missing),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Verification email service is not configured. Please contact the administrator.",
+            )
 
         try:
             self._send_email_verification(user)
         except Exception as exc:
-            logger.warning("Email verification resend failed: %s", exc)
+            # Never expose SMTP credentials or provider internals to the
+            # mobile client, but make the Cloud Run logs actionable.
+            logger.exception(
+                "Email verification resend failed for user_id=%s email=%s: %s",
+                user.id,
+                user.email,
+                exc,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Verification email could not be sent. Please try again later or contact the administrator.",
+            ) from exc
 
         return response
 

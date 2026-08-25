@@ -85,6 +85,12 @@ class Resident(Base):
         nullable=True,
     )
 
+    family_sponsor_resident_id: Mapped[int | None] = mapped_column(
+        ForeignKey("residents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     is_primary: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
@@ -146,6 +152,12 @@ class Resident(Base):
     # Relationships
     # ---------------------------------------
 
+    family_sponsor = relationship(
+        "Resident",
+        remote_side="Resident.id",
+        foreign_keys=[family_sponsor_resident_id],
+    )
+
     user = relationship(
         "User",
         back_populates="resident",
@@ -154,6 +166,7 @@ class Resident(Base):
     unit = relationship(
         "Unit",
         back_populates="residents",
+        foreign_keys=[unit_id],
     )
 
     vehicles = relationship(

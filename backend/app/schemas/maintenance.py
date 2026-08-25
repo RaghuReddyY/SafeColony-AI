@@ -144,6 +144,24 @@ class ResidentMaintenanceSummary(BaseModel):
     is_primary: bool = True
 
 
+class MaintenancePayerUpdate(BaseModel):
+    resident_id: int = Field(gt=0)
+
+
+class MaintenancePayerResident(BaseModel):
+    id: int
+    full_name: str
+    resident_type: str
+    is_primary: bool
+
+
+class MaintenancePayerResponse(BaseModel):
+    current_payer_resident_id: int | None
+    current_payer_name: str | None
+    current_payer_type: str | None
+    eligible_residents: list[MaintenancePayerResident]
+
+
 class MaintenanceInvoiceResponse(BaseModel):
     bill_id: int
     invoice_number: str

@@ -8,17 +8,48 @@ from app.config import settings
 
 
 def send_email(destination: str, subject: str, message: str) -> str:
-    if not all([settings.SMTP_HOST, settings.SMTP_USERNAME, settings.SMTP_PASSWORD, settings.SMTP_FROM_EMAIL]):
-        raise RuntimeError("SMTP provider is not configured.")
+    """Send an email through the configured SMTP provider.
+
+    Cloud Run does not use the developer machine's .env file. The values must
+    be supplied as runtime environment variables/secrets. This function fails
+    loudly so callers never report a successful email when SMTP delivery
+    actually failed.
+    """
+    missing = []
+    if not settings.SMTP_HOST:
+        missing.append("SMTP_HOST")
+    if not settings.SMTP_USERNAME:
+        missing.append("SMTP_USERNAME")
+    if not settings.SMTP_PASSWORD:
+        missing.append("SMTP_PASSWORD")
+    if not settings.SMTP_FROM_EMAIL:
+        missing.append("SMTP_FROM_EMAIL")
+
+    if missing:
+        raise RuntimeError(
+            "SMTP provider is not configured; missing: " + ", ".join(missing)
+        )
+
+    destination = destination.strip().lower()
+    if not destination:
+        raise ValueError("Email destination is empty.")
+
     mail = EmailMessage()
     mail["From"] = settings.SMTP_FROM_EMAIL
     mail["To"] = destination
     mail["Subject"] = subject
     mail.set_content(message)
+
+    # Gmail SMTP on port 587 uses STARTTLS. Failures are intentionally allowed
+    # to propagate to AuthService so the API can return HTTP 503 instead of a
+    # false success response.
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as smtp:
+        smtp.ehlo()
         smtp.starttls()
+        smtp.ehlo()
         smtp.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         smtp.send_message(mail)
+
     return destination
 
 
