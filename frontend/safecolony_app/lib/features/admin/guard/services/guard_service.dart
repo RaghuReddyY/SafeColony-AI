@@ -17,6 +17,24 @@ class GuardService {
         .toList();
   }
 
+  Future<void> updateGuard({
+    required int userId,
+    required String fullName,
+    required String email,
+    required String phone,
+    String? password,
+  }) async {
+    await ApiClient.dio.put(
+      '/organizations/guards/$userId',
+      data: {
+        'full_name': fullName.trim(),
+        'email': email.trim().toLowerCase(),
+        'phone': phone.trim(),
+        if (password != null && password.isNotEmpty) 'password': password,
+      },
+    );
+  }
+
   Future<void> createGuard({
     required String fullName,
     required String email,

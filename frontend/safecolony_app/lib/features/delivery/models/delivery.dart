@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class Delivery {
   final int id;
   final int residentId;
@@ -41,15 +42,11 @@ class Delivery {
       status: json["status"],
       receivedBy: json["received_by"],
       otp: json["otp"],
-      createdAt: DateTime.parse(
-        json["created_at"],
-      ),
+      createdAt: ApiDateTime.parse(json['created_at']),
       collectedAt:
           json["collected_at"] == null
               ? null
-              : DateTime.parse(
-                  json["collected_at"],
-                ),
+              : ApiDateTime.parse(json['collected_at']),
     );
   }
 }

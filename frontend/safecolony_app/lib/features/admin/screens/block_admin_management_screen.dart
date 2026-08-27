@@ -39,6 +39,76 @@ class _BlockAdminManagementScreenState extends ConsumerState<BlockAdminManagemen
     }
   }
 
+  Future<void> _edit(Map<String, dynamic> admin) async {
+    final name = TextEditingController(text: admin['full_name']?.toString() ?? '');
+    final email = TextEditingController(text: admin['email']?.toString() ?? '');
+    final phone = TextEditingController(text: admin['phone']?.toString() ?? '');
+    final password = TextEditingController();
+    final selected = <int>{...(admin['section_ids'] as List? ?? []).whereType<int>()};
+    final isFinance = admin['role'].toString() == 'COMMUNITY_FINANCE_ADMIN';
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isFinance ? 'Edit Finance Collector' : 'Edit Block Administrator'),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(controller: name, decoration: const InputDecoration(labelText: 'Full name')),
+                  TextField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
+                  TextField(controller: phone, decoration: const InputDecoration(labelText: 'Mobile number')),
+                  TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'New password (optional)')),
+                  if (!isFinance) ...[
+                    const SizedBox(height: 16),
+                    const Align(alignment: Alignment.centerLeft, child: Text('Assign blocks', style: TextStyle(fontWeight: FontWeight.w800))),
+                    ..._blocks.map((block) {
+                      final id = block['section_id'] as int;
+                      return CheckboxListTile(
+                        value: selected.contains(id),
+                        title: Text(block['section_name'].toString()),
+                        onChanged: (v) => setDialogState(() => v == true ? selected.add(id) : selected.remove(id)),
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () {
+              if (name.text.trim().length < 3 || !email.text.contains('@') || phone.text.trim().length < 10) return;
+              if (!isFinance && selected.isEmpty) return;
+              Navigator.pop(context, true);
+            }, child: const Text('Save Changes')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _service.updateAdmin(
+        userId: admin['id'] as int,
+        fullName: name.text,
+        email: email.text,
+        phone: phone.text,
+        sectionIds: isFinance ? const [] : selected.toList(),
+        password: password.text.trim().isEmpty ? null : password.text,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Administrator updated successfully.')));
+        await _load();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      name.dispose(); email.dispose(); phone.dispose(); password.dispose();
+    }
+  }
+
   Future<void> _create({required bool finance}) async {
     final name = TextEditingController();
     final email = TextEditingController();
@@ -134,6 +204,11 @@ class _BlockAdminManagementScreenState extends ConsumerState<BlockAdminManagemen
                           title: Text(admin['full_name'].toString()),
                           subtitle: Text('${admin['role']}\n${(admin['section_names'] as List).join(', ')}'),
                           isThreeLine: true,
+                          trailing: IconButton(
+                            tooltip: 'Edit',
+                            icon: const Icon(Icons.edit_outlined, color: Colors.indigo),
+                            onPressed: () => _edit(admin),
+                          ),
                         ),
                       )),
                 ],

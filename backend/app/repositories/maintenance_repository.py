@@ -82,6 +82,25 @@ class MaintenanceRepository:
         self.db.flush()
         return period
 
+    def count_bills_for_period(self, period_id: int) -> int:
+        return (
+            self.db.query(func.count(MaintenanceBill.id))
+            .filter(MaintenanceBill.period_id == period_id)
+            .scalar()
+            or 0
+        )
+
+    def count_expenses_for_period(self, period_id: int) -> int:
+        return (
+            self.db.query(func.count(MaintenanceExpense.id))
+            .filter(MaintenanceExpense.period_id == period_id)
+            .scalar()
+            or 0
+        )
+
+    def delete_period(self, period: MaintenancePeriod) -> None:
+        self.db.delete(period)
+
     # --------------------------------------------------
     # Resident Outstanding Balance
     # --------------------------------------------------

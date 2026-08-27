@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class AppNotification {
   final int id;
   final int userId;
@@ -28,9 +29,7 @@ class AppNotification {
       notificationType:
           json["notification_type"] as String? ?? "GENERAL",
       isRead: json["is_read"] as bool? ?? false,
-      createdAt: DateTime.parse(
-        json["created_at"].toString(),
-      ),
+      createdAt: ApiDateTime.parse(json['created_at']),
     );
   }
 

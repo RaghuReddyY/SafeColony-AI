@@ -15,6 +15,18 @@ class VisitorService {
         .toList();
   }
 
+  /// Resident Visitor List for the authenticated resident.
+  /// The backend resolves the resident from the logged-in user so the
+  /// client never depends on a hard-coded resident id.
+  Future<List<Visitor>> getMyVisitors() async {
+    final Response response =
+        await ApiClient.dio.get("/visitors/resident/me");
+
+    return (response.data as List)
+        .map((e) => Visitor.fromJson(e))
+        .toList();
+  }
+
   /// Resident Visitor List
   Future<List<Visitor>> getResidentVisitors(
       int residentId) async {

@@ -23,6 +23,64 @@ class _ResidentApprovalScreenState
     });
   }
 
+  Future<void> _editResident(dynamic resident) async {
+    final name = TextEditingController(text: resident.fullName);
+    final email = TextEditingController(text: resident.email);
+    final phone = TextEditingController(text: resident.phone);
+    String type = resident.residentType.toString();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Edit Resident'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Full name')),
+                TextField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
+                TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone')),
+                DropdownButtonFormField<String>(
+                  value: type,
+                  decoration: const InputDecoration(labelText: 'Resident Type'),
+                  items: const [
+                    DropdownMenuItem(value: 'OWNER', child: Text('Owner')),
+                    DropdownMenuItem(value: 'TENANT', child: Text('Tenant')),
+                    DropdownMenuItem(value: 'FAMILY', child: Text('Family')),
+                  ],
+                  onChanged: (v) => setState(() { if (v != null) type = v; }),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save Changes')),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    try {
+      await ref.read(adminProvider.notifier).updateResident(
+        id: resident.id,
+        fullName: name.text,
+        email: email.text,
+        phone: phone.text,
+        residentType: type,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resident updated successfully.')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      name.dispose(); email.dispose(); phone.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
 

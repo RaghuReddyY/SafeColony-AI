@@ -72,9 +72,14 @@ class ApprovedVisitorsSection
               visitor: visitor,
 
               onDetails: () {
-                // IMPORTANT:
-                // Use your existing GuardVisitorDetailScreen
-                // if it accepts GuardVisitor.
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => GuardVisitorDetailScreen(
+                      visitor: visitor,
+                    ),
+                  ),
+                );
               },
             );
           },

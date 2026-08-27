@@ -82,6 +82,23 @@ class GuardNotifier
 
   }
 
+  Future<void> updateGuard({
+    required int userId,
+    required String fullName,
+    required String email,
+    required String phone,
+    String? password,
+  }) async {
+    await service.updateGuard(
+      userId: userId,
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      password: password,
+    );
+    await loadGuards();
+  }
+
   Future<void> createGuard({
 
     required String fullName,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -474,9 +475,6 @@ class _MaintenanceResidentScreenState
         result['display_name']?.toString() ?? 'Maintenance';
     final paymentPhone =
         result['payment_phone']?.toString();
-    final upiUrl =
-        result['payment_url']?.toString() ?? '';
-
     final controller = TextEditingController();
 
     try {
@@ -526,7 +524,7 @@ class _MaintenanceResidentScreenState
                 const SizedBox(height: 16),
 
                 const Text(
-                  'Tap Open UPI App. After completing the transfer, enter the UPI transaction reference/UTR below and submit it for administrator verification.',
+                  'Tap Open UPI App. If PhonePe/another UPI app blocks the transaction for security reasons, use Copy UPI ID and pay manually, or use the community payment QR if provided. After payment, enter the UPI transaction reference/UTR for administrator verification.',
                   style: TextStyle(
                     color: Colors.black54,
                   ),
@@ -583,34 +581,63 @@ class _MaintenanceResidentScreenState
             ),
 
             OutlinedButton.icon(
-              onPressed: upiUrl.isEmpty
+              onPressed: upiId.isEmpty
                   ? null
                   : () async {
-                      final launched =
-                          await launchUrl(
-                        Uri.parse(upiUrl),
-                        mode: LaunchMode
-                            .externalApplication,
+                      // Deliberately do NOT launch a pre-filled upi://pay
+                      // request. Some UPI apps, including PhonePe, can
+                      // reject third-party initiated payment requests for
+                      // security reasons. Copy the receiver UPI ID first,
+                      // then open PhonePe so the resident can enter/paste
+                      // the UPI ID manually.
+                      await Clipboard.setData(
+                        ClipboardData(text: upiId),
                       );
 
-                      if (!launched &&
-                          dialogContext.mounted) {
+                      bool launched = false;
+                      if (defaultTargetPlatform == TargetPlatform.android) {
+                        try {
+                          launched = await const MethodChannel(
+                            'safecolony/native_apps',
+                          ).invokeMethod<bool>('openPhonePe') ?? false;
+                        } on PlatformException {
+                          launched = false;
+                        }
+                      } else {
+                        // Keep a best-effort fallback for non-Android builds.
+                        launched = await launchUrl(
+                          Uri.parse('phonepe://'),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+
+                      if (!launched && dialogContext.mounted) {
                         ScaffoldMessenger.of(
                           dialogContext,
                         ).showSnackBar(
                           const SnackBar(
                             content: Text(
-                              'No UPI app could be opened. Copy the UPI ID and pay manually.',
+                              'PhonePe could not be opened. The UPI ID was copied; open PhonePe manually and paste it.',
+                            ),
+                          ),
+                        );
+                      } else if (dialogContext.mounted) {
+                        ScaffoldMessenger.of(
+                          dialogContext,
+                        ).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'UPI ID copied. In PhonePe, paste the UPI ID and pay the displayed amount.',
                             ),
                           ),
                         );
                       }
                     },
               icon: const Icon(
-                Icons.account_balance_wallet,
+                Icons.phone_android,
               ),
               label: const Text(
-                'Open UPI App',
+                'Copy UPI ID & Open PhonePe',
               ),
             ),
 

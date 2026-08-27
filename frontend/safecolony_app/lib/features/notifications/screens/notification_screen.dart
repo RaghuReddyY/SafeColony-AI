@@ -81,6 +81,9 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   }
 
   String _formatDate(DateTime value) {
+    // API timestamps are UTC. Display them in the phone's local timezone.
+    // This works correctly for India (IST, UTC+05:30) and for residents
+    // travelling or using a different device timezone.
     final local = value.toLocal();
     final day = local.day.toString().padLeft(2, '0');
     final month = local.month.toString().padLeft(2, '0');

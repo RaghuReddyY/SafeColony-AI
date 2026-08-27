@@ -78,6 +78,18 @@ class ResidentCreate(BaseModel):
     is_primary: bool = False
 
 
+class ResidentAdminUpdate(BaseModel):
+    full_name: FullName | None = None
+    email: EmailStr | None = None
+    phone: Phone | None = None
+    resident_type: ResidentType | None = None
+    gender: Gender | None = None
+    date_of_birth: date | None = None
+    emergency_contact: EmergencyContact | None = None
+    emergency_contact_name: EmergencyContactName | None = None
+    is_primary: bool | None = None
+
+
 class ResidentResponse(BaseModel):
     id: int
     user_id: int

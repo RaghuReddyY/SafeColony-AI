@@ -59,6 +59,23 @@ class AdminNotifier extends StateNotifier<AdminState> {
     }
   }
 
+  Future<void> updateResident({
+    required int id,
+    String? fullName,
+    String? email,
+    String? phone,
+    String? residentType,
+  }) async {
+    await _service.updateResident(
+      residentId: id,
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      residentType: residentType,
+    );
+    await loadPendingResidents();
+  }
+
   Future<void> approveResident(int id) async {
     await _service.approveResident(id);
     await loadPendingResidents();

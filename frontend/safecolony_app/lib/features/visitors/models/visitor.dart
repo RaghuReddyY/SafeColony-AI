@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class Visitor {
   final int id;
   final int residentId;
@@ -60,7 +61,7 @@ class Visitor {
     qrCode: json["qr_code"],
     approvedAt: json["approved_at"] == null
         ? null
-        : DateTime.parse(json["approved_at"]),
+        : ApiDateTime.parse(json['approved_at']),
   );
 }
 

@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class Incident {
   final int id;
   final String title;
@@ -16,6 +17,6 @@ class Incident {
     id: j['id'], title: j['title'] ?? '', description: j['description'] ?? '',
     incidentType: j['incident_type'] ?? '', severity: j['severity'] ?? 'MEDIUM',
     status: j['status'] ?? 'OPEN', location: j['location'],
-    createdAt: DateTime.parse(j['created_at']),
+    createdAt: ApiDateTime.parse(j['created_at']),
   );
 }

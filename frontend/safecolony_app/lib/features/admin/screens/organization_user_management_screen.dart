@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../scopes/block_admin_service.dart';
 import '../services/organization_user_service.dart';
+import '../services/admin_service.dart';
 import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ class OrganizationUserManagementScreen extends ConsumerStatefulWidget {
 class _OrganizationUserManagementScreenState
     extends ConsumerState<OrganizationUserManagementScreen> {
   final _service = OrganizationUserService();
+  final _residentService = AdminService();
   final _blockService = BlockAdminService();
 
   List<Map<String, dynamic>> _users = [];
@@ -291,6 +293,156 @@ class _OrganizationUserManagementScreenState
       email.dispose();
       phone.dispose();
       password.dispose();
+    }
+  }
+
+  Future<void> _editUser(Map<String, dynamic> user) async {
+    if (user['role']?.toString() == 'RESIDENT') {
+      final name = TextEditingController(text: user['full_name']?.toString() ?? '');
+      final email = TextEditingController(text: user['email']?.toString() ?? '');
+      final phone = TextEditingController(text: user['phone']?.toString() ?? '');
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Edit Resident'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Full name')),
+              TextField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
+              TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone')),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save Changes')),
+          ],
+        ),
+      );
+      if (saved == true) {
+        try {
+          await _residentService.updateResident(
+            residentId: user['resident_id'] as int,
+            fullName: name.text,
+            email: email.text,
+            phone: phone.text,
+          );
+          if (mounted) {
+            _showSuccess('Resident updated successfully.');
+            await _load();
+          }
+        } catch (e) {
+          if (mounted) _showError(e);
+        }
+      }
+      name.dispose(); email.dispose(); phone.dispose();
+      return;
+    }
+    final name = TextEditingController(text: user['full_name']?.toString() ?? '');
+    final email = TextEditingController(text: user['email']?.toString() ?? '');
+    final phone = TextEditingController(text: user['phone']?.toString() ?? '');
+    final password = TextEditingController();
+    String role = user['role']?.toString() ?? _roles.keys.first;
+    final selectedBlocks = <int>{...(user['section_ids'] as List? ?? []).whereType<int>()};
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isBlockAdmin = role == 'BLOCK_ADMIN';
+          return AlertDialog(
+            title: Text('Edit ${_roleLabel(user['role'].toString())}'),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: name, decoration: const InputDecoration(labelText: 'Full name')),
+                    const SizedBox(height: 12),
+                    TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
+                    const SizedBox(height: 12),
+                    TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile number')),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: password,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'New password (leave blank to keep current)',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _roles.containsKey(role) ? role : null,
+                      decoration: const InputDecoration(labelText: 'Role'),
+                      items: _roles.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setDialogState(() {
+                          role = v;
+                          if (role != 'BLOCK_ADMIN') selectedBlocks.clear();
+                        });
+                      },
+                    ),
+                    if (isBlockAdmin) ...[
+                      const SizedBox(height: 12),
+                      const Align(alignment: Alignment.centerLeft, child: Text('Assign blocks', style: TextStyle(fontWeight: FontWeight.w800))),
+                      ..._blocks.map((block) {
+                        final id = block['section_id'] as int;
+                        return CheckboxListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          value: selectedBlocks.contains(id),
+                          title: Text(block['section_name'].toString()),
+                          onChanged: (v) => setDialogState(() => v == true ? selectedBlocks.add(id) : selectedBlocks.remove(id)),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  if (name.text.trim().length < 3 || !email.text.contains('@') || phone.text.trim().length < 10) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter valid user details.')));
+                    return;
+                  }
+                  if (role == 'BLOCK_ADMIN' && selectedBlocks.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select at least one block.')));
+                    return;
+                  }
+                  Navigator.pop(dialogContext, true);
+                },
+                child: const Text('Save Changes'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (saved != true) return;
+    try {
+      await _service.updateUser(
+        userId: user['id'] as int,
+        fullName: name.text,
+        email: email.text,
+        phone: phone.text,
+        role: role,
+        sectionIds: selectedBlocks.toList(),
+        password: password.text.trim().isEmpty ? null : password.text,
+      );
+      if (!mounted) return;
+      _showSuccess('User updated successfully.');
+      await _load();
+    } catch (e) {
+      if (mounted) _showError(e);
+    } finally {
+      name.dispose(); email.dispose(); phone.dispose(); password.dispose();
     }
   }
 
@@ -606,7 +758,12 @@ class _OrganizationUserManagementScreenState
               ),
             ),
             const SizedBox(width: 8),
-            if (!isCurrentUser)
+            if (!isCurrentUser) ...[
+              IconButton(
+                tooltip: 'Edit user',
+                onPressed: () => _editUser(user),
+                icon: const Icon(Icons.edit_outlined, color: Color(0xff4F46E5)),
+              ),
               active
                   ? IconButton(
                       tooltip: 'Delete user',
@@ -624,6 +781,7 @@ class _OrganizationUserManagementScreenState
                         color: Color(0xff059669),
                       ),
                     ),
+            ],
           ],
         ),
       ),

@@ -27,7 +27,30 @@ class MaintenanceService {
     return MaintenancePeriod.fromJson(response.data);
   }
 
-Future<MaintenancePeriod> closePeriod(int periodId) async {
+  Future<MaintenancePeriod> updatePeriod({
+    required int periodId,
+    required double monthlyAmount,
+    required DateTime dueDate,
+    String? notes,
+  }) async {
+    final response = await ApiClient.dio.put(
+      '/maintenance/periods/$periodId',
+      data: {
+        'monthly_amount': monthlyAmount,
+        'due_date': _date(dueDate),
+        'notes': notes,
+      },
+    );
+    return MaintenancePeriod.fromJson(
+      Map<String, dynamic>.from(response.data),
+    );
+  }
+
+  Future<void> deletePeriod(int periodId) async {
+    await ApiClient.dio.delete('/maintenance/periods/$periodId');
+  }
+
+  Future<MaintenancePeriod> closePeriod(int periodId) async {
   final response = await ApiClient.dio.post(
     '/maintenance/periods/$periodId/close',
   );
@@ -171,6 +194,25 @@ Future<MaintenancePeriod> closePeriod(int periodId) async {
       },
     );
     return MaintenanceBill.fromJson(response.data);
+  }
+
+  Future<MaintenanceExpense> updateExpense({
+    required int expenseId,
+    required String category,
+    required String description,
+    required double amount,
+    required DateTime spentOn,
+  }) async {
+    final response = await ApiClient.dio.put(
+      '/maintenance/expenses/$expenseId',
+      data: {
+        'category': category,
+        'description': description,
+        'amount': amount,
+        'spent_on': spentOn.toIso8601String().split('T').first,
+      },
+    );
+    return MaintenanceExpense.fromJson(response.data);
   }
 
   Future<void> deleteBill(int billId) async {

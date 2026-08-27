@@ -27,6 +27,28 @@ class OrganizationUserService {
     );
   }
 
+  Future<void> updateUser({
+    required int userId,
+    required String fullName,
+    required String email,
+    required String phone,
+    required String role,
+    List<int> sectionIds = const [],
+    String? password,
+  }) async {
+    await ApiClient.dio.put(
+      '/organizations/users/$userId',
+      data: {
+        'full_name': fullName.trim(),
+        'email': email.trim().toLowerCase(),
+        'phone': phone.trim(),
+        'role': role,
+        'section_ids': sectionIds,
+        if (password != null && password.isNotEmpty) 'password': password,
+      },
+    );
+  }
+
   Future<void> deleteUser(int userId) async {
     await ApiClient.dio.delete('/organizations/users/$userId');
   }

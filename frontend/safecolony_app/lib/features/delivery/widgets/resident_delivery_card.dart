@@ -20,6 +20,9 @@ class ResidentDeliveryCard extends StatelessWidget {
       case "ARRIVED":
         return Colors.orange;
 
+      case "NOTIFIED":
+        return Colors.blue;
+
       case "PENDING":
         return Colors.blue;
 
@@ -111,6 +114,13 @@ class ResidentDeliveryCard extends StatelessWidget {
                 "Priority",
                 delivery.priority,
               ),
+
+              if (delivery.receivedBy != null &&
+                  delivery.receivedBy!.trim().isNotEmpty)
+                _row(
+                  "Received by",
+                  delivery.receivedBy!,
+                ),
 
               _row(
   "Created",

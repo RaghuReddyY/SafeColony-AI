@@ -7,6 +7,10 @@ class NotificationDeviceRegister(BaseModel):
     platform: str = Field(pattern="^(ANDROID|IOS|WEB)$")
 
 
+class NotificationDeviceUnregister(BaseModel):
+    token: str = Field(min_length=10, max_length=500)
+
+
 class NotificationDeviceResponse(BaseModel):
     id: int
     user_id: int

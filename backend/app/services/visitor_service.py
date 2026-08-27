@@ -375,6 +375,24 @@ class VisitorService:
             resident_id
         )
 
+    def get_for_current_user(
+        self,
+        current_user: User,
+    ):
+        if self.resident_repo is None:
+            raise BadRequestException(
+                "Resident repository not configured."
+            )
+
+        resident = self.resident_repo.get_by_user_id(
+            current_user.id
+        )
+
+        if resident is None:
+            raise NotFoundException("Resident")
+
+        return self.repo.get_by_resident(resident.id)
+
     # ==================================================
     # Approval
     # ==================================================

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../models/guard_dashboard.dart';
+import '../models/guard_visitor.dart';
+import 'qr_scanner_screen.dart';
 
 class GuardVisitorDetailScreen extends StatelessWidget {
-  final ExpectedVisitor visitor;
+  final GuardVisitor visitor;
 
   const GuardVisitorDetailScreen({
     super.key,
@@ -203,8 +204,9 @@ class GuardVisitorDetailScreen extends StatelessWidget {
             _info(
               Icons.schedule,
               "Expected Time",
-              visitor.expectedTime ??
-                  "-",
+              visitor.expectedAt == null
+                  ? "-"
+                  : visitor.expectedAt!.toLocal().toString(),
             ),
           ],
         ),
@@ -252,7 +254,12 @@ class GuardVisitorDetailScreen extends StatelessWidget {
                   "Scan QR",
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const QRScannerScreen(),
+                    ),
+                  );
                 },
               ),
             ),

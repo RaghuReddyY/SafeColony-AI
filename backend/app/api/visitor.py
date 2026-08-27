@@ -73,6 +73,30 @@ def get_visitors(
 
 
 @router.get(
+    "/resident/me",
+    response_model=list[VisitorResponse],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permissions.VISITOR_VIEW,
+            )
+        )
+    ],
+)
+def get_my_visitors(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    visitor_repo = VisitorRepository(db)
+    resident_repo = ResidentRepository(db)
+    service = VisitorService(
+        visitor_repo,
+        resident_repo,
+    )
+    return service.get_for_current_user(current_user)
+
+
+@router.get(
     "/resident/{resident_id}",
     response_model=list[VisitorResponse],
     dependencies=[
@@ -194,13 +218,31 @@ def get_visitor_qr(
         raise HTTPException(status_code=404, detail="QR code not found.")
 
     try:
-        # qr_code is the stable route stored in the database. The actual
-        # storage object is deterministic for the visitor.
+        # Prefer the stored PNG, but regenerate it from the persisted token if
+        # an older/migrated visitor has a missing storage object. This keeps
+        # existing QR records usable after storage/backend changes.
         content = StorageService().read_bytes(f"qr/visitor_{visitor_id}.png")
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="QR code file not found.")
+        try:
+            import qrcode
+            from io import BytesIO
 
-    return Response(content=content, media_type="image/png")
+            qr = qrcode.QRCode(version=1, box_size=10, border=4)
+            qr.add_data(visitor.qr_token)
+            qr.make(fit=True)
+            image = qr.make_image(fill_color="black", back_color="white")
+            buffer = BytesIO()
+            image.save(buffer, format="PNG")
+            content = buffer.getvalue()
+            StorageService().upload_bytes(
+                f"qr/visitor_{visitor_id}.png",
+                content,
+                content_type="image/png",
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=404, detail="QR code file not found.") from exc
+
+    return Response(content=content, media_type="image/png", headers={"Cache-Control": "no-store"})
 
 @router.post(
     "/validate-qr",

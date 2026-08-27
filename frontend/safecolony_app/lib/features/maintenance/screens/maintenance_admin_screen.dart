@@ -83,6 +83,157 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     }
   }
 
+  Future<void> _editPeriod(MaintenancePeriod period) async {
+    if (period.status != 'DRAFT') {
+      _snack('Only a draft maintenance period can be edited.');
+      return;
+    }
+
+    final amountController = TextEditingController(
+      text: period.monthlyAmount.toStringAsFixed(2),
+    );
+    final notesController = TextEditingController(text: period.notes ?? '');
+    DateTime dueDate = period.dueDate;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Edit Maintenance Period'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Billing month: ${_monthLabel(period.month)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Monthly maintenance amount',
+                    prefixText: '₹ ',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: dialogContext,
+                      initialDate: dueDate,
+                      firstDate: period.month,
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => dueDate = picked);
+                    }
+                  },
+                  child: Text('Due date: ${_date(dueDate)}'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'The billing month is fixed after creation. Once bills are published, the period is locked.',
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final amount = double.tryParse(amountController.text.trim());
+    final notes = notesController.text.trim();
+    amountController.dispose();
+    notesController.dispose();
+
+    if (saved != true || amount == null || amount <= 0) {
+      if (saved == true) _snack('Enter a valid maintenance amount.');
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).updatePeriod(
+            periodId: period.id,
+            monthlyAmount: amount,
+            dueDate: dueDate,
+            notes: notes.isEmpty ? null : notes,
+          );
+      if (!mounted) return;
+      ref.invalidate(maintenanceDashboardProvider);
+      _snack('Maintenance period updated.');
+    } catch (e) {
+      if (mounted) _snack('Unable to update maintenance period: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _deletePeriod(MaintenancePeriod period) async {
+    if (period.status != 'DRAFT') {
+      _snack('Only a draft maintenance period can be deleted.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete maintenance period?'),
+        content: Text(
+          'Delete ${_monthLabel(period.month)}? This is allowed only before bills or expenses are created.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete Period'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(maintenanceServiceProvider).deletePeriod(period.id);
+      if (!mounted) return;
+      ref.invalidate(maintenanceDashboardProvider);
+      _snack('Maintenance period deleted.');
+    } catch (e) {
+      if (mounted) _snack('Unable to delete maintenance period: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _generateBills(MaintenancePeriod period) async {
     setState(() => _busy = true);
     try {
@@ -153,6 +304,75 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
     }
   }
 
+
+  Future<void> _editExpense(MaintenanceExpense expense) async {
+    final category = TextEditingController(text: expense.category);
+    final description = TextEditingController(text: expense.description);
+    final amount = TextEditingController(text: expense.amount.toStringAsFixed(2));
+    DateTime spentOn = expense.spentOn;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Expense'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
+                const SizedBox(height: 12),
+                TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+                const SizedBox(height: 12),
+                TextField(controller: amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ ')),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: Text('Spent on: ${_date(spentOn)}')),
+                    TextButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: spentOn,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) setDialogState(() => spentOn = picked);
+                      },
+                      child: const Text('Change'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save Changes')),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    try {
+      final value = double.tryParse(amount.text.trim());
+      if (value == null || value <= 0) throw Exception('Enter a valid amount.');
+      await ref.read(maintenanceServiceProvider).updateExpense(
+        expenseId: expense.id,
+        category: category.text,
+        description: description.text,
+        amount: value,
+        spentOn: spentOn,
+      );
+      ref.invalidate(maintenanceDashboardProvider);
+      if (mounted) _snack('Expense updated.');
+    } catch (e) {
+      if (mounted) _snack('Unable to update expense: $e');
+    } finally {
+      category.dispose(); description.dispose(); amount.dispose();
+    }
+  }
 
   Future<void> _editBill(MaintenanceBill bill) async {
     final amountController = TextEditingController(text: bill.amount.toStringAsFixed(2));
@@ -590,6 +810,11 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
 
   String _money(double value) => '₹${value.toStringAsFixed(2)}';
   String _date(DateTime d) => '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+  String _monthLabel(DateTime d) => '${_monthName(d.month)} ${d.year}';
+  String _monthName(int month) => const [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ][month - 1];
 
   @override
   Widget build(BuildContext context) {
@@ -616,11 +841,46 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
               else ...[
                 _summary(dashboard.period!),
                 const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(child: FilledButton.icon(onPressed: _busy ? null : () => _generateBills(dashboard.period!), icon: const Icon(Icons.receipt_long), label: Text(dashboard.period!.status == 'DRAFT' ? 'Generate & Publish Bills' : 'Regenerate / Sync Bills'))),
-                  const SizedBox(width: 10),
-                  OutlinedButton.icon(onPressed: _busy || dashboard.period!.status == 'CLOSED' ? null : () => _closePeriod(dashboard.period!), icon: const Icon(Icons.lock_outline), label: const Text('Close')),
-                ]),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _generateBills(dashboard.period!),
+                      icon: const Icon(Icons.receipt_long),
+                      label: Text(
+                        dashboard.period!.status == 'DRAFT'
+                            ? 'Generate & Publish Bills'
+                            : 'Regenerate / Sync Bills',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _busy || dashboard.period!.status == 'CLOSED'
+                          ? null
+                          : () => _closePeriod(dashboard.period!),
+                      icon: const Icon(Icons.lock_outline),
+                      label: const Text('Close'),
+                    ),
+                    if (dashboard.period!.status == 'DRAFT')
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => _editPeriod(dashboard.period!),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit Period'),
+                      ),
+                    if (dashboard.period!.status == 'DRAFT')
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => _deletePeriod(dashboard.period!),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Delete Period'),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 _expenseForm(dashboard.period!),
                 const SizedBox(height: 20),
@@ -834,6 +1094,25 @@ class _MaintenanceAdminScreenState extends ConsumerState<MaintenanceAdminScreen>
   Widget _expenses(List<MaintenanceExpense> expenses) => Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Monthly Expenses', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        if (expenses.isEmpty) const Text('No expenses recorded.') else ...expenses.map((e) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.receipt_long), title: Text(e.category), subtitle: Text(e.description), trailing: Text(_money(e.amount), style: const TextStyle(fontWeight: FontWeight.bold))))
+        if (expenses.isEmpty)
+          const Text('No expenses recorded.')
+        else
+          ...expenses.map((e) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.receipt_long),
+                title: Text(e.category),
+                subtitle: Text(e.description),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Edit expense',
+                      onPressed: _busy ? null : () => _editExpense(e),
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                    Text(_money(e.amount), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ))
       ])));
 }

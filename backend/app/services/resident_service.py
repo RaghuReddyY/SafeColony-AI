@@ -169,6 +169,62 @@ class ResidentService:
     # Update
     # --------------------------------------------------
 
+    def update_admin_profile(
+        self,
+        resident_id: int,
+        data,
+        current_user: User,
+    ):
+        resident = self.resident_repo.get_by_id_and_organization(
+            resident_id, current_user.organization_id
+        )
+        if resident is None:
+            raise ValueError("Resident not found.")
+        self._check_scope(current_user, resident)
+
+        user = resident.user
+        if user is None:
+            raise ValueError("Resident user account not found.")
+
+        if data.email is not None:
+            email = data.email.lower().strip()
+            if self.db.query(User).filter(User.email == email, User.id != user.id).first():
+                raise ValueError("Email already exists.")
+            user.email = email
+        if data.phone is not None:
+            phone = data.phone.strip()
+            if self.db.query(User).filter(User.phone == phone, User.id != user.id).first():
+                raise ValueError("Phone already exists.")
+            user.phone = phone
+        if data.full_name is not None:
+            user.full_name = data.full_name.strip()
+
+        resident.unit_id = resident.unit_id
+        if data.resident_type is not None:
+            resident.resident_type = data.resident_type
+        if data.gender is not None:
+            resident.gender = data.gender
+        if data.date_of_birth is not None:
+            resident.date_of_birth = data.date_of_birth
+        if data.emergency_contact is not None:
+            resident.emergency_contact = data.emergency_contact
+        if data.emergency_contact_name is not None:
+            resident.emergency_contact_name = data.emergency_contact_name
+        if data.is_primary is not None:
+            resident.is_primary = bool(data.is_primary and resident.resident_type in {"OWNER", "TENANT"})
+            if resident.is_primary and resident.unit_id:
+                self.db.query(Resident).filter(
+                    Resident.unit_id == resident.unit_id,
+                    Resident.id != resident.id,
+                    Resident.is_primary.is_(True),
+                ).update({"is_primary": False}, synchronize_session=False)
+                resident.unit.maintenance_payer_resident_id = resident.id
+
+        self.db.commit()
+        self.db.refresh(resident)
+        return resident
+
+
     def update(
         self,
         resident_id: int,

@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 double _financeDouble(dynamic value) => double.tryParse(value?.toString() ?? '0') ?? 0;
 int _financeInt(dynamic value) => int.tryParse(value?.toString() ?? '0') ?? 0;
 
@@ -36,7 +37,7 @@ class CommunityContribution {
         paymentMethod: json['payment_method']?.toString() ?? 'MANUAL',
         reference: json['reference']?.toString(),
         status: json['status']?.toString() ?? 'VERIFIED',
-        collectedAt: DateTime.parse(json['collected_at'].toString()),
+        collectedAt: ApiDateTime.parse(json['collected_at']),
       );
 }
 
@@ -63,7 +64,7 @@ class CommunityExpense {
         description: json['description']?.toString() ?? '',
         amount: _financeDouble(json['amount']),
         spentOn: DateTime.parse(json['spent_on'].toString()),
-        createdAt: DateTime.parse(json['created_at'].toString()),
+        createdAt: ApiDateTime.parse(json['created_at']),
       );
 }
 
@@ -157,7 +158,7 @@ class CommunityFund {
         expenseAmount: _financeDouble(json['expense_amount']),
         balance: _financeDouble(json['balance']),
         contributorCount: _financeInt(json['contributor_count']),
-        createdAt: DateTime.parse(json['created_at'].toString()),
+        createdAt: ApiDateTime.parse(json['created_at']),
         contributions: (json['contributions'] as List? ?? [])
             .map((e) => CommunityContribution.fromJson(Map<String, dynamic>.from(e)))
             .toList(),

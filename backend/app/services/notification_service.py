@@ -58,10 +58,64 @@ class NotificationService:
                     self._queue_delivery(notification, channel, device.token)
         else:
             self._queue_delivery(notification, channel, self._destination(target, channel))
+
         self.db.commit()
         self.db.refresh(notification)
-        logger.info("Notification created user=%s type=%s channel=%s", target.id, data.notification_type, channel)
+
+        # PUSH is attempted immediately so Cloud Run does not depend on an
+        # in-process scheduler for user-facing mobile notifications. Any
+        # failure remains in the outbox and can be retried by the existing
+        # notification job/process endpoint.
+        if channel == "PUSH":
+            self._deliver_push_now(notification.id)
+
+        logger.info(
+            "Notification created user=%s type=%s channel=%s",
+            target.id,
+            data.notification_type,
+            channel,
+        )
         return notification
+
+    def _deliver_push_now(self, notification_id: int):
+        from app.services import notification_providers
+
+        deliveries = (
+            self.db.query(NotificationDelivery)
+            .filter(
+                NotificationDelivery.notification_id == notification_id,
+                NotificationDelivery.channel == "PUSH",
+                NotificationDelivery.status == "PENDING",
+            )
+            .all()
+        )
+
+        changed = False
+        for delivery in deliveries:
+            delivery.attempts += 1
+            try:
+                provider_id = notification_providers.send_push(
+                    delivery.destination,
+                    delivery.notification.title,
+                    delivery.notification.message,
+                )
+                delivery.status = "DELIVERED"
+                delivery.provider_message_id = provider_id
+                delivery.last_error = None
+                delivery.sent_at = datetime.utcnow()
+            except Exception as exc:
+                delivery.status = "PENDING" if delivery.attempts < 5 else "FAILED"
+                delivery.last_error = str(exc)
+                logger.warning(
+                    "Immediate push delivery failed id=%s attempt=%s error=%s",
+                    delivery.id,
+                    delivery.attempts,
+                    exc,
+                )
+            changed = True
+
+        if changed:
+            self.db.commit()
 
     def _destination(self, user: User, channel: str):
         if channel == "EMAIL":
@@ -136,6 +190,17 @@ class NotificationService:
         return template.title_template.format_map(values), template.message_template.format_map(values)
 
     def register_device(self, current_user: User, data):
+        # FCM tokens are device/app-instance identifiers. If a device logs out
+        # and a different SafeColony user logs in, the token must no longer be
+        # active for the previous user.
+        self.db.query(NotificationDevice).filter(
+            NotificationDevice.token == data.token,
+            NotificationDevice.user_id != current_user.id,
+        ).update(
+            {NotificationDevice.is_active: False},
+            synchronize_session=False,
+        )
+
         existing = self.template_repo.get_device(current_user.id, data.token)
         if existing:
             existing.platform = data.platform.upper()
@@ -151,6 +216,14 @@ class NotificationService:
         self.template_repo.save_device(device)
         self.db.commit()
         return device
+
+    def unregister_device(self, current_user: User, token: str):
+        device = self.template_repo.get_device(current_user.id, token)
+        if device is None:
+            return {"message": "Device was already unregistered."}
+        device.is_active = False
+        self.db.commit()
+        return {"message": "Device unregistered."}
 
     def list_devices(self, current_user):
         return self.template_repo.list_devices(current_user.id)

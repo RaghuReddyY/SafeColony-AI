@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class MaintenancePeriod {
   final int id;
   final int organizationId;
@@ -108,7 +109,7 @@ class MaintenanceBill {
       balance: _double(json['balance']),
       dueDate: DateTime.parse(json['due_date']),
       status: json['status'] ?? 'UNPAID',
-      paidAt: json['paid_at'] == null ? null : DateTime.parse(json['paid_at']),
+      paidAt: json['paid_at'] == null ? null : ApiDateTime.parse(json['paid_at']),
     );
   }
 }
@@ -140,7 +141,7 @@ class MaintenanceExpense {
       description: json['description'],
       amount: _double(json['amount']),
       spentOn: DateTime.parse(json['spent_on']),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: ApiDateTime.parse(json['created_at']),
     );
   }
 }
@@ -338,7 +339,7 @@ class PendingMaintenancePayment {
       reference: json['reference']?.toString(),
       paymentMethod: json['payment_method']?.toString() ?? 'DIRECT_UPI',
       status: json['status']?.toString() ?? 'PENDING',
-      paidAt: DateTime.parse(json['paid_at']),
+      paidAt: ApiDateTime.parse(json['paid_at']),
     );
   }
 }

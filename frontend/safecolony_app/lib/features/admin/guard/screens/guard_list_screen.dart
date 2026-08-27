@@ -148,10 +148,17 @@ class _GuardListScreenState
                       ],
                     ),
 
-                    trailing: const Icon(
-                      Icons.verified_user,
-                      color: Colors.green,
-                    ),
+                    trailing: Row(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+                         IconButton(
+                           tooltip: 'Edit guard',
+                           icon: const Icon(Icons.edit_outlined, color: Colors.indigo),
+                           onPressed: () => _editGuard(guard),
+                         ),
+                         const Icon(Icons.verified_user, color: Colors.green),
+                       ],
+                     ),
                   ),
                 );
               },
@@ -163,6 +170,55 @@ class _GuardListScreenState
   }
 
   //============================================================
+
+  Future<void> _editGuard(dynamic guard) async {
+    final nameController = TextEditingController(text: guard.fullName);
+    final emailController = TextEditingController(text: guard.email);
+    final phoneController = TextEditingController(text: guard.phone);
+    final passwordController = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Security Guard'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Full Name')),
+                const SizedBox(height: 12),
+                TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+                const SizedBox(height: 12),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                const SizedBox(height: 12),
+                TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'New password (optional)')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save Changes')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(guardProvider.notifier).updateGuard(
+        userId: guard.id,
+        fullName: nameController.text,
+        email: emailController.text,
+        phone: phoneController.text,
+        password: passwordController.text.trim().isEmpty ? null : passwordController.text,
+      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guard updated successfully.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      nameController.dispose(); emailController.dispose(); phoneController.dispose(); passwordController.dispose();
+    }
+  }
 
   void _showAddGuardDialog() {
 

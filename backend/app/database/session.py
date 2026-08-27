@@ -20,3 +20,5 @@ def get_db():
         yield db
     finally:
         db.close()
+# Register automatic FCM push dispatch for all Notification inserts.
+import app.core.notification_push  # noqa: E402,F401

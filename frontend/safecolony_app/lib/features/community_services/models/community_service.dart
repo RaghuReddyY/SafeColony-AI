@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class CommunityServiceEntry {
   final int id;
   final String name;
@@ -36,8 +37,8 @@ class CommunityServiceEntry {
       isActive: json['is_active'] == true,
       createdByName: json['created_by_name']?.toString(),
       updatedByName: json['updated_by_name']?.toString(),
-      createdAt: DateTime.parse(json['created_at'].toString()),
-      updatedAt: DateTime.parse(json['updated_at'].toString()),
+      createdAt: ApiDateTime.parse(json['created_at']),
+      updatedAt: ApiDateTime.parse(json['updated_at']),
     );
   }
 }

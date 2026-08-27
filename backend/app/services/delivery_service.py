@@ -22,13 +22,25 @@ class DeliveryService:
         self.repo = repo
 
     def create(self, data):
-        return self._create_for_resident(data.resident_id, data)
+        # Guard/admin registration means the package is physically being
+        # declared at the gate for the selected resident. Notify that
+        # resident. The authenticated-resident flow below intentionally does
+        # not notify the resident about their own declaration.
+        return self._create_for_resident(
+            data.resident_id,
+            data,
+            notify_resident=True,
+        )
 
     def create_for_resident(self, data, current_user: User):
         resident = ResidentRepository(self.repo.db).get_by_user_id(current_user.id)
         if resident is None:
             raise NotFoundException("Resident")
-        return self._create_for_resident(resident.id, data)
+        return self._create_for_resident(
+            resident.id,
+            data,
+            notify_resident=False,
+        )
 
     def _resident_context(self, resident_id: int):
         resident = ResidentRepository(self.repo.db).get_by_id(resident_id)
@@ -57,7 +69,12 @@ class DeliveryService:
                 notification_type="DELIVERY",
             ))
 
-    def _create_for_resident(self, resident_id: int, data):
+    def _create_for_resident(
+        self,
+        resident_id: int,
+        data,
+        notify_resident: bool = False,
+    ):
         resident = self._resident_context(resident_id)
         vacation = VacationRepository(self.repo.db).is_resident_on_vacation(resident_id)
         notification_repo = NotificationRepository(self.repo.db)
@@ -110,13 +127,20 @@ class DeliveryService:
             title = "Delivery Arrived"
             message = f"Package from {saved.courier_name} has arrived at the security gate."
 
-        # Resident confirmation + guard/admin operational visibility.
-        notification_repo.create(Notification(
-            user_id=resident.user_id,
-            title=title,
-            message=message,
-            notification_type="DELIVERY",
-        ))
+        # A resident creating/declaring a delivery should not receive an
+        # immediate "Delivery Arrived" alert for their own action. The
+        # operational notification belongs to security/admin. The resident
+        # will be notified later when the guard actually receives/collects it.
+        if notify_resident and resident.user_id:
+            NotificationRepository(self.repo.db).create(
+                Notification(
+                    user_id=resident.user_id,
+                    title=title,
+                    message=message,
+                    notification_type="DELIVERY",
+                )
+            )
+
         self._notify_org(
             resident.user.organization_id,
             [UserRole.SECURITY_GUARD.value],
@@ -154,6 +178,9 @@ class DeliveryService:
         if delivery.status in (DeliveryStatus.COLLECTED.value, DeliveryStatus.REJECTED.value):
             raise BadRequestException("Delivery cannot be received in its current state.")
         delivery.received_by = security_guard
+        # Physical gate receipt is the point at which the package becomes
+        # ARRIVED. Keep it pending until the resident provides the OTP.
+        delivery.status = DeliveryStatus.ARRIVED.value
         resident = ResidentRepository(self.repo.db).get_by_id(delivery.resident_id)
         if resident and resident.user_id:
             NotificationRepository(self.repo.db).create(Notification(

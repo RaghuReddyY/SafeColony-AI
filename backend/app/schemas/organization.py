@@ -148,6 +148,61 @@ class OrganizationUserCreate(BaseModel):
         return value
 
 
+class OrganizationUserUpdate(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone: str
+    password: str | None = None
+    role: UserRole
+    section_ids: list[int] = []
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("Full name must contain at least 3 characters.")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 10:
+            raise ValueError("Enter a valid mobile number.")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str | None) -> str | None:
+        if value is None or not value:
+            return None
+        if len(value) < 8:
+            raise ValueError("Password must contain at least 8 characters.")
+        if not any(c.isupper() for c in value):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not any(c.islower() for c in value):
+            raise ValueError("Password must contain at least one lowercase letter.")
+        if not any(c.isdigit() for c in value):
+            raise ValueError("Password must contain at least one number.")
+        return value
+
+
+class ScopedAdminUpdate(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone: str
+    password: str | None = None
+    section_ids: list[int] = []
+
+
+class GuardUpdate(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone: str
+    password: str | None = None
+
+
 class OrganizationUserResponse(BaseModel):
     id: int
     full_name: str

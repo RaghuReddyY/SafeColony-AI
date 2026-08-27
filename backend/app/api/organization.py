@@ -18,6 +18,9 @@ from app.schemas.organization import (
     ScopedAdminResponse,
     BlockScopeResponse,
     OrganizationUserCreate,
+    OrganizationUserUpdate,
+    ScopedAdminUpdate,
+    GuardUpdate,
     OrganizationUserResponse,
 )
 from app.auth.dependencies import get_current_user
@@ -164,6 +167,36 @@ def get_guards(
     service = OrganizationService(db)
 
     return service.get_guards(current_user)
+
+
+@router.put(
+    "/guards/{user_id}",
+    response_model=GuardResponse,
+    dependencies=[Depends(require_permission(Permissions.ORGANIZATION_CREATE))],
+)
+def update_guard(
+    user_id: int,
+    data: GuardUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return OrganizationService(db).update_guard(current_user, user_id, data)
+
+
+@router.put(
+    "/scoped-admins/{user_id}",
+    response_model=ScopedAdminResponse,
+    dependencies=[Depends(require_permission(Permissions.BLOCK_ADMIN_MANAGE))],
+)
+def update_scoped_admin(
+    user_id: int,
+    data: ScopedAdminUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = OrganizationService(db).update_scoped_admin(current_user, user_id, data)
+    scopes = OrganizationService(db).get_scoped_admins(current_user)
+    return next(item for item in scopes if item["id"] == user.id)
 # ==========================================================
 # Block Admin / Community Finance Collector
 # ==========================================================
@@ -235,6 +268,22 @@ def create_organization_user(
     current_user: User = Depends(get_current_user),
 ):
     user = OrganizationService(db).create_organization_user(current_user, data)
+    users = OrganizationService(db).list_organization_users(current_user)
+    return next(item for item in users if item["id"] == user.id)
+
+
+@router.put(
+    "/users/{user_id}",
+    response_model=OrganizationUserResponse,
+    dependencies=[Depends(require_permission(Permissions.USER_MANAGE))],
+)
+def update_organization_user(
+    user_id: int,
+    data: OrganizationUserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = OrganizationService(db).update_organization_user(current_user, user_id, data)
     users = OrganizationService(db).list_organization_users(current_user)
     return next(item for item in users if item["id"] == user.id)
 

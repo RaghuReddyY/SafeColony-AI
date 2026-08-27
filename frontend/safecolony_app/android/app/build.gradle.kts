@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 val keystorePropertiesFile = rootProject.file("key.properties")
@@ -16,11 +17,13 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.safecolony.app"
     compileSdk = 37
-    
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+
+        // Required by flutter_local_notifications
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -39,13 +42,17 @@ android {
             storePassword = keystoreProperties["storePassword"] as String
         }
     }
-    
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+}
+
+dependencies {
+    // Required by flutter_local_notifications
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 kotlin {

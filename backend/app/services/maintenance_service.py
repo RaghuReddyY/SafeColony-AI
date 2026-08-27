@@ -243,6 +243,90 @@ class MaintenanceService:
 
         return period
 
+    def update_period(
+        self,
+        current_user: User,
+        period_id: int,
+        data,
+    ):
+        section_id = None
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if len(ids) != 1:
+                raise BadRequestException(
+                    "A block administrator must have exactly one block to edit a maintenance period."
+                )
+            section_id = ids[0]
+
+        period = self.repo.get_period(
+            period_id,
+            current_user.organization_id,
+            section_id=section_id,
+        )
+        if not period:
+            raise NotFoundException("Maintenance period")
+
+        if period.status != "DRAFT":
+            raise BadRequestException(
+                "Only a DRAFT maintenance period can be edited. "
+                "Published periods are locked to preserve billing history."
+            )
+
+        if data.due_date < period.month:
+            raise BadRequestException(
+                "Due date cannot be before the maintenance month."
+            )
+
+        period.monthly_amount = data.monthly_amount
+        period.due_date = data.due_date
+        period.notes = data.notes
+        period.updated_at = datetime.utcnow()
+
+        self.repo.commit()
+        return period
+
+    def delete_period(
+        self,
+        current_user: User,
+        period_id: int,
+    ):
+        section_id = None
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if len(ids) != 1:
+                raise BadRequestException(
+                    "A block administrator must have exactly one block to delete a maintenance period."
+                )
+            section_id = ids[0]
+
+        period = self.repo.get_period(
+            period_id,
+            current_user.organization_id,
+            section_id=section_id,
+        )
+        if not period:
+            raise NotFoundException("Maintenance period")
+
+        if period.status != "DRAFT":
+            raise BadRequestException(
+                "Only a DRAFT maintenance period can be deleted."
+            )
+
+        if self.repo.count_bills_for_period(period.id) > 0:
+            raise BadRequestException(
+                "This maintenance period already has bills and cannot be deleted."
+            )
+
+        if self.repo.count_expenses_for_period(period.id) > 0:
+            raise BadRequestException(
+                "This maintenance period already has expenses and cannot be deleted."
+            )
+
+        self.repo.delete_period(period)
+        self.repo.commit()
+
+        return {"deleted": True, "period_id": period_id}
+
     # ==========================================================
     # Generate Bills
     # ==========================================================
@@ -373,6 +457,30 @@ class MaintenanceService:
     # ==========================================================
     # Expenses
     # ==========================================================
+
+    def update_expense(self, current_user: User, expense_id: int, data):
+        expense = self.db.query(MaintenanceExpense).join(
+            MaintenancePeriod, MaintenanceExpense.period_id == MaintenancePeriod.id
+        ).filter(
+            MaintenanceExpense.id == expense_id,
+            MaintenancePeriod.organization_id == current_user.organization_id,
+        ).first()
+        if not expense:
+            raise NotFoundException("Maintenance expense")
+        if expense.period.status == "CLOSED":
+            raise BadRequestException("An expense in a closed maintenance period cannot be edited.")
+
+        if current_user.role == "BLOCK_ADMIN":
+            ids = ScopeService.block_ids(self.db, current_user)
+            if len(ids) != 1 or expense.period.section_id not in ids:
+                raise ForbiddenException("Expense is outside your assigned block.")
+
+        expense.category = data.category
+        expense.description = data.description
+        expense.amount = data.amount
+        expense.spent_on = data.spent_on
+        self.repo.commit()
+        return expense
 
     def add_expense(
         self,
@@ -901,13 +1009,16 @@ class MaintenanceService:
 
             from urllib.parse import quote
 
+            # Keep the UPI URI minimal. Some UPI clients/risk engines are
+            # stricter about merchant-provided transaction-note parameters.
+            # The bill/reference is still tracked by SafeColony when the
+            # resident submits the UTR after payment.
             upi_url = (
                 "upi://pay?"
                 f"pa={quote(organization.payment_upi_id)}"
                 f"&pn={quote(organization.payment_display_name)}"
                 f"&am={quote(f'{balance:.2f}')}"
                 "&cu=INR"
-                f"&tn={quote(f'SafeColony maintenance bill #{bill.id}')}"
             )
 
             return {

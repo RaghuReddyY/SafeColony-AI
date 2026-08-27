@@ -239,7 +239,13 @@ class AuthService:
         resident = Resident(
             user_id=user.id,
             unit_id=unit.id,
-            resident_type=resident_type,
+            # For normal owner/tenant registration use the requested resident type.
+            # Family registration sets resident_type explicitly above.
+            resident_type=(
+                ResidentType.FAMILY
+                if data.family_join_code
+                else data.resident_type
+            ),
             family_sponsor_resident_id=family_sponsor.id if family_sponsor else None,
             status=ResidentStatus.PENDING,
             is_primary=make_primary,

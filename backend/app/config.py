@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     TWILIO_FROM_NUMBER: str | None = None
     TWILIO_WHATSAPP_FROM: str | None = None
     FCM_SERVER_KEY: str | None = None
+    # Preferred Firebase HTTP v1 configuration. Store the JSON in Secret Manager
+    # and expose it to Cloud Run as FCM_SERVICE_ACCOUNT_JSON.
+    FCM_SERVICE_ACCOUNT_JSON: str | None = None
+    # Cloud Run uses Application Default Credentials from its runtime service
+    # account. This is the Firebase/Google Cloud project used by SafeColony.
+    FCM_PROJECT_ID: str | None = "safecolony-production"
 
     # Mobile OTP login is intentionally disabled until a production SMS
     # provider and the final mobile-login flow are approved. Delivery OTPs

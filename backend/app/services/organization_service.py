@@ -496,6 +496,7 @@ def list_organization_users(self, current_user):
             "is_active": user.is_active,
             "section_ids": section_ids,
             "section_names": section_names,
+            "resident_id": user.resident.id if user.resident else None,
         })
 
     return result
@@ -586,6 +587,152 @@ def create_organization_user(self, current_user, data):
     return user
 
 
+
+def _validate_unique_contact(self, target, email: str, phone: str):
+    email = email.lower().strip()
+    phone = phone.strip()
+    by_email = self.db.query(User).filter(User.email == email, User.id != target.id).first()
+    if by_email:
+        raise ConflictException("Email already exists.")
+    by_phone = self.db.query(User).filter(User.phone == phone, User.id != target.id).first()
+    if by_phone:
+        raise ConflictException("Phone already exists.")
+    return email, phone
+
+
+def update_organization_user(self, current_user, user_id: int, data):
+    if current_user.organization_id is None:
+        raise ConflictException("Your account is not linked to an organization.")
+    if user_id == current_user.id:
+        raise ConflictException("Use your profile settings to update your own account.")
+
+    target = self.db.query(User).filter(
+        User.id == user_id,
+        User.organization_id == current_user.organization_id,
+    ).first()
+    if target is None:
+        raise ConflictException("User was not found in your organization.")
+
+    current_role = str(current_user.role.value if isinstance(current_user.role, UserRole) else current_user.role)
+    target_role = str(target.role)
+    requested_role = data.role.value if isinstance(data.role, UserRole) else str(data.role)
+
+    if target_role == UserRole.SYSTEM_ADMIN.value or requested_role == UserRole.SYSTEM_ADMIN.value:
+        raise ConflictException("System administrator accounts cannot be edited here.")
+    if target_role == UserRole.ORGANIZATION_ADMIN.value and current_role != UserRole.SYSTEM_ADMIN.value:
+        raise ConflictException("Only a system administrator can edit an organization administrator.")
+    if requested_role not in {r.value for r in _MANAGED_USER_ROLES}:
+        raise ConflictException("This role cannot be managed from organization user management.")
+
+    if requested_role != UserRole.BLOCK_ADMIN.value and data.section_ids:
+        raise ConflictException("Block assignments are only supported for block administrators.")
+
+    email, phone = self._validate_unique_contact(target, data.email, data.phone)
+
+    section_ids = list(dict.fromkeys(data.section_ids or []))
+    sections = []
+    if section_ids:
+        sections = (
+            self.db.query(Section)
+            .join(Property, Section.property_id == Property.id)
+            .filter(
+                Section.id.in_(section_ids),
+                Property.organization_id == current_user.organization_id,
+            ).all()
+        )
+        if len(sections) != len(section_ids):
+            raise ConflictException("One or more selected blocks do not belong to this community.")
+
+    target.full_name = data.full_name.strip()
+    target.email = email
+    target.phone = phone
+    target.role = requested_role
+    if data.password:
+        target.password_hash = hash_password(data.password)
+
+    from app.models.user_block_scope import UserBlockScope
+    self.db.query(UserBlockScope).filter(UserBlockScope.user_id == target.id).delete(
+        synchronize_session=False
+    )
+    for section in sections:
+        self.db.add(UserBlockScope(user_id=target.id, section_id=section.id))
+
+    self.db.commit()
+    self.db.refresh(target)
+    return target
+
+
+def update_scoped_admin(self, current_user, user_id: int, data):
+    target = self.db.query(User).filter(
+        User.id == user_id,
+        User.organization_id == current_user.organization_id,
+        User.role.in_([UserRole.BLOCK_ADMIN.value, UserRole.COMMUNITY_FINANCE_ADMIN.value]),
+        User.is_active.is_(True),
+    ).first()
+    if target is None:
+        raise ConflictException("Scoped administrator was not found.")
+
+    # Only organization/system administrators manage scoped administrators.
+    current_role = str(current_user.role.value if isinstance(current_user.role, UserRole) else current_user.role)
+    if current_role not in {UserRole.SYSTEM_ADMIN.value, UserRole.ORGANIZATION_ADMIN.value}:
+        raise ConflictException("You do not have permission to edit scoped administrators.")
+
+    email, phone = self._validate_unique_contact(target, data.email, data.phone)
+    section_ids = list(dict.fromkeys(data.section_ids or []))
+    if target.role == UserRole.COMMUNITY_FINANCE_ADMIN.value:
+        section_ids = []
+
+    sections = []
+    if section_ids:
+        sections = (
+            self.db.query(Section)
+            .join(Property, Section.property_id == Property.id)
+            .filter(
+                Section.id.in_(section_ids),
+                Property.organization_id == current_user.organization_id,
+            ).all()
+        )
+        if len(sections) != len(section_ids):
+            raise ConflictException("One or more selected blocks do not belong to this community.")
+
+    target.full_name = data.full_name.strip()
+    target.email = email
+    target.phone = phone
+    if data.password:
+        target.password_hash = hash_password(data.password)
+
+    from app.models.user_block_scope import UserBlockScope
+    self.db.query(UserBlockScope).filter(UserBlockScope.user_id == target.id).delete(
+        synchronize_session=False
+    )
+    for section in sections:
+        self.db.add(UserBlockScope(user_id=target.id, section_id=section.id))
+
+    self.db.commit()
+    self.db.refresh(target)
+    return target
+
+
+def update_guard(self, current_user, user_id: int, data):
+    target = self.db.query(User).filter(
+        User.id == user_id,
+        User.organization_id == current_user.organization_id,
+        User.role == UserRole.SECURITY_GUARD.value,
+    ).first()
+    if target is None:
+        raise ConflictException("Security guard was not found.")
+
+    email, phone = self._validate_unique_contact(target, data.email, data.phone)
+    target.full_name = data.full_name.strip()
+    target.email = email
+    target.phone = phone
+    if data.password:
+        target.password_hash = hash_password(data.password)
+    self.db.commit()
+    self.db.refresh(target)
+    return target
+
+
 def delete_organization_user(self, current_user, user_id: int):
     if current_user.organization_id is None:
         raise ConflictException("Your account is not linked to an organization.")
@@ -671,3 +818,8 @@ OrganizationService.list_organization_users = list_organization_users
 OrganizationService.create_organization_user = create_organization_user
 OrganizationService.delete_organization_user = delete_organization_user
 OrganizationService.restore_organization_user = restore_organization_user
+
+OrganizationService.update_organization_user = update_organization_user
+OrganizationService.update_scoped_admin = update_scoped_admin
+OrganizationService.update_guard = update_guard
+OrganizationService._validate_unique_contact = _validate_unique_contact

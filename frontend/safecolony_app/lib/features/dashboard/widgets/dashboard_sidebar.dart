@@ -6,8 +6,10 @@ import '../../auth/providers/auth_provider.dart';
 import '../../ai/screens/ai_assistant_screen.dart';
 import '../../chat/screens/community_chat_screen.dart';
 import '../../delivery/screens/delivery_dashboard_screen.dart';
+import '../../delivery/screens/guard_delivery_screen.dart';
 import '../../auth/login_screen.dart';
 import '../../guard/screens/guard_dashboard_screen.dart';
+import '../../guard/screens/qr_scanner_screen.dart';
 import '../../vacation/screens/vacation_screen.dart';
 import '../../guard/screens/guard_visitors_screen.dart';
 import '../../visitors/screens/visitor_list_screen.dart';
@@ -32,6 +34,7 @@ import '../../admin/guard/screens/guard_list_screen.dart';
 import '../../marketplace/screens/marketplace_screen.dart';
 import '../../marketplace/screens/marketplace_admin_screen.dart';
 import '../../marketplace/screens/marketplace_vendor_screen.dart';
+import '../../notifications/screens/notification_screen.dart';
 import '../../super_app/screens/super_app_screen.dart';
 
 class DashboardSidebar extends ConsumerWidget {
@@ -108,6 +111,8 @@ class DashboardSidebar extends ConsumerWidget {
 
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.people, title: "Visitors"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.inventory_2, title: "Deliveries"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_wallet_rounded, title: "Maintenance"),
+                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_rounded, title: "Community Finance"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.beach_access, title: "Vacation"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.support_agent, title: "Complaints"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.report_problem_outlined, title: "Incidents"),
@@ -263,19 +268,23 @@ case "Visitors":
   break;
 
             case "Guard Scanner":
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const GuardDashboardScreen(),
-    ),
-  );
-  break;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const QRScannerScreen(),
+                ),
+              );
+              break;
 
             case "Deliveries":
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const DeliveryDashboardScreen(),
+                  builder: (_) =>
+                      (role == "SECURITY_GUARD" ||
+                              role == "SECURITY_MANAGER")
+                          ? const GuardDeliveryScreen()
+                          : const DeliveryDashboardScreen(),
                 ),
               );
               break;
@@ -296,6 +305,15 @@ case "Visitors":
                 context,
                 MaterialPageRoute(
                   builder: (_) => const CommunityFinanceScreen(),
+                ),
+              );
+              break;
+
+            case "Notifications":
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationScreen(),
                 ),
               );
               break;

@@ -2,7 +2,7 @@ name: safecolony_app
 description: SafeColony AI - Smart Community Security Platform
 publish_to: "none"
 
-version: 1.0.0+2
+version: 1.0.0+5
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -26,6 +26,9 @@ dependencies:
   share_plus: 13.3.0
   url_launcher: ^6.3.2
   path_provider: ^2.1.5
+  firebase_core: ^4.1.1
+  firebase_messaging: ^16.0.1
+  flutter_local_notifications: ^19.4.1
  
 
 dev_dependencies:

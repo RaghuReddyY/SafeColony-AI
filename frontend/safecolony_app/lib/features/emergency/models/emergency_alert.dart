@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class EmergencyAlert {
   final int id;
   final int? organizationId;
@@ -53,8 +54,8 @@ class EmergencyAlert {
       resolvedByName: json['resolved_by_name'] as String?,
       resolvedAt: json['resolved_at'] == null
           ? null
-          : DateTime.tryParse(json['resolved_at'].toString()),
-      createdAt: DateTime.parse(json['created_at'].toString()),
+          : ApiDateTime.tryParse(json['resolved_at']),
+      createdAt: ApiDateTime.parse(json['created_at']),
     );
   }
 }

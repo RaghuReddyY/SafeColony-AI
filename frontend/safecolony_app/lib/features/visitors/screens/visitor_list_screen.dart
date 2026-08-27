@@ -28,7 +28,7 @@ class _VisitorListScreenState
   void _loadVisitors() {
     _future = ref
         .read(visitorProvider)
-        .loadResidentVisitors(2);
+        .loadMyVisitors();
   }
 
   Future<void> _refresh() async {

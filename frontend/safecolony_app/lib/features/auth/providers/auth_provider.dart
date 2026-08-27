@@ -9,6 +9,7 @@ import '../../../models/organization_register_request.dart';
 import '../../../models/organization_register_response.dart';
 
 import '../models/auth_state.dart';
+import '../../notifications/services/push_notification_service.dart';
 
 final authProvider =
     StateNotifierProvider<AuthNotifier, AuthState>(
@@ -58,6 +59,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
             loginResponse.residentStatus,
         error: null,
       );
+
+      await PushNotificationService.instance.initialize();
 
       print('ROLE = ${user.role}');
       print(
@@ -186,6 +189,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
             loginResponse.residentStatus,
         error: null,
       );
+
+      await PushNotificationService.instance.initialize();
 
       return true;
     } catch (e) {
@@ -336,6 +341,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: token,
         user: user,
       );
+
+      await PushNotificationService.instance.initialize();
     } catch (e) {
       await logout();
     }
@@ -346,6 +353,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // ============================================================
 
   Future<void> logout() async {
+    // Remove the FCM token from the current user before deleting the API token.
+    // This prevents a logged-out device from continuing to receive that user's
+    // private notifications. Any network/Firebase failure is intentionally
+    // ignored because logout itself must always complete.
+    try {
+      await PushNotificationService.instance.unregisterCurrentToken();
+    } catch (_) {}
+
     await _storage.logout();
 
     state = const AuthState();

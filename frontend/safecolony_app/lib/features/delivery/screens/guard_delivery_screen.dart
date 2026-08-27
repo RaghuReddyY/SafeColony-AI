@@ -160,6 +160,34 @@ class _GuardDeliveryScreenState
     }
   }
 
+  Future<void> _receiveDelivery(Delivery delivery) async {
+    try {
+      // The guard confirms physical receipt first. This is intentionally
+      // separate from resident collection/OTP verification so the resident
+      // gets a clear "received at gate" notification immediately.
+      final result = await _service.receiveDelivery(
+        deliveryId: delivery.id,
+        guardName: "Security Guard",
+      );
+
+      if (!mounted) return;
+
+      _showMessage(
+        "Delivery received at gate. Resident has been notified.",
+        success: true,
+      );
+
+      // Refresh so the card changes to "Collect with Resident OTP".
+      await _loadPendingDeliveries();
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        "Unable to receive delivery: $e",
+        success: false,
+      );
+    }
+  }
+
   Future<void> _collectDelivery(Delivery delivery) async {
     final result = await showDialog<bool>(
       context: context,
@@ -311,18 +339,39 @@ class _GuardDeliveryScreenState
                 Text(
                   "Priority: ${delivery.priority}",
                 ),
+                if (delivery.receivedBy != null &&
+                    delivery.receivedBy!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    "Received at gate by: ${delivery.receivedBy}",
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
                   height: 46,
-                  child: ElevatedButton.icon(
-                    onPressed: () =>
-                        _collectDelivery(delivery),
-                    icon: const Icon(Icons.lock_open),
-                    label: const Text(
-                      "Collect with Resident OTP",
-                    ),
-                  ),
+                  child: delivery.receivedBy == null ||
+                          delivery.receivedBy!.trim().isEmpty
+                      ? ElevatedButton.icon(
+                          onPressed: () =>
+                              _receiveDelivery(delivery),
+                          icon: const Icon(Icons.inventory_2),
+                          label: const Text(
+                            "Receive at Security Gate",
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: () =>
+                              _collectDelivery(delivery),
+                          icon: const Icon(Icons.lock_open),
+                          label: const Text(
+                            "Collect with Resident OTP",
+                          ),
+                        ),
                 ),
               ],
             ),

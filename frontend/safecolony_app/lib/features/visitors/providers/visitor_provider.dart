@@ -18,6 +18,11 @@ class VisitorProvider {
     return _service.getVisitors();
   }
 
+  /// Load visitors belonging to the authenticated resident.
+  Future<List<Visitor>> loadMyVisitors() {
+    return _service.getMyVisitors();
+  }
+
   /// Load resident visitors
   Future<List<Visitor>> loadResidentVisitors(
       int residentId) {

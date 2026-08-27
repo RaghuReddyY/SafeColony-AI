@@ -8,7 +8,7 @@ from app.models.user import User
 from app.repositories.notification_repository import NotificationRepository
 from app.schemas.notification import NotificationCreate, NotificationResponse
 from app.schemas.notification_template import NotificationTemplateCreate, NotificationTemplateResponse, NotificationDeliveryResponse
-from app.schemas.notification_device import NotificationDeviceRegister, NotificationDeviceResponse
+from app.schemas.notification_device import NotificationDeviceRegister, NotificationDeviceResponse, NotificationDeviceUnregister
 from app.security.permissions import Permissions
 from app.services.notification_service import NotificationService
 
@@ -91,6 +91,15 @@ def register_device(
     service: NotificationService = Depends(get_notification_service),
 ):
     return service.register_device(current_user, data)
+
+
+@router.post("/devices/unregister", dependencies=[Depends(require_permission(Permissions.NOTIFICATION_UPDATE))])
+def unregister_device(
+    data: NotificationDeviceUnregister,
+    current_user: User = Depends(get_current_user),
+    service: NotificationService = Depends(get_notification_service),
+):
+    return service.unregister_device(current_user, data.token)
 
 
 @router.get("/devices", response_model=list[NotificationDeviceResponse], dependencies=[Depends(require_permission(Permissions.NOTIFICATION_VIEW))])

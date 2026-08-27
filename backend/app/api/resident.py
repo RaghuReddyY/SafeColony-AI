@@ -13,6 +13,7 @@ from app.schemas.resident import (
     ResidentCreate,
     ResidentProfileResponse,
     ResidentProfileUpdate,
+    ResidentAdminUpdate,
     ResidentResponse,
 )
 from app.security.permissions import Permissions
@@ -76,6 +77,19 @@ def get_residents(
     service: ResidentService = Depends(get_resident_service),
 ):
     return service.get_all(current_user)
+
+@router.put(
+    "/{resident_id}",
+    response_model=ResidentResponse,
+    dependencies=[Depends(require_permission(Permissions.RESIDENT_UPDATE))],
+)
+def update_resident(
+    resident_id: int,
+    resident: ResidentAdminUpdate,
+    current_user: User = Depends(get_current_user),
+    service: ResidentService = Depends(get_resident_service),
+):
+    return service.update_admin_profile(resident_id, resident, current_user)
 
 
 @router.get(

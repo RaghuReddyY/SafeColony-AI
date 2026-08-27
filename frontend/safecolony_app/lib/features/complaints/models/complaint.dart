@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class Complaint {
   final int id;
   final String title;
@@ -31,8 +32,8 @@ class Complaint {
     priority: j['priority'] ?? 'MEDIUM',
     status: j['status'] ?? 'OPEN',
     assignedToUserId: j['assigned_to_user_id'],
-    createdAt: DateTime.parse(j['created_at']),
-    resolvedAt: j['resolved_at'] == null ? null : DateTime.parse(j['resolved_at']),
+    createdAt: ApiDateTime.parse(j['created_at']),
+    resolvedAt: j['resolved_at'] == null ? null : ApiDateTime.parse(j['resolved_at']),
     resolution: j['resolution'],
   );
 }

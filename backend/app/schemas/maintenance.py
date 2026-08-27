@@ -12,7 +12,20 @@ class MaintenancePeriodCreate(BaseModel):
     notes: str | None = None
 
 
+class MaintenancePeriodUpdate(BaseModel):
+    monthly_amount: Decimal = Field(gt=0)
+    due_date: date
+    notes: str | None = None
+
+
 class MaintenanceExpenseCreate(BaseModel):
+    category: str = Field(min_length=2, max_length=60)
+    description: str = Field(min_length=2, max_length=500)
+    amount: Decimal = Field(gt=0)
+    spent_on: date
+
+
+class MaintenanceExpenseUpdate(BaseModel):
     category: str = Field(min_length=2, max_length=60)
     description: str = Field(min_length=2, max_length=500)
     amount: Decimal = Field(gt=0)

@@ -9,8 +9,10 @@ from app.repositories.maintenance_repository import MaintenanceRepository
 from app.schemas.maintenance import (
     MaintenanceDashboardResponse,
     MaintenanceExpenseCreate,
+    MaintenanceExpenseUpdate,
     MaintenanceExpenseResponse,
     MaintenancePeriodCreate,
+    MaintenancePeriodUpdate,
     MaintenancePaymentCreate,
     MaintenancePeriodResponse,
     ResidentMaintenanceSummary,
@@ -55,6 +57,33 @@ def create_period(data: MaintenancePeriodCreate, current_user: User = Depends(ge
     return service._period_response(period)
 
 
+@router.put(
+    "/periods/{period_id}",
+    response_model=MaintenancePeriodResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
+)
+def update_period(
+    period_id: int,
+    data: MaintenancePeriodUpdate,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    period = service.update_period(current_user, period_id, data)
+    return service._period_response(period)
+
+
+@router.delete(
+    "/periods/{period_id}",
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
+)
+def delete_period(
+    period_id: int,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.delete_period(current_user, period_id)
+
+
 @router.post(
     "/periods/{period_id}/generate-bills",
     dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
@@ -79,6 +108,19 @@ def close_period(period_id: int, current_user: User = Depends(get_current_user),
 )
 def add_expense(period_id: int, data: MaintenanceExpenseCreate, current_user: User = Depends(get_current_user), service: MaintenanceService = Depends(get_service)):
     return service.add_expense(current_user, period_id, data)
+
+@router.put(
+    "/expenses/{expense_id}",
+    response_model=MaintenanceExpenseResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_MANAGE))],
+)
+def update_expense(
+    expense_id: int,
+    data: MaintenanceExpenseUpdate,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.update_expense(current_user, expense_id, data)
 
 
 @router.get(
