@@ -50,13 +50,14 @@ class SuperAppService {
     await ApiClient.dio.patch('/super-app/service-requests/$id', data: {'status': status});
   }
 
-  Future<void> createRecurring({required String category, required String description, required String cadence, String? day, String? slot}) async {
+  Future<void> createRecurring({required String category, required String description, required String cadence, String? day, String? slot, int? vendorId}) async {
     await ApiClient.dio.post('/super-app/recurring-orders', data: {
       'category': category,
       'description': description,
       'cadence': cadence,
       'preferred_day': day,
       'preferred_slot': slot,
+      'vendor_id': vendorId,
     });
   }
 

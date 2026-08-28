@@ -421,6 +421,9 @@ class MaintenanceService:
                             f"{period.due_date.strftime('%d-%m-%Y')}."
                         ),
                         notification_type="MAINTENANCE_DUE",
+                        entity_type="MAINTENANCE",
+                        entity_id=bill.id,
+                        action="PAY_MAINTENANCE",
                     )
                 )
 
@@ -547,9 +550,28 @@ class MaintenanceService:
             "amount_paid": bill.amount_paid,
             "balance": self._payment_balance(bill),
             "due_date": bill.due_date,
+            "carry_forward_period_month": self._carry_forward_period_month(bill),
             "status": bill.status,
             "paid_at": bill.paid_at,
         }
+
+    def _carry_forward_period_month(self, bill: MaintenanceBill):
+        if not bill.carried_forward or float(bill.carried_forward) <= 0 or not bill.period:
+            return None
+        previous = (
+            self.db.query(MaintenanceBill)
+            .join(MaintenancePeriod, MaintenanceBill.period_id == MaintenancePeriod.id)
+            .filter(
+                MaintenanceBill.resident_id == bill.resident_id,
+                MaintenancePeriod.organization_id == bill.period.organization_id,
+                MaintenancePeriod.month < bill.period.month,
+                MaintenancePeriod.section_id == bill.period.section_id,
+                (MaintenanceBill.total_due - MaintenanceBill.amount_paid) > 0,
+            )
+            .order_by(MaintenancePeriod.month.desc())
+            .first()
+        )
+        return previous.period.month if previous and previous.period else None
 
     # ==========================================================
     # Period Response
@@ -1277,6 +1299,9 @@ class MaintenanceService:
                     "administrator verification."
                 ),
                 notification_type="MAINTENANCE_PAYMENT",
+                entity_type="MAINTENANCE",
+                entity_id=bill.id,
+                action="OPEN_MAINTENANCE_PAYMENT",
             )
         )
 
@@ -1307,6 +1332,9 @@ class MaintenanceService:
                         f"{data.reference}."
                     ),
                     notification_type="MAINTENANCE_PAYMENT",
+                    entity_type="MAINTENANCE",
+                    entity_id=bill.id,
+                    action="OPEN_MAINTENANCE_PAYMENT",
                 )
             )
 
@@ -1424,6 +1452,9 @@ class MaintenanceService:
                         "Please contact the administrator."
                     ),
                     notification_type="MAINTENANCE_PAYMENT",
+                    entity_type="MAINTENANCE",
+                    entity_id=bill.id,
+                    action="OPEN_MAINTENANCE_PAYMENT",
                 )
             )
 
@@ -1500,6 +1531,9 @@ class MaintenanceService:
                     f"₹{(bill.total_due - bill.amount_paid):.2f}."
                 ),
                 notification_type="MAINTENANCE_PAYMENT",
+                entity_type="MAINTENANCE",
+                entity_id=bill.id,
+                action="OPEN_MAINTENANCE_PAYMENT",
             )
         )
 
@@ -1738,6 +1772,9 @@ class MaintenanceService:
                         "was received successfully."
                     ),
                     notification_type="MAINTENANCE_PAYMENT",
+                    entity_type="MAINTENANCE",
+                    entity_id=bill.id,
+                    action="OPEN_MAINTENANCE_PAYMENT",
                 )
             )
 
@@ -1766,7 +1803,10 @@ class MaintenanceService:
                             f"{bill.status}."
                         ),
                         notification_type="MAINTENANCE_PAYMENT",
-                    )
+                            entity_type="MAINTENANCE",
+                            entity_id=bill.id,
+                            action="OPEN_MAINTENANCE_PAYMENT",
+                        )
                 )
 
             self.repo.commit()
@@ -1814,6 +1854,9 @@ class MaintenanceService:
             title="Maintenance Bill Updated",
             message=f"Your maintenance bill was updated to ₹{bill.total_due:.2f}. Due date: {bill.due_date.strftime('%d-%m-%Y')}.",
             notification_type="MAINTENANCE_DUE",
+            entity_type="MAINTENANCE",
+            entity_id=bill.id,
+            action="PAY_MAINTENANCE",
         ))
         self.repo.commit()
         return self._bill_response(bill)
@@ -1832,6 +1875,9 @@ class MaintenanceService:
                 title="Maintenance Bill Cancelled",
                 message="Your previously generated maintenance bill has been cancelled by the administrator.",
                 notification_type="MAINTENANCE_DUE",
+                entity_type="MAINTENANCE",
+                entity_id=bill.id,
+                action="PAY_MAINTENANCE",
             ))
         self.repo.commit()
         return {"success": True, "bill_id": bill_id}
@@ -1890,6 +1936,9 @@ class MaintenanceService:
             title="Maintenance Payment Recorded",
             message=f"Payment of ₹{data.amount:.2f} was recorded. Outstanding: ₹{self._payment_balance(bill):.2f}.",
             notification_type="MAINTENANCE_PAYMENT",
+            entity_type="MAINTENANCE",
+            entity_id=bill.id,
+            action="OPEN_MAINTENANCE_PAYMENT",
         ))
         self.repo.commit()
         return self._bill_response(bill)
@@ -2002,6 +2051,9 @@ class MaintenanceService:
                         "Please complete payment."
                     ),
                     notification_type="MAINTENANCE_DUE",
+                    entity_type="MAINTENANCE",
+                    entity_id=bill.id,
+                    action="PAY_MAINTENANCE",
                 )
             )
 

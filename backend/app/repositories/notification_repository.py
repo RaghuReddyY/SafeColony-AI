@@ -75,6 +75,13 @@ class NotificationRepository:
                             delivery.destination,
                             notification.title,
                             notification.message,
+                            data={
+                                "type": "CHAT" if (notification.entity_type or notification.notification_type or "").upper() in {"CHAT", "COMMUNITY_CHAT"} else (notification.entity_type or notification.notification_type or "GENERAL"),
+                                "entity_type": notification.entity_type,
+                                "entity_id": notification.entity_id,
+                                "action": notification.action,
+                                "notification_id": notification.id,
+                            },
                         )
                         delivery.status = "DELIVERED"
                         delivery.provider_message_id = provider_id

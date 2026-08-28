@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/auth_service.dart';
+import '../../../core/api/api_client.dart';
 import '../../../services/storage_service.dart';
 
 import '../../../models/login_request.dart';
@@ -29,6 +30,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login({
     required String email,
     required String password,
+    bool rememberMe = true,
   }) async {
     try {
       state = state.copyWith(
@@ -43,9 +45,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         ),
       );
 
-      await _storage.saveToken(
-        loginResponse.accessToken,
-      );
+      if (rememberMe) {
+        await _storage.saveToken(loginResponse.accessToken);
+      } else {
+        await _storage.logout();
+      }
+      ApiClient.setSessionToken(loginResponse.accessToken);
 
       final user =
           await _authService.getCurrentUser();
@@ -333,6 +338,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     try {
+      ApiClient.setSessionToken(token);
       final user =
           await _authService.getCurrentUser();
 
@@ -362,6 +368,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
 
     await _storage.logout();
+    ApiClient.setSessionToken(null);
 
     state = const AuthState();
   }

@@ -1,9 +1,11 @@
+import '../core/utils/api_date_time.dart';
 class DashboardActivity {
   final String title;
   final String message;
   final String notificationType;
   final DateTime createdAt;
   final bool isRead;
+  final int count;
 
   DashboardActivity({
     required this.title,
@@ -11,6 +13,7 @@ class DashboardActivity {
     required this.notificationType,
     required this.createdAt,
     required this.isRead,
+    this.count = 1,
   });
 
   factory DashboardActivity.fromJson(Map<String, dynamic> json) {
@@ -19,11 +22,10 @@ class DashboardActivity {
       message: json['message']?.toString() ?? '',
       notificationType:
           json['notification_type']?.toString() ?? 'GENERAL',
-      createdAt: DateTime.tryParse(
-            json['created_at']?.toString() ?? '',
-          ) ??
+      createdAt: ApiDateTime.tryParse(json['created_at']) ??
           DateTime.now(),
       isRead: json['is_read'] == true,
+      count: int.tryParse(json['count']?.toString() ?? '1') ?? 1,
     );
   }
 }
@@ -40,6 +42,15 @@ class DashboardSummary {
   final int pendingDeliveries;
   final int notificationCount;
   final int unreadNotifications;
+  final double pendingMaintenance;
+  final String? latestMaintenanceStatus;
+  final DateTime? latestMaintenanceDueDate;
+  final DateTime? latestMaintenancePeriodMonth;
+  final double latestMaintenanceCarryForward;
+  final double communityFinancePending;
+  final int communityFinanceActive;
+  final double communityExpenseTotal;
+  final int recentMaintenancePayments;
   final bool vacationMode;
   final int securityScore;
   final List<int> weeklyVisitors;
@@ -62,6 +73,15 @@ class DashboardSummary {
     required this.pendingDeliveries,
     required this.notificationCount,
     required this.unreadNotifications,
+    required this.pendingMaintenance,
+    required this.latestMaintenanceStatus,
+    required this.latestMaintenanceDueDate,
+    required this.latestMaintenancePeriodMonth,
+    required this.latestMaintenanceCarryForward,
+    required this.communityFinancePending,
+    this.communityFinanceActive = 0,
+    required this.communityExpenseTotal,
+    required this.recentMaintenancePayments,
     required this.vacationMode,
     required this.securityScore,
     required this.weeklyVisitors,
@@ -115,6 +135,23 @@ class DashboardSummary {
           int.tryParse(json['notification_count'].toString()) ?? 0,
       unreadNotifications:
           int.tryParse(json['unread_notifications'].toString()) ?? 0,
+      pendingMaintenance:
+          double.tryParse(json['pending_maintenance']?.toString() ?? '') ?? 0.0,
+      latestMaintenanceStatus: json['latest_maintenance_status']?.toString(),
+      latestMaintenanceDueDate:
+          ApiDateTime.tryParse(json['latest_maintenance_due_date']),
+      latestMaintenancePeriodMonth:
+          ApiDateTime.tryParse(json['latest_maintenance_period_month']),
+      latestMaintenanceCarryForward:
+          double.tryParse(json['latest_maintenance_carry_forward']?.toString() ?? '') ?? 0.0,
+      communityFinancePending:
+          double.tryParse(json['community_finance_pending']?.toString() ?? '') ?? 0.0,
+      communityFinanceActive:
+          int.tryParse(json['community_finance_active']?.toString() ?? '') ?? 0,
+      communityExpenseTotal:
+          double.tryParse(json['community_expense_total']?.toString() ?? '') ?? 0.0,
+      recentMaintenancePayments:
+          int.tryParse(json['recent_maintenance_payments']?.toString() ?? '') ?? 0,
       vacationMode: json['vacation_mode'] == true,
       securityScore:
           int.tryParse(json['security_score'].toString()) ?? 0,

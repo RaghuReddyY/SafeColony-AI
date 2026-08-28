@@ -234,6 +234,9 @@ class ChatService:
                 title=f"New message from {sender_name}",
                 message=text[:500],
                 notification_type="CHAT",
+                entity_type="COMMUNITY_CHAT",
+                entity_id=conversation.id,
+                action="OPEN_CHAT",
             ))
 
         event_bus.publish(

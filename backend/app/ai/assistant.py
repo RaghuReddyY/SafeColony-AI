@@ -18,6 +18,7 @@ from app.models.maintenance_expense import MaintenanceExpense
 from app.models.resident import Resident
 from app.models.user import User
 from app.models.visitor import Visitor
+from app.models.complaint import Complaint
 from app.models.vacation_mode import VacationMode
 from app.repositories.resident_repository import ResidentRepository
 
@@ -28,7 +29,100 @@ class AIAssistant:
     def __init__(self, db):
         self.db = db
 
+    def _local_intent_response(self, user: User, text: str) -> str | None:
+        """Answer common SafeColony intents directly from authorized DB data.
+
+        This avoids making a network round-trip to Gemini for deterministic
+        application data and means temporary Gemini failures do not turn
+        simple dashboard questions into a generic 'server unavailable' error.
+        """
+        q = text.lower().strip()
+        resident = None
+        if user.role == "RESIDENT":
+            resident = ResidentRepository(self.db).get_by_user_id(user.id)
+
+        if "pending maintenance" in q or "maintenance status" in q or "maintenance balance" in q:
+            if not resident:
+                return "Maintenance details are available only for a resident account."
+            bills = (self.db.query(MaintenanceBill)
+                     .filter(MaintenanceBill.resident_id == resident.id)
+                     .order_by(MaintenanceBill.due_date.desc()).limit(10).all())
+            pending = []
+            for bill in bills:
+                balance = Decimal(str(bill.total_due or 0)) - Decimal(str(bill.amount_paid or 0))
+                if balance > 0:
+                    pending.append((bill, balance))
+            if not pending:
+                return "You have no pending maintenance balance."
+            lines = ["Your pending maintenance:"]
+            for bill, balance in pending[:5]:
+                due = bill.due_date.strftime("%d-%m-%Y") if bill.due_date else "No due date"
+                lines.append(f"• Bill #{bill.id}: ₹{balance:.2f} pending, due {due}, status {bill.status}.")
+            return "\n".join(lines)
+
+        if "recent complaints" in q or ("complaints" in q and any(k in q for k in ("show", "list", "my"))):
+            query = self.db.query(Complaint).filter(Complaint.organization_id == user.organization_id)
+            if user.role == "RESIDENT" and resident:
+                query = query.filter(Complaint.resident_id == resident.id)
+            elif user.role == "RESIDENT":
+                return "I could not find your resident profile."
+            rows = query.order_by(Complaint.created_at.desc()).limit(10).all()
+            if not rows:
+                return "No complaints found."
+            return "Recent complaints:\n" + "\n".join(
+                f"• #{c.id} {c.title} — {c.status} ({c.priority})" for c in rows
+            )
+
+        if "pending complaints" in q:
+            if user.role == "RESIDENT":
+                return "You can view your own complaints, but not the community-wide pending complaint list."
+            if user.role not in {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "BLOCK_ADMIN"}:
+                return "You do not have permission to view community-wide pending complaints."
+            rows = (self.db.query(Complaint)
+                    .filter(Complaint.organization_id == user.organization_id,
+                            Complaint.status.in_(["OPEN", "ASSIGNED", "IN_PROGRESS"]))
+                    .order_by(Complaint.created_at.desc()).limit(15).all())
+            return ("No pending complaints." if not rows else
+                    "Pending complaints:\n" + "\n".join(
+                        f"• #{c.id} {c.title} — {c.status} ({c.priority})" for c in rows))
+
+        if "deliveries" in q and any(k in q for k in ("show", "my", "recent", "pending")):
+            query = self.db.query(Delivery)
+            if user.role == "RESIDENT":
+                if not resident: return "I could not find your resident profile."
+                query = query.filter(Delivery.resident_id == resident.id)
+            else:
+                query = (query.join(Resident, Delivery.resident_id == Resident.id)
+                         .join(User, Resident.user_id == User.id)
+                         .filter(User.organization_id == user.organization_id))
+            rows = query.order_by(Delivery.created_at.desc()).limit(10).all()
+            if not rows: return "No deliveries found."
+            return "Deliveries:\n" + "\n".join(
+                f"• #{d.id} {d.courier_name} — {d.status}" for d in rows)
+
+        if "visitor" in q and any(k in q for k in ("who", "show", "today", "expected", "pending")):
+            query = self.db.query(Visitor).join(Resident, Visitor.resident_id == Resident.id).join(User, Resident.user_id == User.id)
+            if user.role == "RESIDENT":
+                if not resident: return "I could not find your resident profile."
+                query = query.filter(Visitor.resident_id == resident.id)
+            else:
+                query = query.filter(User.organization_id == user.organization_id)
+            rows = query.order_by(Visitor.expected_time.asc().nullslast(), Visitor.created_at.desc()).limit(10).all()
+            if not rows: return "No visitor records found."
+            return "Visitor records:\n" + "\n".join(
+                f"• #{v.id} {v.visitor_name} — {v.status}" +
+                (f", expected {v.expected_time}" if v.expected_time else "")
+                for v in rows)
+
+        if "community chat" in q and any(k in q for k in ("open", "go", "take me")):
+            return "OPEN_COMMUNITY_CHAT"
+        return None
+
     def chat(self, user: User, messages):
+        local = self._local_intent_response(user, " ".join(m.content for m in messages[-3:]))
+        if local is not None:
+            return local
+
         api_key = settings.GEMINI_API_KEY
         if not api_key:
             raise BadRequestException(
@@ -76,7 +170,7 @@ class AIAssistant:
         )
 
         try:
-            with urllib.request.urlopen(request, timeout=45) as response:
+            with urllib.request.urlopen(request, timeout=25) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             try:
@@ -92,11 +186,15 @@ class AIAssistant:
                 "Gemini API request failed. Please try again."
             )
         except (urllib.error.URLError, TimeoutError) as exc:
-            logger.error("Gemini API connection failed: %s", exc)
+            logger.error("Gemini API network/timeout failure: %s", exc)
             raise BadRequestException(
-                "Unable to reach Gemini right now. Please try again."
+                "The AI provider could not be reached. SafeColony data services are still available; please try again."
             )
-
+        except Exception as exc:
+            logger.exception("Unexpected AI provider failure")
+            raise BadRequestException(
+                f"AI service error: {type(exc).__name__}. Please try again."
+            )
         text = self._extract_text(body)
         if not text:
             logger.warning("Gemini returned no text: %s", body)

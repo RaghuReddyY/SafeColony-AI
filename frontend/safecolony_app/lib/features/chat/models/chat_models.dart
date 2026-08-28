@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 class ChatUser {
   final int id;
   final String fullName;
@@ -44,8 +45,8 @@ class ChatMessage {
         senderName: json['sender_name']?.toString() ?? 'User',
         senderRole: json['sender_role']?.toString() ?? 'USER',
         content: json['content']?.toString() ?? '',
-        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? ''),
+        createdAt: ApiDateTime.tryParse(json['created_at']) ?? DateTime.now(),
+        updatedAt: ApiDateTime.tryParse(json['updated_at']),
         isEdited: json['is_edited'] == true,
         isDeleted: json['is_deleted'] == true,
       );
@@ -81,6 +82,6 @@ class ChatConversation {
             ? null
             : ChatMessage.fromJson(Map<String, dynamic>.from(json['last_message'])),
         unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
-        updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
+        updatedAt: ApiDateTime.tryParse(json['updated_at']) ?? DateTime.now(),
       );
 }

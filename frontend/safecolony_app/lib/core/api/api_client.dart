@@ -126,6 +126,9 @@ class ApiClient {
   );
 
   static bool _initialized = false;
+  static String? _sessionToken;
+
+  static void setSessionToken(String? token) => _sessionToken = token;
 
   static void initialize() {
     if (_initialized) return;
@@ -139,7 +142,7 @@ class ApiClient {
           handler,
         ) async {
           final token =
-              await StorageService().getToken();
+              _sessionToken ?? await StorageService().getToken();
 
           if (token != null &&
               token.isNotEmpty) {

@@ -353,20 +353,96 @@ class _SuperAppScreenState extends State<SuperAppScreen> {
   Future<void> _newRecurring() async {
     final d = TextEditingController();
     final day = TextEditingController();
+    List<ServiceProvider> providers = [];
+    ServiceProvider? selected;
+    try {
+      providers = await api.serviceProviders();
+    } catch (_) {}
     try {
       final ok = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Recurring Community Order'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: d, decoration: const InputDecoration(labelText: 'What should we repeat?', hintText: '500ml milk every morning', border: OutlineInputBorder())), const SizedBox(height: 10), TextField(controller: day, decoration: const InputDecoration(labelText: 'Preferred day/time', border: OutlineInputBorder()))]),
-          actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save'))],
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Recurring Community Order'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(
+                  controller: d,
+                  decoration: const InputDecoration(
+                    labelText: 'What should we repeat?',
+                    hintText: '500ml milk every morning',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<ServiceProvider>(
+                  value: selected,
+                  decoration: const InputDecoration(
+                    labelText: 'Responsible vendor (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: providers
+                      .map((p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p.name),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() => selected = v),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: day,
+                  decoration: const InputDecoration(
+                    labelText: 'Preferred day/time',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'If a vendor is selected, the recurring order is routed to that vendor. '
+                    'Otherwise SafeColony auto-assigns when exactly one matching vendor exists.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
         ),
       );
       if (ok != true || d.text.trim().isEmpty) return;
-      await api.createRecurring(category: 'DAILY_LIFE', description: d.text.trim(), cadence: 'WEEKLY', day: day.text.trim());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Recurring order saved.')));
+      await api.createRecurring(
+        category: 'DAILY_LIFE',
+        description: d.text.trim(),
+        cadence: 'WEEKLY',
+        day: day.text.trim().isEmpty ? null : day.text.trim(),
+        vendorId: selected?.vendorId,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(selected == null
+                ? 'Recurring order saved.'
+                : 'Recurring order saved for ${selected!.name}.'),
+          ),
+        );
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
     } finally {
       d.dispose();
       day.dispose();

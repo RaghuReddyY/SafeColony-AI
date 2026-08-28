@@ -1,7 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../chat/screens/community_chat_screen.dart';
+import '../../maintenance/screens/maintenance_resident_screen.dart';
+import '../../complaints/screens/complaint_screen.dart';
+import '../../incidents/screens/incident_screen.dart';
+import '../../visitors/screens/visitor_detail_screen.dart';
+import '../../visitors/services/visitor_service.dart';
+import '../../delivery/screens/delivery_detail_screen.dart';
+import '../../delivery/services/delivery_service.dart';
+import '../../admin/screens/resident_approval_screen.dart';
+import '../../maintenance/screens/community_finance_screen.dart';
+import '../../maintenance/screens/maintenance_admin_screen.dart';
+import '../../super_app/screens/super_app_screen.dart';
+import '../../marketplace/screens/marketplace_vendor_screen.dart';
+import '../../auth/providers/auth_provider.dart';
+
 import '../providers/notification_provider.dart';
+import '../models/notification.dart';
 
 class NotificationScreen extends ConsumerStatefulWidget {
   const NotificationScreen({super.key});
@@ -24,6 +40,74 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
   Future<void> _markRead(int notificationId) async {
     await ref.read(notificationProvider.notifier).markRead(notificationId);
+  }
+
+  Future<void> _openNotification(AppNotification notification) async {
+    if (!notification.isRead) {
+      await _markRead(notification.id);
+    }
+    if (!mounted) return;
+
+    final type = (notification.entityType ?? notification.notificationType).toUpperCase();
+    final id = notification.entityId;
+    final role = ref.read(authProvider).user?.role?.toUpperCase() ?? '';
+
+    Widget? target;
+    switch (type) {
+      case 'COMMUNITY_CHAT':
+      case 'CHAT':
+        target = const CommunityChatScreen();
+        break;
+      case 'MAINTENANCE':
+      case 'MAINTENANCE_DUE':
+      case 'MAINTENANCE_PAYMENT':
+      case 'PAYMENT':
+        target = role == 'RESIDENT' ? MaintenanceResidentScreen(initialBillId: id) : const MaintenanceAdminScreen();
+        break;
+      case 'RESIDENT_APPROVAL':
+        target = const ResidentApprovalScreen();
+        break;
+      case 'COMMUNITY_FINANCE':
+      case 'COMMUNITY_FINANCE_PAYMENT':
+        target = const CommunityFinanceScreen();
+        break;
+      case 'SERVICE_REQUEST':
+        target = role == 'VENDOR' ? const MarketplaceVendorScreen() : const SuperAppScreen();
+        break;
+      case 'COMPLAINT':
+        target = const ComplaintScreen();
+        break;
+      case 'INCIDENT':
+        target = const IncidentScreen();
+        break;
+      case 'VISITOR':
+        if (id != null) {
+          try {
+            final visitors = await VisitorService().getMyVisitors();
+            final visitor = visitors.where((v) => v.id == id).isEmpty ? null : visitors.firstWhere((v) => v.id == id);
+            if (visitor != null) target = VisitorDetailScreen(visitor: visitor);
+          } catch (_) {}
+        }
+        break;
+      case 'DELIVERY':
+        if (id != null) {
+          try {
+            final deliveries = await DeliveryService().getDeliveries();
+            final delivery = deliveries.where((d) => d.id == id).isEmpty ? null : deliveries.firstWhere((d) => d.id == id);
+            if (delivery != null) target = DeliveryDetailScreen(delivery: delivery);
+          } catch (_) {}
+        }
+        break;
+    }
+
+    if (!mounted) return;
+    if (target != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => target!),
+      );
+    }
+    await ref.read(notificationProvider.notifier).load();
   }
 
   Future<void> _markAllRead() async {
@@ -243,9 +327,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(14),
-              onTap: isUnread
-                  ? () => _markRead(notification.id)
-                  : null,
+              onTap: () => _openNotification(notification),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(

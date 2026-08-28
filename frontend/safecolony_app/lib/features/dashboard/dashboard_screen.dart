@@ -42,7 +42,7 @@ class _DashboardScreenState
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
         ),
         actions: [
-          if (user?.role == "RESIDENT")
+          if (user != null)
             const NotificationBell(),
 
           const Padding(

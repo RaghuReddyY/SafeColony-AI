@@ -112,6 +112,27 @@ def intent(data: AIIntentRequest, current_user: User = Depends(get_current_user)
 @router.post("/action", response_model=AIActionResponse, dependencies=[Depends(require_permission(Permissions.AI_ASSISTANT))])
 def action(data: AIActionRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     text=data.message.lower()
+    if "community chat" in text and any(k in text for k in ("open", "go", "take me")):
+        return AIActionResponse(intent="COMMUNITY_CHAT", action="OPEN_COMMUNITY_CHAT", requires_confirmation=False, preview="Opening Community Chat.")
+    if any(k in text for k in ("create a complaint", "raise a complaint", "complaint about")):
+        if current_user.role != "RESIDENT":
+            return AIActionResponse(intent="COMPLAINT", action="CREATE_COMPLAINT", requires_confirmation=False, preview="Only residents can create a complaint from this assistant.")
+        preview="Create a complaint using your resident account and organization context."
+        if not data.confirmed:
+            return AIActionResponse(intent="COMPLAINT", action="CREATE_COMPLAINT", requires_confirmation=True, preview=preview)
+        from app.services.complaint_service import ComplaintService
+        from app.repositories.complaint_repository import ComplaintRepository
+        from app.schemas.complaint import ComplaintCreate
+        import re
+        raw = data.message.strip()
+        desc = raw
+        match = re.search(r"complaint about\s+(.+)$", raw, re.I)
+        title = (match.group(1).strip() if match else raw)[:150]
+        complaint = ComplaintService(ComplaintRepository(db)).create(
+            current_user,
+            ComplaintCreate(title=title, description=desc[:5000], category="GENERAL", priority="MEDIUM"),
+        )
+        return AIActionResponse(intent="COMPLAINT", action="CREATE_COMPLAINT", requires_confirmation=False, preview=f"Complaint #{complaint.id} created successfully.", result={"complaint_id": complaint.id, "status": complaint.status})
     if any(k in text for k in ("order", "grocery", "groceries", "milk", "vegetable", "medicine", "food")):
         from app.services.marketplace_service import MarketplaceService
         svc=MarketplaceService(db)

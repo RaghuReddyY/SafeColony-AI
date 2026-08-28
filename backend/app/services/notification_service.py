@@ -42,6 +42,9 @@ class NotificationService:
             title=data.title,
             message=data.message,
             notification_type=data.notification_type,
+            entity_type=getattr(data, "entity_type", None),
+            entity_id=getattr(data, "entity_id", None),
+            action=getattr(data, "action", None),
         )
         self.db.add(notification)
         self.db.flush()
@@ -94,10 +97,20 @@ class NotificationService:
         for delivery in deliveries:
             delivery.attempts += 1
             try:
+                notification = delivery.notification
+                push_type = (notification.entity_type or notification.notification_type or "GENERAL").upper()
+                push_data = {
+                    "type": "CHAT" if push_type in {"CHAT", "COMMUNITY_CHAT"} else push_type,
+                    "entity_type": notification.entity_type or push_type,
+                    "entity_id": notification.entity_id,
+                    "action": notification.action,
+                    "notification_id": notification.id,
+                }
                 provider_id = notification_providers.send_push(
                     delivery.destination,
-                    delivery.notification.title,
-                    delivery.notification.message,
+                    notification.title,
+                    notification.message,
+                    data=push_data,
                 )
                 delivery.status = "DELIVERED"
                 delivery.provider_message_id = provider_id
@@ -244,8 +257,15 @@ class NotificationService:
             notification = delivery.notification
             try:
                 if delivery.channel == "PUSH":
+                    push_type = (notification.entity_type or notification.notification_type or "GENERAL").upper()
+                    push_data = {
+                        "type": "CHAT" if push_type in {"CHAT", "COMMUNITY_CHAT"} else push_type,
+                        "entity_type": notification.entity_type or push_type,
+                        "entity_id": notification.entity_id,
+                        "action": notification.action,
+                    }
                     provider_id = notification_providers.send_push(
-                        delivery.destination, notification.title, notification.message
+                        delivery.destination, notification.title, notification.message, data=push_data
                     )
                 elif delivery.channel == "EMAIL":
                     provider_id = notification_providers.send_email(

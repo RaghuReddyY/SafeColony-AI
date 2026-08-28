@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_provider.dart';
@@ -28,11 +31,53 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
 
   String get _role => ref.read(authProvider).user?.role ?? 'USER';
 
+  String get _historyKey {
+    final userId = ref.read(authProvider).user?.id;
+    return 'safecolony_ai_chat_history_${userId ?? 'anonymous'}';
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_historyKey);
+      if (raw == null || raw.isEmpty || !mounted) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+      final restored = decoded
+          .whereType<Map>()
+          .map((e) => AIMessage(
+                role: e['role']?.toString() ?? 'user',
+                content: e['content']?.toString() ?? '',
+              ))
+          .where((m) => m.content.isNotEmpty)
+          .toList();
+      if (restored.isNotEmpty && mounted) {
+        setState(() => _messages
+          ..clear()
+          ..addAll(restored));
+      }
+    } catch (_) {
+      // Corrupt/local history must never prevent AI Chat from opening.
+    }
+  }
+
+  Future<void> _saveHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = _messages
+          .skip(_messages.length > 40 ? _messages.length - 40 : 0)
+          .map((m) => {'role': m.role, 'content': m.content})
+          .toList();
+      await prefs.setString(_historyKey, jsonEncode(data));
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
     _loadOverview();
+    _loadHistory();
   }
 
   @override
@@ -109,7 +154,19 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
     try {
       final intent = await _service.action(message: text);
       if (!mounted) return;
-      if (intent.requiresConfirmation && intent.action != 'CHAT') {
+      if (intent.action == 'OPEN_COMMUNITY_CHAT') {
+        if (mounted) {
+          _tabs.animateTo(2);
+          setState(() {
+            _messages.add(const AIMessage(
+              role: 'assistant',
+              content: 'Opening Community Chat.',
+            ));
+            _sending = false;
+          });
+          _saveHistory();
+        }
+      } else if (intent.requiresConfirmation && intent.action != 'CHAT') {
         setState(() { _sending = false; });
         final confirm = await showDialog<bool>(context: context, builder: (c)=>AlertDialog(title: const Text('Confirm SafeColony action'),content: Text(intent.preview),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Confirm'))]));
         if (confirm == true && mounted) {
@@ -117,13 +174,16 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
           final result = await _service.action(message: text, confirmed: true);
           if (!mounted) return;
           setState(() { _messages.add(AIMessage(role: 'assistant', content: result.preview)); _sending = false; });
+          _saveHistory();
         } else if (mounted) {
           setState(() { _messages.add(const AIMessage(role: 'assistant', content: 'Action cancelled.')); _sending = false; });
+          _saveHistory();
         }
       } else {
         final reply = await _service.chat(_messages);
         if (!mounted) return;
         setState(() { _messages.add(AIMessage(role: 'assistant', content: reply)); _sending = false; });
+        _saveHistory();
       }
     } catch (e) {
       if (!mounted) return;
@@ -132,12 +192,20 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
           role: 'assistant',
           content: e.toString().contains('Gemini API is not configured')
               ? 'Gemini is not configured on the SafeColony server. Add GEMINI_API_KEY to backend/.env and restart the backend.'
-              : 'I could not reach the AI service right now. Please try again.',
+              : 'AI service error. Please try again. If this continues, check the SafeColony server and network connection.' + _errorDetails(e),
         ));
         _sending = false;
       });
     }
     _scrollToBottom();
+  }
+
+  String _errorDetails(Object error) {
+    final text = error.toString();
+    if (text.contains('401') || text.contains('403')) return ' Your session may have expired; please sign in again.';
+    if (text.contains('404')) return ' The AI endpoint was not found on the current server.';
+    if (text.contains('timeout') || text.contains('Timeout')) return ' The AI request timed out.';
+    return '';
   }
 
   void _scrollToBottom() {

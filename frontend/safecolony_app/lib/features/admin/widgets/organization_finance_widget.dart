@@ -95,10 +95,11 @@ class OrganizationFinanceWidget extends StatelessWidget {
 
   Widget _totals(OrganizationFinanceSummary s) {
     final cards = [
-      _Metric('Maintenance collected', _money(s.maintenanceCollectedTotal), Icons.payments_rounded, const Color(0xff059669)),
-      _Metric('Maintenance pending', _money(s.maintenanceOutstandingTotal), Icons.pending_actions_rounded, const Color(0xffD97706)),
-      _Metric('Community collected', _money(s.communityCollectedTotal), Icons.volunteer_activism_rounded, const Color(0xff7C3AED)),
-      _Metric('Community balance', _money(s.communityBalance), Icons.account_balance_wallet_rounded, const Color(0xff2563EB)),
+      _Metric('Maintenance collected', _money(s.maintenanceCollectedTotal), Icons.payments_rounded, const Color(0xff059669), onTap: onOpenMaintenance),
+      _Metric('Maintenance pending', _money(s.maintenanceOutstandingTotal), Icons.pending_actions_rounded, const Color(0xffD97706), onTap: onOpenMaintenance),
+      _Metric('Community collected', _money(s.communityCollectedTotal), Icons.volunteer_activism_rounded, const Color(0xff7C3AED), onTap: onOpenCommunityFinance),
+      _Metric('Community balance', _money(s.communityBalance), Icons.account_balance_wallet_rounded, const Color(0xff2563EB), onTap: onOpenCommunityFinance),
+      _Metric('Community expenses', _money(s.communityExpenseTotal), Icons.receipt_long_rounded, const Color(0xffEA580C), onTap: onOpenCommunityFinance),
     ];
 
     return LayoutBuilder(
@@ -115,7 +116,7 @@ class OrganizationFinanceWidget extends StatelessWidget {
   }
 
   Widget _metricCard(_Metric metric) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -143,6 +144,9 @@ class OrganizationFinanceWidget extends StatelessWidget {
         ],
       ),
     );
+    return metric.onTap == null
+        ? card
+        : Material(color: Colors.transparent, borderRadius: BorderRadius.circular(18), child: InkWell(onTap: metric.onTap, borderRadius: BorderRadius.circular(18), child: card));
   }
 
   Widget _maintenance(OrganizationFinanceSummary s) {
@@ -156,7 +160,7 @@ class OrganizationFinanceWidget extends StatelessWidget {
             const Text('No maintenance period has been created yet.', style: TextStyle(color: Color(0xff64748B)))
           else
             ...s.maintenanceSections.map((row) {
-              return Container(
+              final card = Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: const Color(0xffF8FAFC), borderRadius: BorderRadius.circular(14)),
@@ -187,6 +191,9 @@ class OrganizationFinanceWidget extends StatelessWidget {
                   },
                 ),
               );
+              return onOpenMaintenance == null
+                  ? card
+                  : Material(color: Colors.transparent, borderRadius: BorderRadius.circular(14), child: InkWell(onTap: onOpenMaintenance, borderRadius: BorderRadius.circular(14), child: card));
             }),
           if (onOpenMaintenance != null)
             OutlinedButton.icon(
@@ -215,7 +222,7 @@ class OrganizationFinanceWidget extends StatelessWidget {
             ...s.communityFunds.map((fund) {
               final statusColor = _statusColor(fund.status);
               final mandatory = fund.contributionMode == 'FIXED';
-              return Container(
+              final card = Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -264,6 +271,9 @@ class OrganizationFinanceWidget extends StatelessWidget {
                   ],
                 ),
               );
+              return onOpenCommunityFinance == null
+                  ? card
+                  : Material(color: Colors.transparent, borderRadius: BorderRadius.circular(14), child: InkWell(onTap: onOpenCommunityFinance, borderRadius: BorderRadius.circular(14), child: card));
             }),
           if (onOpenCommunityFinance != null) ...[
             const SizedBox(height: 4),
@@ -324,5 +334,6 @@ class _Metric {
   final String value;
   final IconData icon;
   final Color color;
-  const _Metric(this.title, this.value, this.icon, this.color);
+  final VoidCallback? onTap;
+  const _Metric(this.title, this.value, this.icon, this.color, {this.onTap});
 }

@@ -46,6 +46,13 @@ class Notification(Base):
         nullable=False,
     )
 
+    # Optional navigation metadata. Existing notifications remain compatible;
+    # these fields let mobile clients open the exact feature/entity that caused
+    # the notification instead of only opening the inbox.
+    entity_type: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    entity_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    action: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
     is_read: Mapped[bool] = mapped_column(
         Boolean,
         default=False,

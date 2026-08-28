@@ -107,6 +107,13 @@ def _after_commit(session: Session) -> None:
                         device.token,
                         notification.title,
                         notification.message,
+                        data={
+                            "type": notification.notification_type,
+                            "entity_type": notification.entity_type,
+                            "entity_id": notification.entity_id,
+                            "action": notification.action,
+                            "notification_id": notification.id,
+                        },
                     )
                     delivery.status = "DELIVERED"
                     delivery.provider_message_id = provider_id

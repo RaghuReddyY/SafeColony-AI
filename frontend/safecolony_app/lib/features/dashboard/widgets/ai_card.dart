@@ -5,21 +5,25 @@ import '../../../models/dashboard_summary.dart';
 class AICard extends StatelessWidget {
   final DashboardSummary dashboard;
 
-  const AICard({
-    super.key,
-    required this.dashboard,
-  });
+  const AICard({super.key, required this.dashboard});
 
   @override
   Widget build(BuildContext context) {
-    final temperature = dashboard.weatherTemperature;
-    final weather = temperature == null
-        ? 'Weather unavailable'
-        : '${temperature.toStringAsFixed(0)}°C${dashboard.weatherCity == null ? '' : ' • ${dashboard.weatherCity}'}';
+    final actions = <String>[];
+    if (dashboard.pendingMaintenance > 0) {
+      actions.add('Maintenance ${_money(dashboard.pendingMaintenance)} pending');
+    }
+    if (dashboard.pendingVisitors > 0) {
+      actions.add('${dashboard.pendingVisitors} visitor${dashboard.pendingVisitors == 1 ? '' : 's'} waiting');
+    }
+    if (dashboard.pendingDeliveries > 0) {
+      actions.add('${dashboard.pendingDeliveries} delivery${dashboard.pendingDeliveries == 1 ? '' : 'ies'} waiting');
+    }
+    if (actions.isEmpty) actions.add(dashboard.recommendation);
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -27,119 +31,40 @@ class AICard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.indigo.withValues(alpha: .25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.indigo.withValues(alpha: .18),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(18),
+        child: Row(
           children: [
-            const Row(
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.auto_awesome, color: Colors.indigo),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  'SafeColony AI',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            const CircleAvatar(
+              radius: 22,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.auto_awesome, color: Colors.indigo),
             ),
-            const SizedBox(height: 25),
-            _info(
-              Icons.people,
-              '${dashboard.pendingVisitors} visitor${dashboard.pendingVisitors == 1 ? '' : 's'} waiting for approval',
-            ),
-            const SizedBox(height: 15),
-            _info(
-              Icons.inventory_2,
-              '${dashboard.pendingDeliveries} delivery${dashboard.pendingDeliveries == 1 ? '' : 'ies'} waiting at the gate',
-            ),
-            const SizedBox(height: 15),
-            _info(
-              Icons.shield,
-              'Security Score: ${dashboard.securityScore}%',
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                'Recommendation\n\n${dashboard.recommendation}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  height: 1.5,
-                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('SafeColony AI', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 5),
+                  Text(actions.take(2).join(' • '), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.3)),
+                  const SizedBox(height: 4),
+                  Text('Security ${dashboard.securityScore}% • Tap to open AI Chat', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            const Divider(color: Colors.white30),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.wb_sunny, color: Colors.amber),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    dashboard.weatherDescription == null
-                        ? weather
-                        : '$weather • ${dashboard.weatherDescription}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: dashboard.communityStatus == 'Secure'
-                      ? Colors.greenAccent
-                      : Colors.amberAccent,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Community Status: ${dashboard.communityStatus}',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
+            const Icon(Icons.chevron_right, color: Colors.white),
           ],
         ),
       ),
     );
   }
 
-  Widget _info(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  String _money(double value) => '₹${value.toStringAsFixed(0)}';
 }

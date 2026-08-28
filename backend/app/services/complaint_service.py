@@ -38,14 +38,15 @@ class ComplaintService:
             raise NotFoundException("User")
         return user
 
-    def _notify(self, user_id, title, message):
+    def _notify(self, user_id, title, message, complaint_id=None):
         if user_id is None:
             return
         self.db.add(Notification(
-            user_id=user_id, title=title, message=message, notification_type="COMPLAINT"
+            user_id=user_id, title=title, message=message, notification_type="COMPLAINT",
+            entity_type="COMPLAINT", entity_id=complaint_id, action="OPEN_COMPLAINT"
         ))
 
-    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None, section_id=None):
+    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None, section_id=None, complaint_id=None):
         users = (
             self.db.query(User)
             .filter(
@@ -63,7 +64,7 @@ class ComplaintService:
         for user in users:
             if exclude_user_id is not None and user.id == exclude_user_id:
                 continue
-            self._notify(user.id, title, message)
+            self._notify(user.id, title, message, complaint_id=complaint_id)
 
     def create(self, current_user, data):
         resident = self._resident(current_user)
@@ -96,6 +97,7 @@ class ComplaintService:
             f"{complaint.priority} complaint: {complaint.title}.",
             exclude_user_id=current_user.id,
             section_id=resident.unit.section_id if resident.unit else None,
+            complaint_id=complaint.id,
         )
         self.repo.commit()
         logger.info("Complaint created id=%s resident=%s", complaint.id, resident.id)

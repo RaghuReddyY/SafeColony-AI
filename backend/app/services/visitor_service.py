@@ -271,6 +271,7 @@ class VisitorService:
                     "or reject the visitor."
                 ),
                 notification_type="VISITOR",
+                entity_type="VISITOR", entity_id=visitor.id, action="OPEN_VISITOR",
             )
             self._notify_admins(
                 resident_id=resident_id,

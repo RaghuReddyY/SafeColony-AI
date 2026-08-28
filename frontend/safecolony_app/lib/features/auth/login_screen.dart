@@ -30,6 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   bool _useOtp = false;
   bool _otpSent = false;
+  bool _rememberMe = true;
 
   bool _showResendVerification = false;
   bool _resendVerificationInProgress = false;
@@ -54,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final success = await ref.read(authProvider.notifier).login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
+          rememberMe: _rememberMe,
         );
 
     if (!mounted) return;
@@ -500,7 +502,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
 
-                              const SizedBox(height: 20),
+                              CheckboxListTile(
+                                value: _rememberMe,
+                                onChanged: authState.isLoading
+                                    ? null
+                                    : (value) => setState(
+                                          () => _rememberMe = value ?? true,
+                                        ),
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                title: const Text(
+                                  'Remember me',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                subtitle: const Text(
+                                  'Keep me signed in on this device',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
 
                               _button(
                                 authState.isLoading,

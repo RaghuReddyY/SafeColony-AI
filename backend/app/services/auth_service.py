@@ -293,6 +293,9 @@ class AuthService:
                     f"for {organization.name}. Please review and approve the pending resident."
                 ),
                 notification_type="RESIDENT_APPROVAL",
+                entity_type="RESIDENT_APPROVAL",
+                entity_id=resident.id,
+                action="OPEN_RESIDENT_APPROVAL",
             ))
 
         self.db.commit()

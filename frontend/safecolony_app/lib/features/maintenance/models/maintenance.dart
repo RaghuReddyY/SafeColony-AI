@@ -5,6 +5,7 @@ class MaintenancePeriod {
   final DateTime month;
   final double monthlyAmount;
   final DateTime dueDate;
+  final DateTime? carryForwardPeriodMonth;
   final String status;
   final double openingBalance;
   final double billedTotal;
@@ -22,6 +23,7 @@ class MaintenancePeriod {
     required this.month,
     required this.monthlyAmount,
     required this.dueDate,
+    this.carryForwardPeriodMonth,
     this.status = 'DRAFT',
     required this.openingBalance,
     required this.billedTotal,
@@ -38,9 +40,10 @@ class MaintenancePeriod {
     return MaintenancePeriod(
       id: json['id'],
       organizationId: json['organization_id'],
-      month: DateTime.parse(json['month']),
+      month: ApiDateTime.parse(json['month']),
       monthlyAmount: _double(json['monthly_amount']),
-      dueDate: DateTime.parse(json['due_date']),
+      dueDate: ApiDateTime.parse(json['due_date']),
+      carryForwardPeriodMonth: json['carry_forward_period_month'] == null ? null : ApiDateTime.parse(json['carry_forward_period_month']),
       status: json['status']?.toString() ?? 'DRAFT',
       openingBalance: _double(json['opening_balance']),
       billedTotal: _double(json['billed_total']),
@@ -70,6 +73,7 @@ class MaintenanceBill {
   final double amountPaid;
   final double balance;
   final DateTime dueDate;
+  final DateTime? carryForwardPeriodMonth;
   final String status;
   final DateTime? paidAt;
 
@@ -88,6 +92,7 @@ class MaintenanceBill {
     required this.amountPaid,
     required this.balance,
     required this.dueDate,
+    this.carryForwardPeriodMonth,
     required this.status,
     this.paidAt,
   });
@@ -107,7 +112,8 @@ class MaintenanceBill {
       totalDue: _double(json['total_due']),
       amountPaid: _double(json['amount_paid']),
       balance: _double(json['balance']),
-      dueDate: DateTime.parse(json['due_date']),
+      dueDate: ApiDateTime.parse(json['due_date']),
+      carryForwardPeriodMonth: json['carry_forward_period_month'] == null ? null : ApiDateTime.parse(json['carry_forward_period_month']),
       status: json['status'] ?? 'UNPAID',
       paidAt: json['paid_at'] == null ? null : ApiDateTime.parse(json['paid_at']),
     );
@@ -140,7 +146,7 @@ class MaintenanceExpense {
       category: json['category'],
       description: json['description'],
       amount: _double(json['amount']),
-      spentOn: DateTime.parse(json['spent_on']),
+      spentOn: ApiDateTime.parse(json['spent_on']),
       createdAt: ApiDateTime.parse(json['created_at']),
     );
   }

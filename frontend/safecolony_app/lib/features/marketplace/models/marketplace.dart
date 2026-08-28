@@ -1,3 +1,4 @@
+import '../../../core/utils/api_date_time.dart';
 
 class MarketplaceVendor {
   final int id;
@@ -28,7 +29,7 @@ class MarketplaceEvent {
     eventType:j['event_type']?.toString()??'PRODUCT', deliveryMode:j['delivery_mode']?.toString()??'COMMUNITY_DROP',
     status:j['status']?.toString()??'OPEN', description:j['description']?.toString(), vendorName:j['vendor_name']?.toString(),
     vendorId:(j['vendor_id'] as num?)?.toInt(), orderCount:(j['order_count'] as num?)?.toInt(), apartmentCount:(j['apartment_count'] as num?)?.toInt(),
-    cutoffAt:DateTime.tryParse(j['cutoff_at']?.toString()??''), scheduledFor:DateTime.tryParse(j['scheduled_for']?.toString()??''),
+    cutoffAt:ApiDateTime.tryParse(j['cutoff_at']), scheduledFor:ApiDateTime.tryParse(j['scheduled_for']),
   );
 }
 

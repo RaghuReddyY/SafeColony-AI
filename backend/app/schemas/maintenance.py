@@ -110,6 +110,7 @@ class MaintenanceBillResponse(BaseModel):
     amount_paid: Decimal
     balance: Decimal
     due_date: date
+    carry_forward_period_month: date | None = None
     status: str
     paid_at: datetime | None
     model_config = ConfigDict(from_attributes=True)

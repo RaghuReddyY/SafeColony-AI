@@ -9,7 +9,9 @@ import '../providers/maintenance_provider.dart';
 import 'community_finance_screen.dart';
 
 class MaintenanceResidentScreen extends ConsumerStatefulWidget {
-  const MaintenanceResidentScreen({super.key});
+  final int? initialBillId;
+
+  const MaintenanceResidentScreen({super.key, this.initialBillId});
 
   @override
   ConsumerState<MaintenanceResidentScreen> createState() =>
@@ -103,7 +105,7 @@ class _MaintenanceResidentScreenState
 
               _maintenancePayerCard(context, data.isPrimary),
 
-              if (data.bill == null)
+              if (data.bill == null && widget.initialBillId == null)
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -118,7 +120,7 @@ class _MaintenanceResidentScreenState
                 _currentBill(
                   context,
                   ref,
-                  data.bill!,
+                  _billToOpen(data),
                 ),
 
               const SizedBox(height: 24),
@@ -146,7 +148,18 @@ class _MaintenanceResidentScreenState
                 ...data.history.map(
                   (bill) => Card(
                     margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        if (bill.balance > 0) {
+                          _startPayment(context, ref, bill);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('This maintenance bill is already paid.')),
+                          );
+                        }
+                      },
+                      child: ListTile(
                       title: Text(
                         '${bill.residentName} • ${_date(bill.dueDate)}',
                       ),
@@ -166,6 +179,7 @@ class _MaintenanceResidentScreenState
                               ? Colors.green
                               : Colors.orange,
                         ),
+                      ),
                       ),
                     ),
                   ),
@@ -259,6 +273,28 @@ class _MaintenanceResidentScreenState
     );
   }
 
+  MaintenanceBill _billToOpen(ResidentMaintenanceSummary data) {
+    if (widget.initialBillId != null) {
+      for (final bill in data.history) {
+        if (bill.id == widget.initialBillId) return bill;
+      }
+    }
+    return data.bill ?? (data.history.isNotEmpty ? data.history.first : MaintenanceBill(
+      id: widget.initialBillId ?? 0,
+      periodId: 0,
+      residentId: 0,
+      residentName: 'Resident',
+      amount: 0,
+      carriedForward: 0,
+      lateFee: 0,
+      totalDue: 0,
+      amountPaid: 0,
+      balance: 0,
+      dueDate: DateTime.now(),
+      status: 'UNPAID',
+    ));
+  }
+
   Widget _currentBill(
     BuildContext context,
     WidgetRef ref,
@@ -272,8 +308,10 @@ class _MaintenanceResidentScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Current Maintenance Bill',
+            Text(
+              widget.initialBillId != null
+                  ? 'Maintenance Payment Reminder'
+                  : 'Current Maintenance Bill',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,

@@ -110,14 +110,15 @@ class IncidentService:
         logger.warning("Incident created id=%s org=%s severity=%s", incident.id, incident.organization_id, incident.severity)
         return self._response(incident)
 
-    def _notify(self, user_id, title, message):
+    def _notify(self, user_id, title, message, incident_id=None):
         if user_id is None:
             return
         self.db.add(Notification(
-            user_id=user_id, title=title, message=message, notification_type="INCIDENT"
+            user_id=user_id, title=title, message=message, notification_type="INCIDENT",
+            entity_type="INCIDENT", entity_id=incident_id, action="OPEN_INCIDENT"
         ))
 
-    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None, section_id=None):
+    def _notify_roles(self, organization_id, roles, title, message, exclude_user_id=None, section_id=None, incident_id=None):
         users = self.db.query(User).filter(
             User.organization_id == organization_id,
             User.role.in_(list(roles)),
@@ -129,7 +130,7 @@ class IncidentService:
         for user in users:
             if exclude_user_id is not None and user.id == exclude_user_id:
                 continue
-            self._notify(user.id, title, message)
+            self._notify(user.id, title, message, incident_id=incident_id)
 
     def list(self, current_user, status=None):
         section_ids = None

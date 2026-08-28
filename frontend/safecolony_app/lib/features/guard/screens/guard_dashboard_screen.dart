@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/notification_screen.dart';
+import '../../notifications/widgets/notification_bell.dart';
 
 import '../../visitors/screens/walk_in_visitor_screen.dart';
 
@@ -423,61 +424,7 @@ class _GuardDashboardScreenState
         ),
 
         actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications,
-                ),
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const NotificationScreen(),
-                    ),
-                  );
-
-                  if (!mounted) return;
-
-                  final user =
-                      ref.read(authProvider).user;
-
-                  if (user != null) {
-                    ref
-                        .read(
-                          notificationProvider
-                              .notifier,
-                        )
-                        .load();
-                  }
-                },
-              ),
-
-              if (notificationState.unreadCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.all(4),
-                    decoration:
-                        const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      "${notificationState.unreadCount}",
-                      style:
-                          const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          const NotificationBell(),
 
           IconButton(
             tooltip: 'Community Chat',

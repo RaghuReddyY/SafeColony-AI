@@ -8,6 +8,9 @@ class NotificationCreate(BaseModel):
     title: str
     message: str
     notification_type: str
+    entity_type: str | None = None
+    entity_id: int | None = None
+    action: str | None = None
     channel: str = Field(default="IN_APP", pattern="^(IN_APP|PUSH|EMAIL|SMS|WHATSAPP)$")
 
 
@@ -17,6 +20,9 @@ class NotificationResponse(BaseModel):
     title: str
     message: str
     notification_type: str
+    entity_type: str | None = None
+    entity_id: int | None = None
+    action: str | None = None
     channel: str = Field(default="IN_APP", pattern="^(IN_APP|PUSH|EMAIL|SMS|WHATSAPP)$")
     is_read: bool
     created_at: datetime

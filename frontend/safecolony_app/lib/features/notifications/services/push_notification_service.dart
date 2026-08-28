@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -30,6 +31,21 @@ class PushNotificationService {
   );
 
   bool _initialized = false;
+  void Function(Map<String, dynamic> data)? _tapHandler;
+
+  void setNotificationTapHandler(void Function(Map<String, dynamic> data) handler) {
+    _tapHandler = handler;
+  }
+
+  void _handleTapPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        _tapHandler?.call(Map<String, dynamic>.from(decoded));
+      }
+    } catch (_) {}
+  }
 
   static Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     // Android displays FCM notification payloads automatically while the app
@@ -63,6 +79,9 @@ class PushNotificationService {
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         ),
+        onDidReceiveNotificationResponse: (response) {
+          _handleTapPayload(response.payload);
+        },
       );
 
       final androidPlugin =
@@ -77,6 +96,17 @@ class PushNotificationService {
       );
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        _tapHandler?.call(Map<String, dynamic>.from(message.data));
+      });
+
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        // Delay until the host application's navigator is ready.
+        Future<void>.delayed(const Duration(milliseconds: 500), () {
+          _tapHandler?.call(Map<String, dynamic>.from(initialMessage.data));
+        });
+      }
 
       _messaging.onTokenRefresh.listen((token) async {
         if (token.isNotEmpty) {
@@ -190,11 +220,16 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
+    final data = Map<String, dynamic>.from(message.data);
+    final isChat = (data['type'] ?? data['entity_type'] ?? '').toString().toUpperCase() == 'CHAT';
+    // Keep one foreground chat notification instead of creating a new row
+    // for every message. Android background pushes use the same chat tag.
+    final notificationId = isChat ? 700001 : notification.hashCode;
     await _local.show(
-      notification.hashCode,
+      notificationId,
       notification.title ?? 'SafeColony',
       notification.body ?? '',
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'safecolony_notifications',
           'SafeColony Notifications',
@@ -203,8 +238,13 @@ class PushNotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
+          groupKey: isChat
+              ? 'safecolony_community_chat'
+              : 'safecolony_notifications',
+          setAsGroupSummary: false,
         ),
       ),
+      payload: jsonEncode(data),
     );
   }
 }

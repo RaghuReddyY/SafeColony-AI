@@ -236,8 +236,9 @@ class DashboardSidebar extends ConsumerWidget {
           ),
         ),
         onTap: () async {
-          Navigator.pop(context);
-
+          // Keep the Drawer route on the navigation stack while opening a
+          // module. Android Back therefore returns to the menu context instead
+          // of jumping directly to the dashboard.
           switch (title) {
             case "Dashboard":
               break;

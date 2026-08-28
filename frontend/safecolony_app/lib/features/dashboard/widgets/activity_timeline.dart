@@ -4,10 +4,12 @@ import '../../../models/dashboard_summary.dart';
 
 class ActivityTimeline extends StatelessWidget {
   final List<DashboardActivity> activities;
+  final VoidCallback? onOpen;
 
   const ActivityTimeline({
     super.key,
     required this.activities,
+    this.onOpen,
   });
 
   IconData _icon(String type) {
@@ -66,12 +68,16 @@ class ActivityTimeline extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Recent Activity',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Recent Activity',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+                  ),
+                ),
+                if (onOpen != null) TextButton(onPressed: onOpen, child: const Text('View all')),
+              ],
             ),
             const SizedBox(height: 20),
             if (activities.isEmpty)
@@ -101,6 +107,10 @@ class ActivityTimeline extends StatelessWidget {
                   subtitle: Text(
                     '${activity.message}\n${_relative(activity.createdAt)}',
                   ),
+                  trailing: activity.count > 1
+                      ? CircleAvatar(radius: 13, child: Text('${activity.count}', style: const TextStyle(fontSize: 11)))
+                      : null,
+                  onTap: onOpen,
                   isThreeLine: true,
                 ),
               ),

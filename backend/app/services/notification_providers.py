@@ -127,7 +127,7 @@ def send_whatsapp(destination: str, message: str) -> str:
     )
 
 
-def send_push(destination: str, title: str, message: str) -> str:
+def send_push(destination: str, title: str, message: str, data: dict | None = None) -> str:
     """Send an Android push notification.
 
     Preferred path: Firebase Cloud Messaging HTTP v1 using a service-account
@@ -202,8 +202,12 @@ def send_push(destination: str, title: str, message: str) -> str:
                     "notification": {
                         "channel_id": "safecolony_notifications",
                         "sound": "default",
+                        # Android uses the same tag to replace/group
+                        # successive community-chat notifications.
+                        **({"tag": "safecolony_community_chat"} if str((data or {}).get("type", "")).upper() == "CHAT" else {}),
                     },
                 },
+                "data": {str(k): str(v) for k, v in (data or {}).items() if v is not None},
             }
         }
 

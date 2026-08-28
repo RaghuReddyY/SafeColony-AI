@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.community_service import CommunityService
 from app.models.marketplace import MarketplaceVendor, MarketplaceEvent, MarketplaceOrder
 from app.models.resident import Resident
+from app.models.unit import Unit
 from app.models.notification import Notification
 from app.models.super_app import (
     ServiceRequest, VendorOffer, VendorRating, CommunityParcel, UtilityBill, RecurringOrder,
@@ -110,6 +111,9 @@ class SuperAppService:
                 title="New service request",
                 message=f"{user.full_name} requested {obj.title}. Open Vendor Portal to accept, quote or reject the request.",
                 notification_type="SERVICE_REQUEST",
+                entity_type="SERVICE_REQUEST",
+                entity_id=obj.id,
+                action="OPEN_SERVICE_REQUEST",
             ))
         self.db.commit()
         self.db.refresh(obj)
@@ -127,7 +131,10 @@ class SuperAppService:
         vendor = self.db.query(MarketplaceVendor).filter_by(organization_id=org, user_id=user.id, is_active=True).first()
         if not vendor:
             raise HTTPException(403, "Your account is not linked to a SafeColony vendor.")
-        q = self.db.query(ServiceRequest).options(joinedload(ServiceRequest.resident_user), joinedload(ServiceRequest.vendor)).filter(ServiceRequest.organization_id == org, ServiceRequest.vendor_id == vendor.id)
+        q = self.db.query(ServiceRequest).options(
+            joinedload(ServiceRequest.resident_user).joinedload(User.resident).joinedload(Resident.unit).joinedload(Unit.section),
+            joinedload(ServiceRequest.vendor),
+        ).filter(ServiceRequest.organization_id == org, ServiceRequest.vendor_id == vendor.id)
         return [self.request_response(x) for x in q.order_by(ServiceRequest.created_at.desc()).all()]
 
     def vendor_update_request(self, user, rid, data):
@@ -159,6 +166,9 @@ class SuperAppService:
             title="Service request updated",
             message=f"Your service request '{obj.title}' is now {obj.status}." + (f" Quote: ₹{obj.quoted_amount}" if obj.status == "QUOTED" else ""),
             notification_type="SERVICE_REQUEST",
+            entity_type="SERVICE_REQUEST",
+            entity_id=obj.id,
+            action="OPEN_SERVICE_REQUEST",
         ))
         self.db.commit(); self.db.refresh(obj)
         return self.request_response(obj)
@@ -186,6 +196,9 @@ class SuperAppService:
                 title="Service request response",
                 message=f"Resident {user.full_name} changed '{obj.title}' to {obj.status}.",
                 notification_type="SERVICE_REQUEST",
+                entity_type="SERVICE_REQUEST",
+                entity_id=obj.id,
+                action="OPEN_SERVICE_REQUEST",
             ))
         self.db.commit(); self.db.refresh(obj)
         return self.request_response(obj)
@@ -195,7 +208,11 @@ class SuperAppService:
             "id": x.id, "category": x.category, "title": x.title, "description": x.description, "preferred_slot": x.preferred_slot,
             "status": x.status, "quoted_amount": x.quoted_amount, "payment_status": x.payment_status,
             "provider_id": x.provider_id, "provider_name": x.provider.name if x.provider else None,
-            "vendor_id": x.vendor_id, "vendor_name": x.vendor.name if x.vendor else None, "created_at": x.created_at,
+            "vendor_id": x.vendor_id, "vendor_name": x.vendor.name if x.vendor else None,
+            "resident_name": x.resident_user.full_name if x.resident_user else None,
+            "unit_number": x.resident_user.resident.unit.unit_number if x.resident_user and x.resident_user.resident and x.resident_user.resident.unit else None,
+            "section_name": x.resident_user.resident.unit.section.name if x.resident_user and x.resident_user.resident and x.resident_user.resident.unit and x.resident_user.resident.unit.section else None,
+            "created_at": x.created_at,
         }
 
     def offers(self, user):
@@ -215,7 +232,41 @@ class SuperAppService:
         obj = VendorRating(organization_id=org, resident_user_id=user.id, **data.model_dump()); self.db.add(obj); self.db.commit(); self.db.refresh(obj); return obj
 
     def recurring(self, user, data):
-        obj = RecurringOrder(organization_id=self.org(user), resident_user_id=user.id, **data.model_dump()); self.db.add(obj); self.db.commit(); self.db.refresh(obj); return obj
+        org = self.org(user)
+        payload = data.model_dump()
+        vendor_id = payload.pop("vendor_id", None)
+        vendor = None
+        if vendor_id is not None:
+            vendor = self.db.query(MarketplaceVendor).filter_by(
+                id=vendor_id, organization_id=org, is_active=True
+            ).first()
+            if not vendor:
+                raise HTTPException(404, "Vendor not found.")
+        else:
+            matches = self.db.query(MarketplaceVendor).filter(
+                MarketplaceVendor.organization_id == org,
+                MarketplaceVendor.is_active.is_(True),
+                func.upper(MarketplaceVendor.category) == payload["category"].strip().upper(),
+            ).order_by(MarketplaceVendor.name).all()
+            if len(matches) == 1:
+                vendor = matches[0]
+                vendor_id = vendor.id
+        obj = RecurringOrder(
+            organization_id=org, resident_user_id=user.id, vendor_id=vendor_id, **payload
+        )
+        self.db.add(obj)
+        self.db.flush()
+        if vendor and vendor.user_id:
+            self.db.add(Notification(
+                user_id=vendor.user_id,
+                title="New recurring order",
+                message=f"{user.full_name} created a recurring {obj.description} schedule. Review it in Vendor Portal.",
+                notification_type="SERVICE_REQUEST",
+                entity_type="SERVICE_REQUEST",
+                entity_id=obj.id,
+                action="OPEN_SERVICE_REQUEST",
+            ))
+        self.db.commit(); self.db.refresh(obj); return obj
 
     def list_recurring(self, user):
         return self.db.query(RecurringOrder).filter_by(organization_id=self.org(user), resident_user_id=user.id).order_by(RecurringOrder.created_at.desc()).all()

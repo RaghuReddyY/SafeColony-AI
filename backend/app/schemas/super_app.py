@@ -36,6 +36,9 @@ class ServiceRequestResponse(BaseModel):
     provider_name: str | None = None
     vendor_id: int | None = None
     vendor_name: str | None = None
+    resident_name: str | None = None
+    unit_number: str | None = None
+    section_name: str | None = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -110,6 +113,7 @@ class RecurringOrderCreate(BaseModel):
     cadence: str = Field(default="WEEKLY", max_length=40)
     preferred_day: str | None = None
     preferred_slot: str | None = None
+    vendor_id: int | None = None
 
 
 class RecurringOrderResponse(BaseModel):
@@ -119,6 +123,7 @@ class RecurringOrderResponse(BaseModel):
     cadence: str
     preferred_day: str | None
     preferred_slot: str | None
+    vendor_id: int | None
     active: bool
     model_config = ConfigDict(from_attributes=True)
 

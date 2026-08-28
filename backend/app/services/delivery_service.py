@@ -67,6 +67,7 @@ class DeliveryService:
                 title=title,
                 message=message,
                 notification_type="DELIVERY",
+                
             ))
 
     def _create_for_resident(
@@ -91,6 +92,7 @@ class DeliveryService:
                 title="Delivery Rejected",
                 message=message,
                 notification_type="DELIVERY",
+                entity_type="DELIVERY", entity_id=saved.id if "saved" in locals() else delivery.id, action="OPEN_DELIVERY",
             ))
             self._notify_org(resident.user.organization_id, [UserRole.ORGANIZATION_ADMIN.value, UserRole.SECURITY_GUARD.value], "Delivery Rejected", message)
             alert_repo.create(SecurityAlert(
@@ -188,6 +190,7 @@ class DeliveryService:
                 title="Package Received By Guard",
                 message=f"Package from {delivery.courier_name} was received by security guard {security_guard}.",
                 notification_type="DELIVERY",
+                entity_type="DELIVERY", entity_id=saved.id if "saved" in locals() else delivery.id, action="OPEN_DELIVERY",
             ))
             self._notify_org(
                 resident.user.organization_id,
@@ -216,6 +219,7 @@ class DeliveryService:
                 title="Package Collected",
                 message=f"Your package from {delivery.courier_name} has been collected.",
                 notification_type="DELIVERY",
+                entity_type="DELIVERY", entity_id=saved.id if "saved" in locals() else delivery.id, action="OPEN_DELIVERY",
             ))
             self._notify_org(
                 resident.user.organization_id,

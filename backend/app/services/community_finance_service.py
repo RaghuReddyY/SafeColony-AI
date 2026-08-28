@@ -228,6 +228,9 @@ class CommunityFinanceService:
                         + (f" Suggested per house: ₹{fund.per_unit_amount:.2f}." if fund.per_unit_amount is not None else "")
                     ),
                     notification_type="COMMUNITY_FINANCE",
+                    entity_type="COMMUNITY_FINANCE",
+                    entity_id=fund.id,
+                    action="OPEN_COMMUNITY_FINANCE",
                 ))
 
         self.db.commit()
@@ -295,6 +298,9 @@ class CommunityFinanceService:
                     + (f" Suggested per house: ₹{fund.per_unit_amount:.2f}." if fund.per_unit_amount is not None else "")
                 ),
                 notification_type="COMMUNITY_FINANCE",
+                entity_type="COMMUNITY_FINANCE",
+                entity_id=fund.id,
+                action="OPEN_COMMUNITY_FINANCE",
             ))
         self.db.commit()
         return self._response(fund)
@@ -416,6 +422,9 @@ class CommunityFinanceService:
                 title="Community Payment Verification Required",
                 message=f"{resident.full_name or user.full_name} submitted ₹{data.amount:.2f} for {fund.title}. Reference: {data.reference or 'Not provided'}.",
                 notification_type="COMMUNITY_FINANCE_PAYMENT",
+                entity_type="COMMUNITY_FINANCE_PAYMENT",
+                entity_id=fund.id,
+                action="OPEN_COMMUNITY_FINANCE",
             ))
         self.db.commit()
         return self._response(fund)

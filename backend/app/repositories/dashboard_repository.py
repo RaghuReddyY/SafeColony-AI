@@ -10,6 +10,8 @@ from app.models.notification import Notification
 from app.models.resident import Resident
 from app.models.vacation_mode import VacationMode
 from app.models.visitor import Visitor
+from app.models.maintenance_bill import MaintenanceBill
+from app.models.community_fund import CommunityFund, CommunityFundContribution, CommunityFundExpense
 
 
 class DashboardRepository:
@@ -141,6 +143,26 @@ class DashboardRepository:
             or 0
         )
 
+        maintenance_bills = (
+            self.db.query(MaintenanceBill)
+            .filter(MaintenanceBill.resident_id == resident_id)
+            .order_by(MaintenanceBill.due_date.desc())
+            .all()
+        )
+        pending_maintenance = sum(
+            max(0, float(b.total_due or 0) - float(b.amount_paid or 0))
+            for b in maintenance_bills
+            if str(b.status).upper() in {"UNPAID", "PARTIAL", "PENDING"}
+        )
+        latest_bill = maintenance_bills[0] if maintenance_bills else None
+        latest_maintenance_status = latest_bill.status if latest_bill else None
+        latest_maintenance_due_date = latest_bill.due_date if latest_bill else None
+        latest_maintenance_period_month = latest_bill.period.month if latest_bill and latest_bill.period else None
+        latest_maintenance_carry_forward = float(latest_bill.carried_forward or 0) if latest_bill else 0.0
+        recent_paid_bills = [b for b in maintenance_bills if float(b.amount_paid or 0) > 0]
+        recent_payments = len(recent_paid_bills)
+        latest_payment_amount = max((float(b.amount_paid or 0) for b in recent_paid_bills), default=0.0)
+
         unread_notifications = (
             self.db.query(func.count(Notification.id))
             .filter(
@@ -216,20 +238,102 @@ class DashboardRepository:
             self.db.query(Notification)
             .filter(Notification.user_id == user_id)
             .order_by(Notification.created_at.desc())
-            .limit(5)
+            .limit(30)
             .all()
         )
 
-        recent_activity = [
-            {
-                "title": notification.title,
-                "message": notification.message,
-                "notification_type": notification.notification_type,
-                "created_at": notification.created_at,
-                "is_read": notification.is_read,
-            }
-            for notification in recent_notifications
-        ]
+        def activity_category(notification):
+            kind = (notification.entity_type or notification.notification_type or "GENERAL").upper()
+            if kind in {"CHAT", "COMMUNITY_CHAT"}:
+                return "COMMUNITY_CHAT"
+            if kind.startswith("MAINTENANCE") or kind in {"PAYMENT", "MAINTENANCE_PAYMENT"}:
+                return "FINANCE"
+            if kind == "COMPLAINT":
+                return "COMPLAINT"
+            if kind == "INCIDENT":
+                return "INCIDENT"
+            if kind == "VISITOR":
+                return "VISITOR"
+            if kind == "DELIVERY":
+                return "DELIVERY"
+            if kind in {"SERVICE_REQUEST", "COMMUNITY_SERVICE"}:
+                return "SERVICES"
+            return "OTHER"
+
+        labels = {
+            "COMMUNITY_CHAT": ("Community Chat", "new chat messages", "CHAT"),
+            "FINANCE": ("Maintenance & Finance", "finance updates", "FINANCE"),
+            "COMPLAINT": ("Complaints", "complaint updates", "COMPLAINT"),
+            "INCIDENT": ("Incidents", "incident updates", "INCIDENT"),
+            "VISITOR": ("Visitors & Security", "visitor updates", "VISITOR"),
+            "DELIVERY": ("Deliveries", "delivery updates", "DELIVERY"),
+            "SERVICES": ("Services", "service request updates", "SERVICES"),
+            "OTHER": ("Other", "notifications", "OTHER"),
+        }
+        grouped = {}
+        for notification in recent_notifications:
+            category = activity_category(notification)
+            grouped.setdefault(category, []).append(notification)
+
+        recent_activity = []
+        for category, rows in grouped.items():
+            newest = rows[0]
+            title, suffix, display_type = labels[category]
+            count = len(rows)
+            if category == "COMMUNITY_CHAT":
+                message = f"{count} community chat message{'s' if count != 1 else ''} recently."
+            elif count == 1:
+                message = newest.message
+            else:
+                message = f"{count} {suffix}."
+            recent_activity.append({
+                "title": title,
+                "message": message,
+                "notification_type": display_type,
+                "created_at": newest.created_at,
+                "is_read": all(row.is_read for row in rows),
+                "count": count,
+            })
+        recent_activity.sort(key=lambda row: row["created_at"], reverse=True)
+        recent_activity = recent_activity[:6]
+
+        community_funds = (
+            self.db.query(CommunityFund)
+            .filter(CommunityFund.organization_id == resident.user.organization_id, CommunityFund.status == "PUBLISHED")
+            .all()
+        )
+        community_fund_ids = [f.id for f in community_funds]
+        community_contribution = 0.0
+        community_finance_pending = 0.0
+        community_expense_total = 0.0
+        if community_fund_ids:
+            community_contribution = float(
+                self.db.query(func.coalesce(func.sum(CommunityFundContribution.amount), 0))
+                .filter(
+                    CommunityFundContribution.fund_id.in_(community_fund_ids),
+                    CommunityFundContribution.resident_id == resident_id,
+                    CommunityFundContribution.status == "VERIFIED",
+                )
+                .scalar() or 0
+            )
+            community_expense_total = float(
+                self.db.query(func.coalesce(func.sum(CommunityFundExpense.amount), 0))
+                .filter(CommunityFundExpense.fund_id.in_(community_fund_ids))
+                .scalar() or 0
+            )
+            for fund in community_funds:
+                if not resident.is_primary or str(fund.contribution_mode).upper() != "FIXED" or fund.per_unit_amount is None:
+                    continue
+                paid = float(
+                    self.db.query(func.coalesce(func.sum(CommunityFundContribution.amount), 0))
+                    .filter(
+                        CommunityFundContribution.fund_id == fund.id,
+                        CommunityFundContribution.resident_id == resident_id,
+                        CommunityFundContribution.status == "VERIFIED",
+                    )
+                    .scalar() or 0
+                )
+                community_finance_pending += max(0.0, float(fund.per_unit_amount) - paid)
 
         if pending_visitors > 0:
             recommendation = (
@@ -279,6 +383,17 @@ class DashboardRepository:
             "pending_deliveries": int(pending_deliveries),
             "notification_count": int(notification_count),
             "unread_notifications": int(unread_notifications),
+            "pending_maintenance": pending_maintenance,
+            "latest_maintenance_status": latest_maintenance_status,
+            "latest_maintenance_due_date": latest_maintenance_due_date,
+            "latest_maintenance_period_month": latest_maintenance_period_month,
+            "latest_maintenance_carry_forward": latest_maintenance_carry_forward,
+            "community_finance_pending": community_finance_pending,
+            "community_expense_total": community_expense_total,
+            "recent_maintenance_payments": recent_payments,
+            "latest_maintenance_paid": latest_payment_amount,
+            "community_finance_active": len(community_funds),
+            "community_finance_contribution": community_contribution,
             "vacation_mode": vacation_mode,
             "security_score": int(security_score),
             "weekly_visitors": weekly_visitors,

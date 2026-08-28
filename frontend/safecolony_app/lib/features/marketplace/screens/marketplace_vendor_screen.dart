@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/login_screen.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../notifications/widgets/notification_bell.dart';
 import '../models/marketplace.dart';
 import '../services/marketplace_service.dart';
 
@@ -62,6 +63,7 @@ class _MarketplaceVendorScreenState
       appBar: AppBar(
         title: const Text('Vendor Portal'),
         actions: [
+          const NotificationBell(),
           IconButton(
             onPressed: reload,
             tooltip: 'Refresh',
