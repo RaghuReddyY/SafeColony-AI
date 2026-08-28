@@ -791,6 +791,19 @@ class MaintenanceService:
             "is_primary": True,
         }
 
+    def resident_bill(self, current_user: User, bill_id: int):
+        resident = self._get_current_resident(current_user)
+        if not resident.is_primary:
+            raise ForbiddenException("Only the configured maintenance payer can access the maintenance bill.")
+        bill = self.repo.get_bill_for_resident(bill_id, resident.id)
+        if not bill:
+            raise NotFoundException("Maintenance bill")
+        organization = self.db.query(Organization).filter(Organization.id == current_user.organization_id).first()
+        if organization:
+            self._apply_late_fee(bill, organization)
+            self.repo.commit()
+        return self._bill_response(bill)
+
     # ==========================================================
     # Community Finance
     # ==========================================================

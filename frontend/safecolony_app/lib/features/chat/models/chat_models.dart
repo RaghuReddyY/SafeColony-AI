@@ -13,6 +13,21 @@ class ChatUser {
       );
 }
 
+class ChatAttachment {
+  final int id;
+  final String fileName;
+  final String contentType;
+  final int fileSize;
+  final String fileUrl;
+  final DateTime createdAt;
+  const ChatAttachment({required this.id, required this.fileName, required this.contentType, required this.fileSize, required this.fileUrl, required this.createdAt});
+  factory ChatAttachment.fromJson(Map<String,dynamic> j) => ChatAttachment(
+    id: (j['id'] as num).toInt(), fileName: j['file_name']?.toString() ?? 'Attachment',
+    contentType: j['content_type']?.toString() ?? '', fileSize: (j['file_size'] as num?)?.toInt() ?? 0,
+    fileUrl: j['file_url']?.toString() ?? '', createdAt: ApiDateTime.parse(j['created_at']),
+  );
+}
+
 class ChatMessage {
   final int id;
   final int conversationId;
@@ -24,6 +39,7 @@ class ChatMessage {
   final DateTime? updatedAt;
   final bool isEdited;
   final bool isDeleted;
+  final List<ChatAttachment> attachments;
 
   const ChatMessage({
     required this.id,
@@ -35,7 +51,7 @@ class ChatMessage {
     required this.createdAt,
     this.updatedAt,
     this.isEdited = false,
-    this.isDeleted = false,
+    this.isDeleted = false, this.attachments = const [],
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -49,6 +65,7 @@ class ChatMessage {
         updatedAt: ApiDateTime.tryParse(json['updated_at']),
         isEdited: json['is_edited'] == true,
         isDeleted: json['is_deleted'] == true,
+        attachments: (json['attachments'] as List? ?? []).map((e) => ChatAttachment.fromJson(Map<String,dynamic>.from(e))).toList(),
       );
 }
 

@@ -136,5 +136,8 @@ class RecurringOrder(Base):
     preferred_day = Column(String(20), nullable=True)
     preferred_slot = Column(String(100), nullable=True)
     active = Column(Boolean, nullable=False, default=True)
+    next_run_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_generated_order_id = Column(Integer, nullable=True)
     vendor = relationship("MarketplaceVendor", foreign_keys=[vendor_id])
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -20,6 +20,9 @@ class MaintenanceResidentScreen extends ConsumerStatefulWidget {
 
 class _MaintenanceResidentScreenState
     extends ConsumerState<MaintenanceResidentScreen> {
+  MaintenanceBill? _deepLinkedBill;
+  bool _loadingDeepLinkedBill = false;
+
   String _money(double value) => '₹${value.toStringAsFixed(2)}';
 
   String _date(DateTime date) {
@@ -38,9 +41,21 @@ class _MaintenanceResidentScreenState
     // If another resident was previously logged in using the same
     // ProviderContainer, make sure we don't display that resident's
     // cached maintenance data.
-    Future.microtask(() {
-      if (mounted) {
-        ref.invalidate(residentMaintenanceProvider);
+    Future.microtask(() async {
+      if (!mounted) return;
+      ref.invalidate(residentMaintenanceProvider);
+      final billId = widget.initialBillId;
+      if (billId != null) {
+        setState(() => _loadingDeepLinkedBill = true);
+        try {
+          final bill = await ref.read(maintenanceServiceProvider).getMyBill(billId);
+          if (mounted) setState(() => _deepLinkedBill = bill);
+        } catch (_) {
+          // Fall back to the normal resident summary if the deep-linked bill
+          // cannot be loaded.
+        } finally {
+          if (mounted) setState(() => _loadingDeepLinkedBill = false);
+        }
       }
     });
   }
@@ -105,7 +120,22 @@ class _MaintenanceResidentScreenState
 
               _maintenancePayerCard(context, data.isPrimary),
 
-              if (data.bill == null && widget.initialBillId == null)
+              if (_loadingDeepLinkedBill)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 12),
+                        Text('Opening the selected maintenance bill...'),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_deepLinkedBill != null)
+                _currentBill(context, ref, _deepLinkedBill!)
+              else if (data.bill == null && widget.initialBillId == null)
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -279,7 +309,7 @@ class _MaintenanceResidentScreenState
         if (bill.id == widget.initialBillId) return bill;
       }
     }
-    return data.bill ?? (data.history.isNotEmpty ? data.history.first : MaintenanceBill(
+    return _deepLinkedBill ?? data.bill ?? (data.history.isNotEmpty ? data.history.first : MaintenanceBill(
       id: widget.initialBillId ?? 0,
       periodId: 0,
       residentId: 0,

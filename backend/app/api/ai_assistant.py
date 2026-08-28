@@ -41,7 +41,7 @@ def chat(
     db: Session = Depends(get_db),
 ):
     assistant = AIAssistant(db)
-    return AIChatResponse(message=assistant.chat(current_user, data.messages))
+    return AIChatResponse(message=assistant.chat(current_user, data.messages, language=data.language))
 
 
 @router.post(

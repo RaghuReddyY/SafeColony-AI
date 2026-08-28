@@ -14,13 +14,16 @@ import '../../maintenance/screens/community_finance_screen.dart';
 import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../../super_app/screens/super_app_screen.dart';
 import '../../marketplace/screens/marketplace_vendor_screen.dart';
+import '../../marketplace/screens/marketplace_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 
 import '../providers/notification_provider.dart';
 import '../models/notification.dart';
 
 class NotificationScreen extends ConsumerStatefulWidget {
-  const NotificationScreen({super.key});
+  final String? category;
+
+  const NotificationScreen({super.key, this.category});
 
   @override
   ConsumerState<NotificationScreen> createState() =>
@@ -34,7 +37,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
     Future.microtask(() {
       if (!mounted) return;
-      ref.read(notificationProvider.notifier).load();
+      ref.read(notificationProvider.notifier).load(category: widget.category);
     });
   }
 
@@ -74,6 +77,10 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
       case 'SERVICE_REQUEST':
         target = role == 'VENDOR' ? const MarketplaceVendorScreen() : const SuperAppScreen();
         break;
+      case 'RECURRING_ORDER':
+      case 'MARKETPLACE_ORDER':
+        target = role == 'VENDOR' ? const MarketplaceVendorScreen() : const MarketplaceScreen();
+        break;
       case 'COMPLAINT':
         target = const ComplaintScreen();
         break;
@@ -107,11 +114,33 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
         MaterialPageRoute(builder: (_) => target!),
       );
     }
-    await ref.read(notificationProvider.notifier).load();
+    await ref.read(notificationProvider.notifier).load(category: widget.category);
   }
 
   Future<void> _markAllRead() async {
     await ref.read(notificationProvider.notifier).markAllRead();
+  }
+
+  String _categoryTitle(String category) {
+    switch (category.toUpperCase()) {
+      case 'COMMUNITY_CHAT':
+      case 'CHAT':
+        return 'Community Chat';
+      case 'FINANCE':
+        return 'Maintenance & Finance';
+      case 'DELIVERY':
+        return 'Deliveries';
+      case 'VISITOR':
+        return 'Visitors & Security';
+      case 'COMPLAINT':
+        return 'Complaints';
+      case 'INCIDENT':
+        return 'Incidents';
+      case 'SERVICES':
+        return 'Services';
+      default:
+        return 'Notifications';
+    }
   }
 
   IconData _iconForType(String type) {
@@ -184,7 +213,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     return Scaffold(
       backgroundColor: const Color(0xffF5F7FB),
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(widget.category == null ? 'Notifications' : _categoryTitle(widget.category!)),
         actions: [
           if (state.unreadCount > 0)
             Center(
@@ -253,7 +282,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  ref.read(notificationProvider.notifier).load();
+                  ref.read(notificationProvider.notifier).load(category: widget.category);
                 },
                 child: const Text('Retry'),
               ),
@@ -266,7 +295,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     if (state.notifications.isEmpty) {
       return RefreshIndicator(
         onRefresh: () async {
-          await ref.read(notificationProvider.notifier).load();
+          await ref.read(notificationProvider.notifier).load(category: widget.category);
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -303,7 +332,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.read(notificationProvider.notifier).load();
+        await ref.read(notificationProvider.notifier).load(category: widget.category);
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),

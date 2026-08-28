@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,6 +27,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
   final _scrollController = ScrollController();
   final List<AIMessage> _messages = [];
   bool _sending = false;
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  final FlutterTts _tts = FlutterTts();
+  bool _listening = false;
   bool _loadingOverview = true;
   AIOverview? _overview;
   String? _overviewError;
@@ -85,6 +90,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
     _tabs.dispose();
     _controller.dispose();
     _scrollController.dispose();
+    _speech.stop();
+    _tts.stop();
     super.dispose();
   }
 
@@ -142,6 +149,68 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
     }
   }
 
+  Future<void> _toggleVoiceInput() async {
+    if (_listening) {
+      await _speech.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if ((status == 'done' || status == 'notListening') && mounted) {
+          setState(() => _listening = false);
+        }
+      },
+      onError: (_) {
+        if (mounted) setState(() => _listening = false);
+      },
+    );
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition is not available on this device.')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _listening = true);
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        _controller.text = result.recognizedWords;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: _controller.text.length),
+        );
+        if (result.finalResult) {
+          setState(() => _listening = false);
+          _send();
+        }
+      },
+      listenFor: const Duration(seconds: 45),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
+    );
+  }
+
+  Future<void> _speak(String text) async {
+    try {
+      final code = Localizations.localeOf(context).languageCode;
+      final ttsLocale = {
+        'hi': 'hi-IN',
+        'te': 'te-IN',
+        'kn': 'kn-IN',
+        'ta': 'ta-IN',
+        'ml': 'ml-IN',
+        'en': 'en-IN',
+      }[code] ?? 'en-IN';
+      await _tts.setLanguage(ttsLocale);
+      await _tts.setSpeechRate(0.48);
+      await _tts.setVolume(1.0);
+      await _tts.speak(text);
+    } catch (_) {}
+  }
+
   Future<void> _send([String? preset]) async {
     final text = (preset ?? _controller.text).trim();
     if (text.isEmpty || _sending) return;
@@ -180,7 +249,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
           _saveHistory();
         }
       } else {
-        final reply = await _service.chat(_messages);
+        final reply = await _service.chat(_messages, language: Localizations.localeOf(context).languageCode);
         if (!mounted) return;
         setState(() { _messages.add(AIMessage(role: 'assistant', content: reply)); _sending = false; });
         _saveHistory();
@@ -559,9 +628,26 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
           ),
           border: isUser ? null : Border.all(color: const Color(0xffE2E8F0)),
         ),
-        child: Text(
-          message.content,
-          style: TextStyle(color: isUser ? Colors.white : const Color(0xff1E293B), height: 1.45, fontSize: 15),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Text(
+                message.content,
+                style: TextStyle(color: isUser ? Colors.white : const Color(0xff1E293B), height: 1.45, fontSize: 15),
+              ),
+            ),
+            if (!isUser) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Read aloud',
+                onPressed: () => _speak(message.content),
+                icon: const Icon(Icons.volume_up_outlined, size: 19),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -608,7 +694,14 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: _listening ? 'Stop listening' : 'Speak to SafeColony AI',
+              onPressed: _sending ? null : _toggleVoiceInput,
+              icon: Icon(_listening ? Icons.mic : Icons.mic_none_rounded),
+              color: _listening ? Colors.red : const Color(0xff4F46E5),
+            ),
+            const SizedBox(width: 4),
             IconButton.filled(onPressed: _sending ? null : () => _send(), icon: const Icon(Icons.send_rounded)),
           ],
         ),

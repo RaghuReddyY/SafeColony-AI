@@ -19,6 +19,16 @@ class ComplaintEscalate(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class ComplaintAttachmentResponse(BaseModel):
+    id: int
+    file_name: str
+    content_type: str
+    file_size: int
+    file_url: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ComplaintResponse(BaseModel):
     id: int
     organization_id: int
@@ -36,4 +46,5 @@ class ComplaintResponse(BaseModel):
     created_by_user_id: int
     created_at: datetime
     updated_at: datetime
+    attachments: list[ComplaintAttachmentResponse] = []
     model_config = ConfigDict(from_attributes=True)

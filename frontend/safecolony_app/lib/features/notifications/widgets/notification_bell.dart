@@ -18,6 +18,7 @@ import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../../maintenance/screens/community_finance_screen.dart';
 import '../../super_app/screens/super_app_screen.dart';
 import '../../marketplace/screens/marketplace_vendor_screen.dart';
+import '../../marketplace/screens/marketplace_screen.dart';
 
 
 /// Shared notification bell used by Resident and Admin dashboards.
@@ -92,6 +93,10 @@ class _NotificationBellState
         break;
       case 'SERVICE_REQUEST':
         Navigator.push(context, MaterialPageRoute(builder: (_) => role == 'VENDOR' ? const MarketplaceVendorScreen() : const SuperAppScreen()));
+        break;
+      case 'RECURRING_ORDER':
+      case 'MARKETPLACE_ORDER':
+        Navigator.push(context, MaterialPageRoute(builder: (_) => role == 'VENDOR' ? const MarketplaceVendorScreen() : const MarketplaceScreen()));
         break;
       case 'COMPLAINT':
         Navigator.push(context, MaterialPageRoute(builder: (_) => const ComplaintScreen()));

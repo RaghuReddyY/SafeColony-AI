@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from secrets import token_hex
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -6,9 +6,10 @@ from sqlalchemy.orm import joinedload
 
 from app.models.user import User
 from app.models.community_service import CommunityService
-from app.models.marketplace import MarketplaceVendor, MarketplaceEvent, MarketplaceOrder
+from app.models.marketplace import MarketplaceVendor, MarketplaceEvent, MarketplaceOrder, MarketplaceOrderItem
 from app.models.resident import Resident
 from app.models.unit import Unit
+from app.services.scope_service import ScopeService
 from app.models.notification import Notification
 from app.models.super_app import (
     ServiceRequest, VendorOffer, VendorRating, CommunityParcel, UtilityBill, RecurringOrder,
@@ -16,7 +17,7 @@ from app.models.super_app import (
 )
 
 
-ADMIN_ROLES = {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER"}
+ADMIN_ROLES = {"SYSTEM_ADMIN", "ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "BLOCK_ADMIN"}
 
 
 class SuperAppService:
@@ -115,15 +116,40 @@ class SuperAppService:
                 entity_id=obj.id,
                 action="OPEN_SERVICE_REQUEST",
             ))
+        else:
+            admins = self.db.query(User).filter(
+                User.organization_id == org,
+                User.role.in_(["ORGANIZATION_ADMIN", "PROPERTY_MANAGER", "BLOCK_ADMIN"]),
+                User.is_active.is_(True),
+            ).all()
+            for admin in admins:
+                self.db.add(Notification(
+                    user_id=admin.id,
+                    title="Service request needs assignment",
+                    message=f"{user.full_name} requested {obj.title}. No single matching vendor was selected; please assign a provider.",
+                    notification_type="SERVICE_REQUEST",
+                    entity_type="SERVICE_REQUEST",
+                    entity_id=obj.id,
+                    action="OPEN_SERVICE_REQUEST",
+                ))
         self.db.commit()
         self.db.refresh(obj)
         return self.request_response(obj)
 
     def list_requests(self, user):
         org = self.org(user)
-        q = self.db.query(ServiceRequest).options(joinedload(ServiceRequest.provider), joinedload(ServiceRequest.resident_user), joinedload(ServiceRequest.vendor)).filter_by(organization_id=org)
+        q = self.db.query(ServiceRequest).options(
+            joinedload(ServiceRequest.provider),
+            joinedload(ServiceRequest.resident_user),
+            joinedload(ServiceRequest.vendor),
+        ).filter(ServiceRequest.organization_id == org)
         if user.role == "RESIDENT":
-            q = q.filter_by(resident_user_id=user.id)
+            q = q.filter(ServiceRequest.resident_user_id == user.id)
+        elif user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, user)
+            q = q.join(User, ServiceRequest.resident_user_id == User.id).join(
+                Resident, Resident.user_id == User.id
+            ).join(Unit, Resident.unit_id == Unit.id).filter(Unit.section_id.in_(section_ids))
         return [self.request_response(x) for x in q.order_by(ServiceRequest.created_at.desc()).all()]
 
     def vendor_requests(self, user):
@@ -178,6 +204,11 @@ class SuperAppService:
         q = self.db.query(ServiceRequest).options(joinedload(ServiceRequest.vendor)).filter_by(id=rid, organization_id=org)
         if user.role == "RESIDENT":
             q = q.filter_by(resident_user_id=user.id)
+        elif user.role == "BLOCK_ADMIN":
+            section_ids = ScopeService.block_ids(self.db, user)
+            q = q.join(User, ServiceRequest.resident_user_id == User.id).join(
+                Resident, Resident.user_id == User.id
+            ).join(Unit, Resident.unit_id == Unit.id).filter(Unit.section_id.in_(section_ids))
         obj = q.first()
         if not obj:
             raise HTTPException(404, "Service request not found.")
@@ -231,6 +262,40 @@ class SuperAppService:
         if data.order_id and not self.db.query(MarketplaceOrder).filter_by(id=data.order_id, organization_id=org, resident_user_id=user.id).first(): raise HTTPException(403, "Order does not belong to you.")
         obj = VendorRating(organization_id=org, resident_user_id=user.id, **data.model_dump()); self.db.add(obj); self.db.commit(); self.db.refresh(obj); return obj
 
+    @staticmethod
+    def _next_recurring_run(cadence: str, preferred_day: str | None, after: datetime | None = None) -> datetime:
+        now = after or datetime.now(timezone.utc)
+        value = (preferred_day or "").strip()
+        # The existing UI stores an optional value such as "Monday 08:00".
+        hour, minute = now.hour, now.minute
+        match = __import__("re").search(r"(?:^|\\s)(\\d{1,2}):(\\d{2})(?:$|\\s)", value)
+        if match:
+            hour, minute = max(0, min(23, int(match.group(1)))), max(0, min(59, int(match.group(2))))
+        day_match = __import__("re").search(r"(?i)(monday|tuesday|wednesday|thursday|friday|saturday|sunday)", value)
+        if cadence.upper() == "DAILY":
+            candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            if candidate <= now:
+                candidate += timedelta(days=1)
+            return candidate
+        if cadence.upper() == "MONTHLY":
+            year, month = now.year, now.month
+            month += 1
+            if month > 12:
+                year, month = year + 1, 1
+            import calendar
+            day = min(now.day, calendar.monthrange(year, month)[1])
+            return now.replace(year=year, month=month, day=day, hour=hour, minute=minute, second=0, microsecond=0)
+        # WEEKLY is the default. If a weekday is supplied, use the next occurrence.
+        if day_match:
+            names = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+            target = names.index(day_match.group(1).lower())
+            days = (target - now.weekday()) % 7
+            candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0) + timedelta(days=days)
+            if candidate <= now:
+                candidate += timedelta(days=7)
+            return candidate
+        return now + timedelta(days=7)
+
     def recurring(self, user, data):
         org = self.org(user)
         payload = data.model_dump()
@@ -251,8 +316,15 @@ class SuperAppService:
             if len(matches) == 1:
                 vendor = matches[0]
                 vendor_id = vendor.id
+        cadence = payload.get("cadence", "WEEKLY").upper()
+        if cadence not in {"DAILY", "WEEKLY", "MONTHLY"}:
+            raise HTTPException(400, "Cadence must be DAILY, WEEKLY or MONTHLY.")
         obj = RecurringOrder(
-            organization_id=org, resident_user_id=user.id, vendor_id=vendor_id, **payload
+            organization_id=org,
+            resident_user_id=user.id,
+            vendor_id=vendor_id,
+            next_run_at=self._next_recurring_run(cadence, payload.get("preferred_day")),
+            **payload
         )
         self.db.add(obj)
         self.db.flush()
@@ -260,13 +332,106 @@ class SuperAppService:
             self.db.add(Notification(
                 user_id=vendor.user_id,
                 title="New recurring order",
-                message=f"{user.full_name} created a recurring {obj.description} schedule. Review it in Vendor Portal.",
-                notification_type="SERVICE_REQUEST",
-                entity_type="SERVICE_REQUEST",
+                message=f"{user.full_name} created a recurring {obj.description} schedule. It will generate orders automatically and appear in Vendor Portal.",
+                notification_type="RECURRING_ORDER",
+                entity_type="RECURRING_ORDER",
                 entity_id=obj.id,
-                action="OPEN_SERVICE_REQUEST",
+                action="OPEN_RECURRING_ORDER",
             ))
         self.db.commit(); self.db.refresh(obj); return obj
+
+    def process_recurring_orders(self, now: datetime | None = None) -> int:
+        now = now or datetime.now(timezone.utc)
+        rows = self.db.query(RecurringOrder).filter(
+            RecurringOrder.active.is_(True),
+            (RecurringOrder.next_run_at.is_(None) | (RecurringOrder.next_run_at <= now)),
+        ).order_by(RecurringOrder.next_run_at.asc().nullsfirst()).limit(100).all()
+        generated = 0
+        for recurring in rows:
+            if recurring.next_run_at is None:
+                recurring.next_run_at = self._next_recurring_run(recurring.cadence, recurring.preferred_day, now)
+                continue
+            # Resolve the vendor again so disabled/deleted vendors do not receive orders.
+            vendor = None
+            if recurring.vendor_id:
+                vendor = self.db.query(MarketplaceVendor).filter_by(
+                    id=recurring.vendor_id, organization_id=recurring.organization_id, is_active=True
+                ).first()
+            if vendor is None:
+                matches = self.db.query(MarketplaceVendor).filter(
+                    MarketplaceVendor.organization_id == recurring.organization_id,
+                    MarketplaceVendor.is_active.is_(True),
+                    func.upper(MarketplaceVendor.category) == recurring.category.upper(),
+                ).order_by(MarketplaceVendor.name).all()
+                if len(matches) == 1:
+                    vendor = matches[0]
+                    recurring.vendor_id = vendor.id
+            if vendor is None:
+                # Keep the schedule alive but do not silently generate an order
+                # that has no responsible provider.
+                recurring.next_run_at = self._next_recurring_run(recurring.cadence, recurring.preferred_day, now)
+                continue
+
+            event = MarketplaceEvent(
+                organization_id=recurring.organization_id,
+                vendor_id=vendor.id,
+                created_by_id=recurring.resident_user_id,
+                title=f"Recurring: {recurring.description[:120]}",
+                category=recurring.category,
+                event_type="PRODUCT",
+                description=f"Automatically generated from recurring order #{recurring.id}.",
+                scheduled_for=now,
+                delivery_mode="COMMUNITY_DROP",
+                status="COMPLETED",
+                is_active=True,
+            )
+            self.db.add(event)
+            self.db.flush()
+            order = MarketplaceOrder(
+                event_id=event.id,
+                organization_id=recurring.organization_id,
+                resident_user_id=recurring.resident_user_id,
+                status="PLACED",
+                payment_status="PENDING",
+                delivery_mode="COMMUNITY_DROP",
+                total_amount=0,
+                notes=f"Generated automatically from recurring order #{recurring.id}.",
+                service_slot=recurring.preferred_slot,
+            )
+            self.db.add(order)
+            self.db.flush()
+            self.db.add(MarketplaceOrderItem(
+                order_id=order.id,
+                name=recurring.description[:160],
+                quantity=1,
+                unit="unit",
+                unit_price=0,
+            ))
+            recurring.last_run_at = now
+            recurring.last_generated_order_id = order.id
+            recurring.next_run_at = self._next_recurring_run(recurring.cadence, recurring.preferred_day, now)
+            self.db.add(Notification(
+                user_id=recurring.resident_user_id,
+                title="Recurring order generated",
+                message=f"Your recurring order '{recurring.description}' was generated and sent to {vendor.name}.",
+                notification_type="RECURRING_ORDER",
+                entity_type="MARKETPLACE_ORDER",
+                entity_id=order.id,
+                action="OPEN_MARKETPLACE_ORDER",
+            ))
+            if vendor.user_id:
+                self.db.add(Notification(
+                    user_id=vendor.user_id,
+                    title="Recurring order ready",
+                    message=f"A recurring order from {self.db.query(User).filter(User.id == recurring.resident_user_id).first().full_name} is ready in Vendor Portal.",
+                    notification_type="RECURRING_ORDER",
+                    entity_type="MARKETPLACE_ORDER",
+                    entity_id=order.id,
+                    action="OPEN_MARKETPLACE_ORDER",
+                ))
+            generated += 1
+        self.db.commit()
+        return generated
 
     def list_recurring(self, user):
         return self.db.query(RecurringOrder).filter_by(organization_id=self.org(user), resident_user_id=user.id).order_by(RecurringOrder.created_at.desc()).all()

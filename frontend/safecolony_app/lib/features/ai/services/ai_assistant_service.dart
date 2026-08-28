@@ -5,11 +5,12 @@ import '../models/ai_message.dart';
 import '../models/ai_overview.dart';
 
 class AIAssistantService {
-  Future<String> chat(List<AIMessage> messages) async {
+  Future<String> chat(List<AIMessage> messages, {String? language}) async {
     final Response response = await ApiClient.dio.post(
       '/ai/chat',
       data: {
         'messages': messages.map((message) => message.toJson()).toList(),
+        'language': language,
       },
     );
 

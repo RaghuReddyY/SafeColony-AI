@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -101,6 +101,21 @@ def send_message(
     return service.send(current_user, conversation_id, data.content)
 
 
+
+
+@router.post(
+    "/conversations/{conversation_id}/messages/attachment",
+    response_model=ChatMessageResponse,
+    dependencies=[Depends(require_permission(Permissions.CHAT_SEND))],
+)
+async def send_message_attachment(
+    conversation_id: int,
+    file: UploadFile = File(...),
+    content: str = Form(default=""),
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_service),
+):
+    return await service.send_attachment(current_user, conversation_id, content, file)
 
 
 @router.put(

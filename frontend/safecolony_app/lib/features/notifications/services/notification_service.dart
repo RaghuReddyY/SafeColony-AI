@@ -7,8 +7,11 @@ class NotificationService {
   /// Notifications belong to the authenticated user, not to a resident id.
   /// Always use the /me endpoints so residents, guards and administrators
   /// see their own notification inbox.
-  Future<List<AppNotification>> loadNotifications() async {
-    final Response response = await ApiClient.dio.get('/notifications/me');
+  Future<List<AppNotification>> loadNotifications({String? category}) async {
+    final Response response = await ApiClient.dio.get(
+      '/notifications/me',
+      queryParameters: category == null ? null : {'category': category},
+    );
     return (response.data as List)
         .map((e) => AppNotification.fromJson(Map<String, dynamic>.from(e)))
         .toList();

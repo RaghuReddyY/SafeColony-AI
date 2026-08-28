@@ -76,7 +76,10 @@ class DashboardBody extends StatelessWidget {
           const SizedBox(height: 18),
           ActivityTimeline(
             activities: dashboard.recentActivity,
-            onOpen: () => _open(context, const NotificationScreen()),
+            onOpen: (activity) => _open(
+              context,
+              NotificationScreen(category: activity.notificationType),
+            ),
           ),
           const SizedBox(height: 16),
           // Detailed visitor analytics is intentionally not placed on the

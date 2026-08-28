@@ -125,6 +125,9 @@ class RecurringOrderResponse(BaseModel):
     preferred_slot: str | None
     vendor_id: int | None
     active: bool
+    next_run_at: datetime | None = None
+    last_run_at: datetime | None = None
+    last_generated_order_id: int | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

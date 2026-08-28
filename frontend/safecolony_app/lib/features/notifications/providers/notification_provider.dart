@@ -97,7 +97,7 @@ class NotificationNotifier
   // LOAD NOTIFICATIONS
   // ==========================================================
 
-  Future<void> load() async {
+  Future<void> load({String? category}) async {
     try {
       state = state.copyWith(
         loading: true,
@@ -105,7 +105,7 @@ class NotificationNotifier
       );
 
       final notifications =
-          await _service.loadNotifications();
+          await _service.loadNotifications(category: category);
 
       final visibleNotifications =
           await _applyNotificationPreferences(

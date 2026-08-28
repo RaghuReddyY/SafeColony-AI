@@ -107,13 +107,20 @@ class NotificationRepository:
     def get_by_user(
         self,
         user_id: int,
+        category: str | None = None,
     ) -> list[Notification]:
 
+        query = self.db.query(Notification).filter(Notification.user_id == user_id)
+        if category:
+            value = category.strip().upper()
+            if value == "COMMUNITY_CHAT":
+                query = query.filter(Notification.entity_type.in_(["CHAT", "COMMUNITY_CHAT"]) | Notification.notification_type.in_(["CHAT", "COMMUNITY_CHAT"]))
+            elif value == "FINANCE":
+                query = query.filter(Notification.notification_type.in_(["MAINTENANCE", "MAINTENANCE_DUE", "MAINTENANCE_PAYMENT", "PAYMENT", "COMMUNITY_FINANCE", "COMMUNITY_FINANCE_PAYMENT"]) | Notification.entity_type.in_(["MAINTENANCE", "MAINTENANCE_DUE", "MAINTENANCE_PAYMENT", "PAYMENT", "COMMUNITY_FINANCE", "COMMUNITY_FINANCE_PAYMENT"]))
+            else:
+                query = query.filter(Notification.notification_type == value)
         return (
-            self.db.query(Notification)
-            .filter(
-                Notification.user_id == user_id,
-            )
+            query
             .order_by(
                 Notification.created_at.desc(),
             )

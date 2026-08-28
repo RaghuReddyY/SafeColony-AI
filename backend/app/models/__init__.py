@@ -30,3 +30,6 @@ from .marketplace import MarketplaceVendor, MarketplaceEvent, MarketplaceOrder, 
 
 from .super_app import ServiceRequest, VendorOffer, VendorRating, CommunityParcel, UtilityBill, RecurringOrder, UtilityProvider, CommunityMapPoint
 from .password_reset import PasswordResetToken
+
+from .complaint_attachment import ComplaintAttachment
+from .chat_attachment import ChatAttachment

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -6,7 +6,7 @@ from app.auth.permissions import require_permission
 from app.database.dependency import get_db
 from app.models.user import User
 from app.repositories.complaint_repository import ComplaintRepository
-from app.schemas.complaint import ComplaintCreate, ComplaintUpdate, ComplaintEscalate, ComplaintResponse
+from app.schemas.complaint import ComplaintCreate, ComplaintUpdate, ComplaintEscalate, ComplaintResponse, ComplaintAttachmentResponse
 from app.security.permissions import Permissions
 from app.services.complaint_service import ComplaintService
 
@@ -40,3 +40,13 @@ def update(complaint_id: int, data: ComplaintUpdate, current_user: User = Depend
 @router.post("/{complaint_id}/escalate", response_model=ComplaintResponse, dependencies=[Depends(require_permission(Permissions.COMPLAINT_ESCALATE))])
 def escalate(complaint_id: int, data: ComplaintEscalate, current_user: User = Depends(get_current_user), service: ComplaintService = Depends(get_service)):
     return service.escalate(current_user, complaint_id, data)
+
+
+@router.post("/{complaint_id}/attachments", response_model=ComplaintAttachmentResponse, dependencies=[Depends(require_permission(Permissions.COMPLAINT_VIEW))])
+async def add_attachment(
+    complaint_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    service: ComplaintService = Depends(get_service),
+):
+    return await service.add_attachment(current_user, complaint_id, file)

@@ -29,6 +29,11 @@ dependencies:
   firebase_core: ^4.1.1
   firebase_messaging: ^16.0.1
   flutter_local_notifications: ^19.4.1
+  file_picker: ^12.1.1
+  speech_to_text: ^7.4.0
+  flutter_tts: ^4.2.5
+  flutter_localizations:
+    sdk: flutter
  
 
 dev_dependencies:

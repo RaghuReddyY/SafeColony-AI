@@ -10,6 +10,7 @@ class AIChatMessage(BaseModel):
 
 class AIChatRequest(BaseModel):
     messages: list[AIChatMessage] = Field(min_length=1, max_length=20)
+    language: str | None = Field(default=None, max_length=20)
 
 
 class AIChatResponse(BaseModel):

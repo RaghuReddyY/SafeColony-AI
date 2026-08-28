@@ -90,6 +90,11 @@ class MaintenanceService {
     return MaintenanceDashboard.fromJson(response.data);
   }
 
+  Future<MaintenanceBill> getMyBill(int billId) async {
+    final response = await ApiClient.dio.get('/maintenance/me/bills/$billId');
+    return MaintenanceBill.fromJson(Map<String,dynamic>.from(response.data));
+  }
+
   Future<Map<String, dynamic>> createOnlinePayment(int billId) async {
     final response = await ApiClient.dio.post('/maintenance/bills/$billId/pay');
     return Map<String, dynamic>.from(response.data);

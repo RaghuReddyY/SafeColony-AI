@@ -132,6 +132,18 @@ def my_maintenance(current_user: User = Depends(get_current_user), service: Main
     return service.resident_summary(current_user)
 
 @router.get(
+    "/me/bills/{bill_id}",
+    response_model=MaintenanceBillResponse,
+    dependencies=[Depends(require_permission(Permissions.MAINTENANCE_VIEW))],
+)
+def my_maintenance_bill(
+    bill_id: int,
+    current_user: User = Depends(get_current_user),
+    service: MaintenanceService = Depends(get_service),
+):
+    return service.resident_bill(current_user, bill_id)
+
+@router.get(
     "/me/payer",
     response_model=MaintenancePayerResponse,
     dependencies=[Depends(require_permission(Permissions.MAINTENANCE_VIEW))],

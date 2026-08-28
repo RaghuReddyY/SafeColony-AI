@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../core/api/api_client.dart';
 import '../models/complaint.dart';
 
@@ -21,6 +22,15 @@ class ComplaintService {
       'priority': priority,
     });
     return Complaint.fromJson(Map<String, dynamic>.from(r.data));
+  }
+
+  Future<ComplaintAttachment> uploadAttachment(int complaintId, PlatformFile file) async {
+    final bytes = await file.readAsBytes();
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: file.name),
+    });
+    final r = await ApiClient.dio.post('/complaints/$complaintId/attachments', data: form);
+    return ComplaintAttachment.fromJson(Map<String,dynamic>.from(r.data));
   }
 
   Future<Complaint> update(int id, Map<String, dynamic> data) async {

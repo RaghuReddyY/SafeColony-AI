@@ -15,6 +15,7 @@ def _job_for_name(name: str):
         "vacation": "Vacation Job",
         "maintenance": "Maintenance Reminder Job",
         "notification": "Notification Outbox Job",
+        "recurring": "Recurring Order Generation Job",
     }
     job = jobs.get(names.get(name, ""))
     if job is None:

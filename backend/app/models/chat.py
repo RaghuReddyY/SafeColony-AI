@@ -85,3 +85,4 @@ class ChatMessage(Base):
 
     conversation = relationship("ChatConversation", back_populates="messages")
     sender = relationship("User")
+    attachments = relationship("ChatAttachment", back_populates="message", cascade="all, delete-orphan")

@@ -4,7 +4,7 @@ import '../../../models/dashboard_summary.dart';
 
 class ActivityTimeline extends StatelessWidget {
   final List<DashboardActivity> activities;
-  final VoidCallback? onOpen;
+  final ValueChanged<DashboardActivity>? onOpen;
 
   const ActivityTimeline({
     super.key,
@@ -76,7 +76,7 @@ class ActivityTimeline extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                   ),
                 ),
-                if (onOpen != null) TextButton(onPressed: onOpen, child: const Text('View all')),
+                if (onOpen != null && activities.isNotEmpty) TextButton(onPressed: () => onOpen!.call(activities.first), child: const Text('View all')),
               ],
             ),
             const SizedBox(height: 20),
@@ -110,7 +110,7 @@ class ActivityTimeline extends StatelessWidget {
                   trailing: activity.count > 1
                       ? CircleAvatar(radius: 13, child: Text('${activity.count}', style: const TextStyle(fontSize: 11)))
                       : null,
-                  onTap: onOpen,
+                  onTap: onOpen == null ? null : () => onOpen!.call(activity),
                   isThreeLine: true,
                 ),
               ),

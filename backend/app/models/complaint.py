@@ -42,3 +42,4 @@ class Complaint(Base):
     resident = relationship("Resident")
     assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
     created_by = relationship("User", foreign_keys=[created_by_user_id])
+    attachments = relationship("ComplaintAttachment", back_populates="complaint", cascade="all, delete-orphan")

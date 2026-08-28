@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from app.core.event_bus import event_bus
 from app.core.exceptions import BadRequestException, ConflictException, ForbiddenException, NotFoundException
@@ -11,6 +12,7 @@ from app.models.user import User
 from app.models.user_block_scope import UserBlockScope
 from app.repositories.complaint_repository import ComplaintRepository
 from app.services.scope_service import ScopeService
+from app.services.storage_service import StorageService
 
 
 class ComplaintService:
@@ -19,6 +21,37 @@ class ComplaintService:
     def __init__(self, repo: ComplaintRepository):
         self.repo = repo
         self.db = repo.db
+
+    def _response(self, complaint):
+        return {
+            "id": complaint.id,
+            "organization_id": complaint.organization_id,
+            "resident_id": complaint.resident_id,
+            "title": complaint.title,
+            "description": complaint.description,
+            "category": complaint.category,
+            "priority": complaint.priority,
+            "status": complaint.status,
+            "assigned_to_user_id": complaint.assigned_to_user_id,
+            "escalated_at": complaint.escalated_at,
+            "escalation_reason": complaint.escalation_reason,
+            "resolution": complaint.resolution,
+            "resolved_at": complaint.resolved_at,
+            "created_by_user_id": complaint.created_by_user_id,
+            "created_at": complaint.created_at,
+            "updated_at": complaint.updated_at,
+            "attachments": [
+                {
+                    "id": a.id,
+                    "file_name": a.file_name,
+                    "content_type": a.content_type,
+                    "file_size": a.file_size,
+                    "file_url": StorageService().url_for(a.file_path),
+                    "created_at": a.created_at,
+                }
+                for a in (complaint.attachments or [])
+            ],
+        }
 
     def _resident(self, current_user):
         resident = self.db.query(Resident).filter(Resident.user_id == current_user.id).first()
@@ -101,7 +134,7 @@ class ComplaintService:
         )
         self.repo.commit()
         logger.info("Complaint created id=%s resident=%s", complaint.id, resident.id)
-        return complaint
+        return self._response(complaint)
 
     def list(self, current_user, status=None):
         resident_id = None
@@ -110,7 +143,7 @@ class ComplaintService:
         section_ids = None
         if current_user.role == "BLOCK_ADMIN":
             section_ids = ScopeService.block_ids(self.db, current_user)
-        return self.repo.list(current_user.organization_id, resident_id, status, section_ids)
+        return [self._response(c) for c in self.repo.list(current_user.organization_id, resident_id, status, section_ids)]
 
     def update(self, current_user, complaint_id, data):
         if current_user.role not in self.MANAGE_ROLES:
@@ -181,7 +214,7 @@ class ComplaintService:
             complaint.resolved_at = None
         self.repo.commit()
         logger.info("Complaint updated id=%s status=%s", complaint.id, complaint.status)
-        return complaint
+        return self._response(complaint)
 
     def escalate(self, current_user, complaint_id, data):
         if current_user.role not in self.MANAGE_ROLES:
@@ -209,7 +242,58 @@ class ComplaintService:
             section_id=complaint.resident.unit.section_id if complaint.resident and complaint.resident.unit else None,
         )
         self.repo.commit()
-        return complaint
+        return self._response(complaint)
+
+    async def add_attachment(self, current_user, complaint_id: int, upload):
+        complaint = self.get(current_user, complaint_id)
+        # get() returns the safe response, so load the ORM object again for persistence.
+        section_ids = ScopeService.block_ids(self.db, current_user) if current_user.role == "BLOCK_ADMIN" else None
+        complaint_obj = self.repo.get_by_id(current_user.organization_id, complaint_id, section_ids)
+        if not complaint_obj:
+            raise NotFoundException("Complaint")
+        content_type = (upload.content_type or "").lower()
+        allowed = {
+            "image/jpeg", "image/png", "image/webp", "image/gif",
+            "application/pdf",
+        }
+        if content_type not in allowed:
+            raise BadRequestException("Unsupported attachment type. Use JPG, PNG, WEBP, GIF or PDF.")
+        filename = (upload.filename or "attachment").strip()
+        extension = Path(filename).suffix.lower()
+        allowed_ext = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"}
+        if extension not in allowed_ext:
+            raise BadRequestException("Unsupported attachment extension.")
+        content = await upload.read()
+        if not content:
+            raise BadRequestException("Attachment is empty.")
+        if len(content) > 10 * 1024 * 1024:
+            raise BadRequestException("Complaint attachment must be 10 MB or smaller.")
+        from uuid import uuid4
+        from app.models.complaint_attachment import ComplaintAttachment
+        stored = StorageService().upload_bytes(
+            f"complaints/{complaint_obj.id}/{uuid4().hex}{extension}",
+            content,
+            content_type=content_type,
+        )
+        attachment = ComplaintAttachment(
+            complaint_id=complaint_obj.id,
+            uploaded_by_user_id=current_user.id,
+            file_name=filename[:255],
+            content_type=content_type,
+            file_size=len(content),
+            file_path=stored,
+        )
+        self.db.add(attachment)
+        self.db.commit()
+        self.db.refresh(attachment)
+        return {
+            "id": attachment.id,
+            "file_name": attachment.file_name,
+            "content_type": attachment.content_type,
+            "file_size": attachment.file_size,
+            "file_url": StorageService().url_for(attachment.file_path),
+            "created_at": attachment.created_at,
+        }
 
     def get(self, current_user, complaint_id):
         section_ids = None
@@ -220,4 +304,4 @@ class ComplaintService:
             raise NotFoundException("Complaint")
         if current_user.role == "RESIDENT" and complaint.created_by_user_id != current_user.id:
             raise ForbiddenException("You can only view your own complaints.")
-        return complaint
+        return self._response(complaint)

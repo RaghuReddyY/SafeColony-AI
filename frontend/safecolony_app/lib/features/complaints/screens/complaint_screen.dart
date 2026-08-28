@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_provider.dart';
@@ -24,6 +26,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
     final description = TextEditingController();
     final category = TextEditingController(text: 'GENERAL');
     String priority = 'MEDIUM';
+    final List<PlatformFile> attachments = [];
 
     try {
       final created = await showDialog<bool>(
@@ -75,6 +78,45 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final files = await FilePicker.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf'],
+                        );
+                        if (files.isEmpty) return;
+                        final selected = <PlatformFile>[];
+                        for (final file in files) {
+                          if (await file.length() <= 10 * 1024 * 1024) {
+                            selected.add(file);
+                          }
+                        }
+                        if (selected.length != files.length && ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Files over 10 MB were skipped.')),
+                          );
+                        }
+                        setState(() {
+                          attachments
+                            ..clear()
+                            ..addAll(selected.take(5));
+                        });
+                      },
+                      icon: const Icon(Icons.attach_file),
+                      label: Text(attachments.isEmpty ? 'Add attachments' : '${attachments.length} attachment(s)'),
+                    ),
+                  ),
+                  if (attachments.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        children: attachments.map((f) => Chip(label: Text(f.name, overflow: TextOverflow.ellipsis))).toList(),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -95,7 +137,7 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
                     return;
                   }
                   try {
-                    await ref.read(complaintServiceProvider).create(
+                    final complaint = await ref.read(complaintServiceProvider).create(
                       title: title.text.trim(),
                       description: description.text.trim(),
                       category: category.text.trim().isEmpty
@@ -103,6 +145,9 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
                           : category.text.trim().toUpperCase(),
                       priority: priority,
                     );
+                    for (final file in attachments) {
+                      await ref.read(complaintServiceProvider).uploadAttachment(complaint.id, file);
+                    }
                     if (ctx.mounted) Navigator.pop(ctx, true);
                   } catch (e) {
                     if (!ctx.mounted) return;
@@ -280,10 +325,26 @@ class _ComplaintScreenState extends ConsumerState<ComplaintScreen> {
                           c.title,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text(
-                          '${c.category} • ${c.priority}\n${c.description}',
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${c.category} • ${c.priority}\n${c.description}'),
+                            if (c.attachments.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text('📎 ${c.attachments.map((a) => a.fileName).join(', ')}'),
+                              ),
+                          ],
                         ),
                         isThreeLine: true,
+                        onTap: c.attachments.isEmpty
+                            ? null
+                            : () async {
+                                final url = c.attachments.first.fileUrl;
+                                if (url.isNotEmpty) {
+                                  await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                                }
+                              },
                         trailing: canManage
                             ? OutlinedButton(
                                 onPressed: () => _manage(c),

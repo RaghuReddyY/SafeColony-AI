@@ -118,8 +118,10 @@ class AIAssistant:
             return "OPEN_COMMUNITY_CHAT"
         return None
 
-    def chat(self, user: User, messages):
-        local = self._local_intent_response(user, " ".join(m.content for m in messages[-3:]))
+    def chat(self, user: User, messages, language: str | None = None):
+        local = None if language and language.lower() not in {"en", "en-us"} else self._local_intent_response(
+            user, " ".join(m.content for m in messages[-3:])
+        )
         if local is not None:
             return local
 
@@ -130,7 +132,7 @@ class AIAssistant:
             )
 
         prompt_messages = messages[-20:]
-        system_instruction = self._system_instruction(user)
+        system_instruction = self._system_instruction(user, language)
         contents = []
 
         for item in prompt_messages:
@@ -204,7 +206,7 @@ class AIAssistant:
 
         return text.strip()
 
-    def _system_instruction(self, user: User) -> str:
+    def _system_instruction(self, user: User, language: str | None = None) -> str:
         role = user.role
         context = self._build_context(user)
 
@@ -254,7 +256,8 @@ operational workflows. Do not expose secrets, tokens or API keys.
             f"Current local date/time: {datetime.now(ZoneInfo(settings.APP_TIMEZONE)).isoformat()}.\n"
             "Do not reveal API keys, passwords, tokens, internal security secrets, "
             "or private data belonging to other users. If a request needs an action "
-            "that the current app does not support, say so clearly instead of pretending "
+            + (f"Respond in the user's selected language ({language}). Preserve SafeColony names, amounts and IDs exactly. " if language else "")
+            + "that the current app does not support, say so clearly instead of pretending "
             "that you performed it.\n"
             "SafeColony is India-first: use Asia/Kolkata (IST, UTC+05:30) for all user-facing dates and times. "
             "Use Indian Rupees (INR, ₹) for every monetary amount. Never display dollars ($), USD, or another currency "

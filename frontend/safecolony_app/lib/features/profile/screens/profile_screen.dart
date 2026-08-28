@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/app_localizations.dart';
+
 import '../../auth/providers/auth_provider.dart';
 import '../../settings/screens/settings_screen.dart';
 
@@ -61,6 +63,23 @@ class ProfileScreen extends ConsumerWidget {
               value: _roleLabel(user?.role),
             ),
             const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xffE2E8F0)),
+              ),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: _iconBox(Icons.language, const Color(0xff4F46E5)),
+                title: Text(SafeColonyLocalizations.of(context).text('language'), style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(AppLocaleController.instance.locale.languageCode.toUpperCase()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _chooseLanguage(context),
+              ),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -128,6 +147,30 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _chooseLanguage(BuildContext context) async {
+    final current = AppLocaleController.instance.locale.languageCode;
+    final labels = {
+      'en': 'English', 'hi': 'हिन्दी', 'te': 'తెలుగు',
+      'kn': 'ಕನ್ನಡ', 'ta': 'தமிழ்', 'ml': 'മലയാളം',
+    };
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: SafeColonyLocalizations.supportedLocales.map((locale) => ListTile(
+            leading: Icon(locale.languageCode == current ? Icons.radio_button_checked : Icons.radio_button_off),
+            title: Text(labels[locale.languageCode] ?? locale.languageCode),
+            onTap: () => Navigator.pop(sheet, locale.languageCode),
+          )).toList(),
+        ),
+      ),
+    );
+    if (selected != null) {
+      await AppLocaleController.instance.setLocale(Locale(selected));
+    }
   }
 
   Widget _profileHeader(dynamic user) {

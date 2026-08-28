@@ -1,4 +1,6 @@
 from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
 
 from app.core.event_bus import event_bus
 from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
@@ -8,6 +10,8 @@ from app.models.chat import ChatConversation, ChatMessage, ChatParticipant
 from app.models.notification import Notification
 from app.models.user import User
 from app.repositories.chat_repository import ChatRepository
+from app.services.storage_service import StorageService
+from app.models.chat_attachment import ChatAttachment
 
 
 class ChatService:
@@ -65,6 +69,17 @@ class ChatService:
             "updated_at": message.updated_at,
             "is_edited": bool(message.is_edited and not message.is_deleted),
             "is_deleted": message.is_deleted,
+            "attachments": [
+                {
+                    "id": a.id,
+                    "file_name": a.file_name,
+                    "content_type": a.content_type,
+                    "file_size": a.file_size,
+                    "file_url": StorageService().url_for(a.file_path),
+                    "created_at": a.created_at,
+                }
+                for a in (message.attachments or [])
+            ],
         }
 
     def _conversation_response(self, conversation: ChatConversation, user_id: int):
@@ -255,6 +270,74 @@ class ChatService:
         )
         return self._message_response(message)
 
+
+    async def send_attachment(self, current_user: User, conversation_id: int, content: str, upload):
+        conversation = self._conversation_for_user(current_user, conversation_id)
+        text = content.strip()
+        if len(text) > 4000:
+            raise BadRequestException("Message is too long.")
+        content_type = (upload.content_type or "").lower()
+        allowed = {
+            "image/jpeg", "image/png", "image/webp", "image/gif",
+            "application/pdf",
+        }
+        if content_type not in allowed:
+            raise BadRequestException("Unsupported attachment type. Use JPG, PNG, WEBP, GIF or PDF.")
+        filename = (upload.filename or "attachment").strip()
+        extension = Path(filename).suffix.lower()
+        if extension not in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"}:
+            raise BadRequestException("Unsupported attachment extension.")
+        content_bytes = await upload.read()
+        if not content_bytes:
+            raise BadRequestException("Attachment is empty.")
+        if len(content_bytes) > 10 * 1024 * 1024:
+            raise BadRequestException("Chat attachment must be 10 MB or smaller.")
+        if not text:
+            text = "Attachment"
+
+        message = ChatMessage(
+            conversation_id=conversation.id,
+            sender_user_id=current_user.id,
+            content=text,
+        )
+        self.db.add(message)
+        self.repo.flush()
+        stored = StorageService().upload_bytes(
+            f"chat/{conversation.id}/{message.id}/{uuid4().hex}{extension}",
+            content_bytes,
+            content_type=content_type,
+        )
+        self.db.add(ChatAttachment(
+            message_id=message.id,
+            uploaded_by_user_id=current_user.id,
+            file_name=filename[:255],
+            content_type=content_type,
+            file_size=len(content_bytes),
+            file_path=stored,
+        ))
+        conversation.updated_at = datetime.utcnow()
+        sender_name = current_user.full_name or current_user.email
+        for participant in conversation.participants:
+            if participant.user_id == current_user.id or participant.user is None or not participant.user.is_active:
+                continue
+            self.db.add(Notification(
+                user_id=participant.user_id,
+                title=f"New message from {sender_name}",
+                message=text[:500],
+                notification_type="CHAT",
+                entity_type="COMMUNITY_CHAT",
+                entity_id=conversation.id,
+                action="OPEN_CHAT",
+            ))
+        event_bus.publish(ChatMessageSentEvent(
+            conversation_id=conversation.id,
+            organization_id=conversation.organization_id,
+            sender_user_id=current_user.id,
+            message_id=message.id,
+        ))
+        self.repo.commit()
+        self.db.refresh(message)
+        return self._message_response(message)
 
     def _message_for_participant(self, current_user: User, conversation_id: int, message_id: int):
         conversation = self._conversation_for_user(current_user, conversation_id)

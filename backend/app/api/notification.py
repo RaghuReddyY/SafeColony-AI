@@ -30,10 +30,11 @@ def create_notification(
 
 @router.get("/me", response_model=list[NotificationResponse], dependencies=[Depends(require_permission(Permissions.NOTIFICATION_VIEW))])
 def get_my_notifications(
+    category: str | None = None,
     current_user: User = Depends(get_current_user),
     service: NotificationService = Depends(get_notification_service),
 ):
-    return service.get_by_user(current_user.id)
+    return service.get_by_user(current_user.id, category)
 
 
 @router.get("/me/unread", response_model=list[NotificationResponse], dependencies=[Depends(require_permission(Permissions.NOTIFICATION_VIEW))])

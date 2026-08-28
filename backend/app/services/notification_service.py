@@ -147,8 +147,8 @@ class NotificationService:
             sent_at=datetime.utcnow() if channel == "IN_APP" else None,
         ))
 
-    def get_by_user(self, user_id: int):
-        return self.repo.get_by_user(user_id)
+    def get_by_user(self, user_id: int, category: str | None = None):
+        return self.repo.get_by_user(user_id, category)
 
     def get_by_resident(self, resident_id: int):
         # Kept for compatibility; callers should use user_id because notifications belong to users.
