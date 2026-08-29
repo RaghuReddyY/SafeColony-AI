@@ -156,36 +156,143 @@ class DashboardBody extends StatelessWidget {
     required VoidCallback onTap,
     bool alert = false,
   }) {
+    final accent = alert ? const Color(0xffDC2626) : const Color(0xff4658B8);
+    final accentSoft = alert
+        ? const Color(0xffFEF2F2)
+        : const Color(0xffEEF2FF);
+
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(22),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: accent.withValues(alpha: .08)),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 18,
+              offset: const Offset(0, 7),
+              color: Colors.black.withValues(alpha: .07),
+            ),
+          ],
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: alert ? Colors.red.withValues(alpha: .10) : Colors.indigo.withValues(alpha: .10),
-                    foregroundColor: alert ? Colors.red : Colors.indigo,
-                    child: Icon(icon),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(22),
+                    ),
                   ),
-                  const Spacer(),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              const SizedBox(height: 4),
-              Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: alert ? Colors.red : Colors.indigo)),
-              const SizedBox(height: 3),
-              Text(subtitle, style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 3),
-              Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Color(0xff64748B))),
+              Positioned(
+                right: -22,
+                top: -22,
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: accent.withValues(alpha: .035),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: accentSoft,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(icon, color: accent, size: 27),
+                        ),
+                        const Spacer(),
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: .07),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: Color(0xff64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -.4,
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accentSoft,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      detail,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.3,
+                        color: Color(0xff64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

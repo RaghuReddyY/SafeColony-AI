@@ -59,12 +59,14 @@ class ActivityTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: .06),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(25),
+        side: BorderSide(color: Colors.black.withValues(alpha: .04)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(25),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -79,7 +81,7 @@ class ActivityTimeline extends StatelessWidget {
                 if (onOpen != null && activities.isNotEmpty) TextButton(onPressed: () => onOpen!.call(activities.first), child: const Text('View all')),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             if (activities.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
@@ -90,28 +92,46 @@ class ActivityTimeline extends StatelessWidget {
               )
             else
               ...activities.map(
-                (activity) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: _color(activity.notificationType)
-                        .withValues(alpha: .15),
-                    child: Icon(
-                      _icon(activity.notificationType),
-                      color: _color(activity.notificationType),
+                (activity) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: .035),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
                     ),
+                    leading: CircleAvatar(
+                      backgroundColor: _color(activity.notificationType)
+                          .withValues(alpha: .15),
+                      child: Icon(
+                        _icon(activity.notificationType),
+                        color: _color(activity.notificationType),
+                      ),
+                    ),
+                    title: Text(
+                      activity.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      '${activity.message}\n${_relative(activity.createdAt)}',
+                    ),
+                    trailing: activity.count > 1
+                        ? CircleAvatar(
+                            radius: 13,
+                            child: Text(
+                              '${activity.count}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          )
+                        : null,
+                    onTap: onOpen == null
+                        ? null
+                        : () => onOpen!.call(activity),
+                    isThreeLine: true,
                   ),
-                  title: Text(
-                    activity.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    '${activity.message}\n${_relative(activity.createdAt)}',
-                  ),
-                  trailing: activity.count > 1
-                      ? CircleAvatar(radius: 13, child: Text('${activity.count}', style: const TextStyle(fontSize: 11)))
-                      : null,
-                  onTap: onOpen == null ? null : () => onOpen!.call(activity),
-                  isThreeLine: true,
                 ),
               ),
           ],

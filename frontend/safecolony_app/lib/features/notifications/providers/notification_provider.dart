@@ -54,6 +54,8 @@ class NotificationNotifier
   final SettingsService _settingsService =
       SettingsService();
 
+  String? _activeCategory;
+
   Future<List<AppNotification>> _applyNotificationPreferences(
     List<AppNotification> notifications,
   ) async {
@@ -98,6 +100,7 @@ class NotificationNotifier
   // ==========================================================
 
   Future<void> load({String? category}) async {
+    _activeCategory = category;
     try {
       state = state.copyWith(
         loading: true,
@@ -174,8 +177,10 @@ class NotificationNotifier
         error: null,
       );
 
-      // Optional backend synchronization.
-      await load();
+      // Refresh using the same category that opened this screen. Without
+      // this, marking a maintenance notification read would replace the
+      // filtered list with the user's entire inbox (including chat).
+      await load(category: _activeCategory);
     } catch (e) {
       state = state.copyWith(
         error: e.toString(),
@@ -209,8 +214,8 @@ class NotificationNotifier
         error: null,
       );
 
-      // Synchronize with backend.
-      await load();
+      // Synchronize with backend while preserving the active category.
+      await load(category: _activeCategory);
     } catch (e) {
       state = state.copyWith(
         error: e.toString(),

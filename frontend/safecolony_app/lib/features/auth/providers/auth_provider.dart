@@ -47,8 +47,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (rememberMe) {
         await _storage.saveToken(loginResponse.accessToken);
+        await _storage.saveRememberedCredentials(
+          email: email,
+          password: password,
+        );
       } else {
-        await _storage.logout();
+        await _storage.clearToken();
+        await _storage.clearRememberedCredentials();
       }
       ApiClient.setSessionToken(loginResponse.accessToken);
 
@@ -332,25 +337,63 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> checkLogin() async {
     final token = await _storage.getToken();
 
-    if (token == null || token.isEmpty) {
+    if (token != null && token.isNotEmpty) {
+      try {
+        ApiClient.setSessionToken(token);
+        final user = await _authService.getCurrentUser();
+
+        state = AuthState(
+          isLoggedIn: true,
+          token: token,
+          user: user,
+        );
+
+        await PushNotificationService.instance.initialize();
+        return;
+      } catch (_) {
+        // The access token can expire while the app is closed. If the user
+        // enabled Remember me, restore the session below instead of sending
+        // them back to the login screen every morning.
+        ApiClient.setSessionToken(null);
+        await _storage.clearToken();
+      }
+    }
+
+    final email = await _storage.getRememberedEmail();
+    final password = await _storage.getRememberedPassword();
+
+    if (email == null || email.isEmpty || password == null || password.isEmpty) {
       state = const AuthState();
       return;
     }
 
     try {
-      ApiClient.setSessionToken(token);
-      final user =
-          await _authService.getCurrentUser();
+      final loginResponse = await _authService.login(
+        LoginRequest(
+          email: email,
+          password: password,
+        ),
+      );
+
+      await _storage.saveToken(loginResponse.accessToken);
+      ApiClient.setSessionToken(loginResponse.accessToken);
+
+      final user = await _authService.getCurrentUser();
 
       state = AuthState(
         isLoggedIn: true,
-        token: token,
+        token: loginResponse.accessToken,
         user: user,
+        residentStatus: loginResponse.residentStatus,
       );
 
       await PushNotificationService.instance.initialize();
-    } catch (e) {
-      await logout();
+    } catch (_) {
+      // Do not keep stale credentials after an automatic re-login fails.
+      await _storage.clearToken();
+      await _storage.clearRememberedCredentials();
+      ApiClient.setSessionToken(null);
+      state = const AuthState();
     }
   }
 
