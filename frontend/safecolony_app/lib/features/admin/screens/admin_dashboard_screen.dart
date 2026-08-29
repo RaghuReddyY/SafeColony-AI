@@ -14,7 +14,6 @@ import '../../notifications/screens/notification_screen.dart';
 import '../../emergency/providers/emergency_provider.dart';
 import '../../emergency/screens/emergency_alerts_screen.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
-import '../../maintenance/screens/maintenance_admin_screen.dart';
 import '../../maintenance/screens/community_finance_screen.dart';
 import 'organization_maintenance_details_screen.dart';
 import '../../incidents/screens/incident_screen.dart';
@@ -1297,7 +1296,7 @@ Widget _actionCard(
         'Open Money Management to create the current monthly period.',
         () {
           _open(
-            const MaintenanceAdminScreen(),
+            const OrganizationMaintenanceDetailsScreen(),
           );
         },
       );
@@ -1419,7 +1418,7 @@ Widget _actionCard(
               OutlinedButton.icon(
             onPressed: () {
               _open(
-                const MaintenanceAdminScreen(),
+                const OrganizationMaintenanceDetailsScreen(),
               );
             },
 

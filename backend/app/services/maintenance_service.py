@@ -195,6 +195,26 @@ class MaintenanceService:
             bill.late_fee = fee
             bill.total_due = base + Decimal(str(bill.carried_forward)) + fee
 
+    def _maintenance_notification_recipients(self, bill: MaintenanceBill):
+        """Return organization admin plus only the block admin(s) for the bill's block."""
+        org_id = bill.resident.user.organization_id
+        section_id = bill.resident.unit.section_id if bill.resident.unit else None
+
+        admins = self.db.query(User).filter(
+            User.organization_id == org_id,
+            User.role.in_(["ORGANIZATION_ADMIN", "BLOCK_ADMIN"]),
+            User.is_active.is_(True),
+        ).all()
+
+        recipients = []
+        for admin in admins:
+            if admin.role == "ORGANIZATION_ADMIN":
+                recipients.append(admin)
+                continue
+            if section_id is not None and section_id in ScopeService.block_ids(self.db, admin):
+                recipients.append(admin)
+        return recipients
+
     # ==========================================================
     # Maintenance Period
     # ==========================================================
@@ -204,6 +224,9 @@ class MaintenanceService:
         current_user: User,
         data,
     ):
+        if current_user.role not in {"SYSTEM_ADMIN", "BLOCK_ADMIN"}:
+            raise ForbiddenException("Only block administrators can create maintenance periods.")
+
         section_id = self._scope_section_id(current_user, data.section_id)
         existing = self.repo.get_period_by_month(
             current_user.organization_id,
@@ -1318,18 +1341,9 @@ class MaintenanceService:
             )
         )
 
-        # Notify admins in same organization
-        admins = (
-            self.db.query(User)
-            .filter(
-                User.organization_id
-                == bill.resident.user.organization_id,
-                User.role
-                == "ORGANIZATION_ADMIN",
-                User.is_active.is_(True),
-            )
-            .all()
-        )
+        # Notify the organization admin for consolidated visibility and only
+        # the block admin(s) responsible for the resident's block.
+        admins = self._maintenance_notification_recipients(bill)
 
         for admin in admins:
 
@@ -1791,17 +1805,9 @@ class MaintenanceService:
                 )
             )
 
-            admins = (
-                self.db.query(User)
-                .filter(
-                    User.organization_id
-                    == bill.resident.user.organization_id,
-                    User.role
-                    == "ORGANIZATION_ADMIN",
-                    User.is_active.is_(True),
-                )
-                .all()
-            )
+            # Keep organization visibility while routing the maintenance
+            # notification to the block admin responsible for this bill.
+            admins = self._maintenance_notification_recipients(bill)
 
             for admin in admins:
 

@@ -44,8 +44,7 @@ class OrganizationMoneyDetailsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                'This screen focuses on money movement and outstanding amounts. '
-                'Use Maintenance for creating periods, bills, expenses and maintenance operations.',
+                'This screen provides organization-wide financial visibility, including maintenance collections, expenses and outstanding amounts. Maintenance billing operations are managed at the block level.',
                 style: TextStyle(color: Color(0xff64748B)),
               ),
               const SizedBox(height: 18),

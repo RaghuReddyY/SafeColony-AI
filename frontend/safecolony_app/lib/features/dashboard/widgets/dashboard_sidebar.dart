@@ -135,7 +135,6 @@ class DashboardSidebar extends ConsumerWidget {
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.admin_panel_settings_rounded, title: "Block Admins & Finance"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.manage_accounts_rounded, title: "User Management"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.shield_rounded, title: "Security Guards"),
-                _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_wallet_rounded, title: "Maintenance"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.receipt_long_rounded, title: "Money Details"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.account_balance_rounded, title: "Community Finance"),
                 _menu(context, ref, role: user?.role ?? "", icon: Icons.notifications_active_rounded, title: "Notifications"),

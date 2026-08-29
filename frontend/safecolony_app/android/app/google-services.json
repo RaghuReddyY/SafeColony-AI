@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "626367937953",
+    "project_id": "safecolony-production",
+    "storage_bucket": "safecolony-production.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626367937953:android:ac46ad05abc6c47389dfe0",
+        "android_client_info": {
+          "package_name": "com.safecolony.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFRvg4s8oaasEUsAe3QjpdKvIl2Q-3boc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

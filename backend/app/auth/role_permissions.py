@@ -49,7 +49,6 @@ ROLE_PERMISSIONS = {
         Permissions.DELIVERY_CREATE,
 
         Permissions.MAINTENANCE_VIEW,
-        Permissions.MAINTENANCE_MANAGE,
 
         Permissions.INCIDENT_VIEW,
         Permissions.INCIDENT_CREATE,

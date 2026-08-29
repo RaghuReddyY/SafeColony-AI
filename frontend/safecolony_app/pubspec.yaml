@@ -1,8 +1,10 @@
 name: safecolony_app
+
 description: SafeColony AI - Smart Community Security Platform
+
 publish_to: "none"
 
-version: 1.0.0+6
+version: 1.0.0+7
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -34,13 +36,13 @@ dependencies:
   flutter_tts: ^4.2.5
   flutter_localizations:
     sdk: flutter
- 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -50,5 +52,13 @@ flutter:
     - assets/icons/
     - assets/animations/
 
-  
+flutter_launcher_icons:
+  android: true
+  ios: false
 
+  image_path: "assets/images/safecolony_app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/safecolony_app_icon.png"
+
+  
